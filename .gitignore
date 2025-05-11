@@ -1,0 +1,7 @@
+# local files
+pkgs
+output
+
+# editors
+.vscode
+.idea

@@ -1,0 +1,44 @@
+context:
+  version: 4.4.2
+
+package:
+  name: rttys
+  version: ${{ version }}
+
+source:
+  url: https://github.com/zhaojh329/rttys/archive/refs/tags/v{{ version }}.tar.gz
+  # path: ../../pkgs/rttys-${{ version }}.tar.gz
+  sha256: 9952e273b98b6e36df669bd43e0802f22af350fd14394f1d2ff4ed6c30ad0989
+  file_name: rttys-${{ version }}.tar.gz
+
+build:
+  number: 0
+  script:
+    - cd ui && npm install && npm run build && cd ..
+    - go build
+    - mkdir -p $PREFIX/bin $PREFIX/share/rttys
+    - cp rttys $PREFIX/bin
+    - cp rttys.conf rttys.service $PREFIX/share/rttys
+
+requirements:
+  build:
+    - nodejs
+    - go
+
+tests:
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/bin/rttys
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: This is the server program of rtty.
+  description: |
+    🐛 Access your device's terminal from anywhere via the web, rtty server.
+  homepage: https://github.com/zhaojh329/rttys
+  documentation: https://github.com/zhaojh329/rttys
+
+extra:
+  recipe-maintainers:
+    - fsslc
