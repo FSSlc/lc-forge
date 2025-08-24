@@ -5,7 +5,7 @@ package:
   version: {{ version }}
 
 source:
-  url: https://github.com/zorgnax/libtap/archive/refs/tags/${{ version }}.tar.gz
+  url: https://github.com/zorgnax/libtap/archive/refs/tags/{{ version }}.tar.gz
   file_name: libtap-{{ version }}.tar.gz
   # url: ../../pkgs/libtap-{{ version }}.tar.gz
   sha256: eac69e0fb4ac0406c2b6173ffaf89f5411b9aa7d4de17fb07a95f86136653752
@@ -16,7 +16,7 @@ build:
 requirements:
   build:
     - {{ compiler('c') }}
-    - cmake
+    - make
 
 about:
   homepage: https://github.com/zorgnax/libtap
