@@ -1,0 +1,36 @@
+{% set version = "0.1.0" %}
+
+package:
+  name: libtap
+  version: {{ version }}
+
+source:
+  url: https://github.com/zorgnax/libtap/archive/refs/tags/${{ version }}.tar.gz
+  file_name: libtap-{{ version }}.tar.gz
+  # url: ../../pkgs/libtap-{{ version }}.tar.gz
+  sha256: eac69e0fb4ac0406c2b6173ffaf89f5411b9aa7d4de17fb07a95f86136653752
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - cmake
+
+about:
+  homepage: https://github.com/zorgnax/libtap
+  license: LGPL-3.0
+  license_file: COPYING
+  summary: Write tests in C.
+  documentation: https://github.com/zorgnax/libtap
+  description: |
+    tap is an easy to read and easy to write way of creating tests for your software. 
+    This library creates functions that can be used to generate it for your C programs. 
+    It is implemented using macros that include file and line info automatically, 
+    and makes it so that the format message of each test is optional. 
+    It is mostly based on the Test::More Perl module.
+
+extra:
+  recipe-maintainers:
+    - fsslc
