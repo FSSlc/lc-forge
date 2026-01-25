@@ -1,0 +1,43 @@
+context:
+  version: 1.0.0
+
+package:
+  name: pbc
+  version: ${{ version }}
+
+source:
+  url: https://crypto.stanford.edu/pbc/files/pbc-${{ version }}.tar.gz
+  # path: ../../pkgs/pbc-${{ version }}.tar.gz
+  sha256: 18275a367283077bafe35f443200499e3b19c4a3754953da2a1b2f0d6b5922dc
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - make
+    - gmp
+    - flex
+    - bison
+  run:
+    - gmp
+
+tests:
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/lib/libpbc.so
+
+about:
+  license: Apache-2.0
+  license_file: LICENSE-2.0.txt
+  summary: The Pairing-Based Cryptography Library.
+  description: |
+    The PBC (Pairing-Based Cryptography) library is a free C library built on the GMP library that 
+    performs the mathematical operations underlying pairing-based cryptosystems.
+  homepage: https://crypto.stanford.edu/pbc/
+  documentation: https://crypto.stanford.edu/pbc/
+
+extra:
+  recipe-maintainers:
+    - fsslc

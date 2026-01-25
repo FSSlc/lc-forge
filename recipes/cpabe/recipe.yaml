@@ -1,0 +1,59 @@
+context:
+  version: 0.11
+
+package:
+  name: cpabe
+  version: ${{ version }}
+
+source:
+  url: http://acsc.cs.utexas.edu/cpabe/cpabe-${{ version }}.tar.gz
+  # path: ../../pkgs/cpabe-${{ version }}.tar.gz
+  sha256: 11774b0d6f2caa263e8c379afa61982e96ceafb3ba7206820d978b74a99acc1c
+  patches:
+    - 01_policy_lang.y.patch
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - make
+    - libbswabe
+    - flex
+    - bison
+    - openssl
+    - glib
+    - pkg-config
+  run:
+    - gmp
+    - pbc
+    - openssl
+    - glib
+
+tests:
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/bin/cpabe-keygen
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/bin/cpabe-setup
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/bin/cpabe-enc
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/bin/cpabe-dec
+
+about:
+  license: GPL-2.0-only
+  license_file: COPYING
+  summary: Ciphertext-Policy Attribute-Based Encryption.
+  description: |
+    The cpabe toolkit provides a set of programs implementing a ciphertext-policy attribute-based encryption scheme.
+  homepage: https://acsc.cs.utexas.edu/cpabe/
+  documentation: https://acsc.cs.utexas.edu/cpabe/
+
+extra:
+  recipe-maintainers:
+    - fsslc

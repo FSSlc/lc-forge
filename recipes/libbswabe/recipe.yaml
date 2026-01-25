@@ -1,0 +1,47 @@
+context:
+  version: 0.9
+
+package:
+  name: libbswabe
+  version: ${{ version }}
+
+source:
+  url: http://acsc.cs.utexas.edu/cpabe/libbswabe-${{ version }}.tar.gz
+  # path: ../../pkgs/libbswabe-${{ version }}.tar.gz
+  sha256: 6520ad0736a1036fcd760e2f55afe18d7a64fa59d1fb1bbf8a8a119020269418
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - make
+    - gmp
+    - pbc
+    - openssl
+    - glib
+    - pkg-config
+  run:
+    - gmp
+    - pbc
+
+tests:
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/include/bswabe.h
+      - if: not win
+        then: test -f ${PREFIX}/lib/libbswabe.a
+
+about:
+  license: GPL-2.0-only
+  license_file: COPYING
+  summary: a library implementing the core crypto operations.
+  description: |
+    a library implementing the core crypto operations.
+  homepage: https://acsc.cs.utexas.edu/cpabe/
+  documentation: https://acsc.cs.utexas.edu/cpabe/
+
+extra:
+  recipe-maintainers:
+    - fsslc
