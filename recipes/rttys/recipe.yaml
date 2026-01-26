@@ -6,10 +6,9 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/zhaojh329/rttys/archive/refs/tags/v{{ version }}.tar.gz
+  url: https://github.com/zhaojh329/rttys/archive/refs/tags/v${{ version }}.tar.gz
   # path: ../../pkgs/rttys-${{ version }}.tar.gz
   sha256: 9952e273b98b6e36df669bd43e0802f22af350fd14394f1d2ff4ed6c30ad0989
-  file_name: rttys-${{ version }}.tar.gz
 
 build:
   number: 0

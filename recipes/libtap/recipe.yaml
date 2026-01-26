@@ -7,7 +7,6 @@ package:
 
 source:
   url: https://github.com/zorgnax/libtap/archive/refs/tags/${{ version }}.tar.gz
-  file_name: libtap-${{ version }}.tar.gz
   # path: ../../pkgs/libtap-${{ version }}.tar.gz
   sha256: eac69e0fb4ac0406c2b6173ffaf89f5411b9aa7d4de17fb07a95f86136653752
 
@@ -20,7 +19,7 @@ requirements:
     - make
 
 about:
-  license: LGPL-3.0
+  license: LGPL-3.0-only
   license_file: COPYING
   summary: Write tests in C.
   description: |

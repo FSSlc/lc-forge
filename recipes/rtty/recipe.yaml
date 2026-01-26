@@ -6,10 +6,9 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/zhaojh329/rtty/releases/download/v{{ version }}/rtty-{{ version }}.tar.gz
+  url: https://github.com/zhaojh329/rtty/releases/download/v${{ version }}/rtty-${{ version }}.tar.gz
   # path: ../../pkgs/rtty-${{ version }}.tar.gz
   sha256: d31596cb601d88b2cf651ee5497e22000b7a855f80c872ac2b411fc272c83d13
-  file_name: rtty-${{ version }}.tar.gz
 
 build:
   number: 0

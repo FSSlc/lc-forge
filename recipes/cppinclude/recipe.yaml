@@ -6,12 +6,9 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/cppinclude/cppinclude/archive/refs/tags/v{{ version }}.tar.gz
+  url: https://github.com/cppinclude/cppinclude/archive/refs/tags/v${{ version }}.tar.gz
   # path: ../../pkgs/cppinclude-${{ version }}.tar.gz
   sha256: 31c36a347b43ee667c6f17121c2d0fb7cf4d2672130f25273a48835b21f6ae40
-  file_name: cppinclude-${{ version }}.tar.gz
-  patches:
-    - 01_std_hash.patch
 
 build:
   number: 0

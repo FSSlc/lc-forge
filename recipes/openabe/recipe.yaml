@@ -1,0 +1,47 @@
+context:
+  version: 1.0.0
+
+package:
+  name: openabe
+  version: ${{ version }}
+
+source:
+  url: https://github.com/FSSlc/openabe/archive/refs/heads/master.zip
+  # path: ../../pkgs/openabe-${{ version }}.zip
+  sha256: df1497efeab96d4d13175b6adc7210575b2d8359756279eab4f37036d27b3d3e
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - make
+    - gmp
+    - pbc
+    - openssl
+    - glib
+    - pkg-config
+  run:
+    - gmp
+    - pbc
+
+tests:
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/include/bswabe.h
+      - if: not win
+        then: test -f ${PREFIX}/lib/libbswabe.a
+
+about:
+  license: GPL-2.0-only
+  license_file: COPYING
+  summary: a library implementing the core crypto operations.
+  description: |
+    a library implementing the core crypto operations.
+  homepage: https://acsc.cs.utexas.edu/cpabe/
+  documentation: https://acsc.cs.utexas.edu/cpabe/
+
+extra:
+  recipe-maintainers:
+    - fsslc
