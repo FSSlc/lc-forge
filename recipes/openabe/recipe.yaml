@@ -9,6 +9,11 @@ source:
   url: https://github.com/FSSlc/openabe/archive/refs/heads/master.zip
   # path: ../../pkgs/openabe-${{ version }}.zip
   sha256: df1497efeab96d4d13175b6adc7210575b2d8359756279eab4f37036d27b3d3e
+  patches:
+    - if: linux and x86_64
+      then: relic-compile.patch
+    - if: linux and aarch64
+      then: relic-compile-arm.patch
 
 build:
   number: 0
@@ -16,31 +21,24 @@ build:
 requirements:
   build:
     - ${{ compiler('cxx') }}
-    - make
+    - cmake
+    - bzip2
+    - perl>=5
+    - m4
+    - bison
     - gmp
-    - pbc
-    - openssl
-    - glib
-    - pkg-config
   run:
     - gmp
-    - pbc
-
-tests:
-  - script:
-      - if: not win
-        then: test -f ${PREFIX}/include/bswabe.h
-      - if: not win
-        then: test -f ${PREFIX}/lib/libbswabe.a
 
 about:
-  license: GPL-2.0-only
-  license_file: COPYING
-  summary: a library implementing the core crypto operations.
+  license: AGPL-3.0-only
+  license_file: LICENSE
+  summary: The OpenABE library - open source cryptographic library with attribute-based encryption implementations in C/C++.
   description: |
-    a library implementing the core crypto operations.
-  homepage: https://acsc.cs.utexas.edu/cpabe/
-  documentation: https://acsc.cs.utexas.edu/cpabe/
+    OpenABE is a cryptographic library that incorporates a variety of attribute-based encryption (ABE) algorithms, 
+    industry standard cryptographic functions and tools, and an intuitive application programming interface (API). 
+  homepage: https://github.com/zeutro/openabe
+  documentation: https://github.com/zeutro/openabe
 
 extra:
   recipe-maintainers:
