@@ -25,4 +25,3 @@ cp cli/oabe_setup ${PREFIX}/bin
 cp cli/oabe_keygen ${PREFIX}/bin
 cp cli/oabe_enc ${PREFIX}/bin
 cp cli/oabe_dec ${PREFIX}/bin
-

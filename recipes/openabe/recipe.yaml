@@ -17,18 +17,23 @@ source:
 
 build:
   number: 0
+  dynamic_linking:
+    rpaths:
+     - lib/openabe
 
 requirements:
   build:
     - ${{ compiler('cxx') }}
+    - make
     - cmake
-    - bzip2
-    - perl>=5
     - m4
+    - flex
     - bison
     - gmp
-  run:
-    - gmp
+    - wget # for download gtest source
+    - unzip # for unzip gtest source
+    - bzip2
+    - perl >=5
 
 about:
   license: AGPL-3.0-only

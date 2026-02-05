@@ -17,6 +17,7 @@ requirements:
   build:
     - ${{ compiler('cxx') }}
     - cmake
+    - make
 
 about:
   homepage: http://fpzip.llnl.gov
