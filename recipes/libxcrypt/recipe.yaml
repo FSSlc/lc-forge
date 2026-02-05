@@ -1,0 +1,79 @@
+schema_version: 1
+
+context:
+  name: libxcrypt
+  version: 4.4.36
+
+recipe:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/besser82/libxcrypt/releases/download/v${{ version }}/libxcrypt-${{ version }}.tar.xz
+  sha256: e5e1f4caee0a01de2aee26e3138807d6d3ca2b8e67287966d1fefd65e1fd8943
+
+build:
+  number: 1
+  skip: win
+  script:
+    env:
+      OBSOLETE_API: no
+    content: $RECIPE_DIR/do_build.sh
+
+outputs:
+  - package:
+      name: libxcrypt1
+    build:
+      skip: not linux
+      script:
+        env:
+          OBSOLETE_API: glibc
+        file: do_build.sh
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - make
+        - pkg-config
+        - perl
+    tests:
+      - script:
+          - test ! -f "${PREFIX}/include/crypt.h"
+          - test ! -f "${PREFIX}/lib/libcrypt${SHLIB_EXT}"
+          - test ! -f "${PREFIX}/lib/pkgconfig/libxcrypt.pc"
+          - test -f "${PREFIX}/lib/libcrypt.so.1"
+
+  - package:
+      name: libxcrypt
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - make
+        - pkg-config
+        # We get perl from yum to avoid creating a dependency cycle
+        # - perl
+      run_exports:
+        - ${{ pin_subpackage('libxcrypt', upper_bound=None) }}
+    tests:
+      - script:
+          - test -f "${PREFIX}/include/crypt.h"
+          - test -f "${PREFIX}/lib/libcrypt${SHLIB_EXT}"
+          - if: not osx
+            then: test -f "${PREFIX}/lib/libcrypt.so.2"
+          - if: osx
+            then: test -f "${PREFIX}/lib/libcrypt.2.dylib"
+          - test -f "${PREFIX}/lib/pkgconfig/libxcrypt.pc"
+          - test ! -f "${PREFIX}/lib/libcrypt.so.1"
+          - test ! -f "${PREFIX}/lib/libcrypt.1.dylib"
+
+about:
+  license: LGPL-2.1-or-later
+  license_file:
+    - COPYING.LIB
+    - LICENSING
+  summary: Extended crypt library for descrypt, md5crypt, bcrypt, and others
+  homepage: https://github.com/besser82/libxcrypt
+
+extra:
+  recipe-maintainers:
+    - chrisburr
+    - mbargull

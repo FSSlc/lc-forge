@@ -1,0 +1,56 @@
+{% set version = "1.25.0" %}
+
+package:
+  name: wget
+  version: {{ version }}
+
+source:
+  url: https://ftp.gnu.org/gnu/wget/wget-{{ version }}.tar.gz
+  sha256: 766e48423e79359ea31e41db9e5c289675947a7fcf2efdcedb726ac9d0da3784
+
+build:
+  number: 0
+  skip: true  # [win]
+
+requirements:
+  build:
+    - gnuconfig  # [unix]
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+    - pkg-config
+    - make
+  host:
+    - openssl
+    - libidn2
+    - libunistring
+    - zlib
+    - pcre2
+  run:
+    - openssl
+    - libidn2
+    - libunistring
+    - zlib
+    - pcre2
+
+test:
+  commands:
+    - wget --help
+    - wget --version
+      # test that SSL works
+    - wget https://github.com/conda-forge
+
+about:
+  home: https://www.gnu.org/software/wget/
+  license: GPL-3.0-or-later
+  license_file: COPYING
+  summary: utility for non-interactive download of files from the Web
+  description: |
+    wget is a free software package for retrieving files using HTTP, HTTPS and FTP,
+    the most widely-used Internet protocols.
+  doc_url: https://www.gnu.org/software/wget/
+  doc_source_url: https://savannah.gnu.org/projects/wget/
+
+extra:
+  recipe-maintainers:
+    - johanneskoester
+    - bgruening
