@@ -1,7 +1,6 @@
 #!/bin/bash
 
-mkdir -p build
-cd build
-
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX ..
-make install -j
+cmake -B build -S . \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=$PREFIX
+cmake --build build --target install -- -j${CPU_COUNT}

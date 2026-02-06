@@ -14,7 +14,7 @@ build:
   number: 0
   script:
     - cd ui && npm install && npm run build && cd ..
-    - go build
+    - go build -buildvcs=false
     - mkdir -p $PREFIX/bin $PREFIX/share/rttys
     - cp rttys $PREFIX/bin
     - cp rttys.conf rttys.service $PREFIX/share/rttys
@@ -23,6 +23,7 @@ requirements:
   build:
     - nodejs
     - go
+    - ${{ compiler('cxx') }}
 
 tests:
   - script:
