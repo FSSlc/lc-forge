@@ -32,7 +32,7 @@ jobs:
           auth-host: prefix.dev
           auth-token: ${{ secrets.PREFIX_DEV_TOKEN }}
 
-      - uses: kohlerdominik/docker-run-action@v2
+      - uses: kohlerdominik/docker-run-action@v2.0.0
         with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
