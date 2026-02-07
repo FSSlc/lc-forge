@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - { target: linux-64, os: ubuntu-20.04 }
+          - { target: linux-64, os: self-hosted }
           - { target: linux-aarch64, os: ubuntu-22.04-arm }
       fail-fast: false
 
