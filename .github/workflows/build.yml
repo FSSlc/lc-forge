@@ -1,9 +1,5 @@
 name: Build all packages
 
-# this is important for trusted publishing
-permissions:
-  id-token: write
-
 on:
   push:
     branches:
@@ -20,10 +16,6 @@ jobs:
         include:
           - { target: linux-64, os: ubuntu-20.04 }
           - { target: linux-aarch64, os: ubuntu-22.04-arm }
-          - { target: win-64, os: windows-latest }
-          # force older macos-13 to get x86_64 runners
-          - { target: osx-64, os: macos-13 }
-          - { target: osx-arm64, os: macos-14 }
       fail-fast: false
 
     name: ${{ matrix.target }}
@@ -33,28 +25,24 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.62.2
+          cache: false
+          auth-host: prefix.dev
+          auth-token: ${{ secrets.PREFIX_DEV_TOKEN }}
 
-      - name: Add .pixi/envs/default/bin to the $PATH
-        shell: bash
-        run: |
-          echo "$(pwd)/.pixi/envs/default/bin" >> $GITHUB_PATH
-
-      - name: Run code in changed subdirectories
-        shell: bash
-        run: |
-          rattler-build build --recipe-dir . \
-            --skip-existing=all --target-platform=${{ matrix.target }} \
-            -c conda-forge -c https://prefix.dev/rust-forge
-
-      - name: Upload all packages
-        shell: bash
-        # do not upload on PR
-        if: github.event_name == 'push'
-        run: |
-          # uses trusted publishers for the upload
-          for file in output/**/*.conda; do
-            rattler-build upload prefix -c rust-forge "$file"
-          done
+      - uses: kohlerdominik/docker-run-action@v2
+        with:
+          image: ghcr.io/fsslc/pixi:latest
+          volumes: ${{ github.workspace }}:${{ github.workspace }}
+          shell: /bin/bash
+          workdir: ${{ github.workspace }}
+          run: |
+            rattler-build build --recipe-dir ./recipes \
+              -m ./conda_build_config.yaml --skip-existing=all \
+              --target-platform=${{ matrix.target }} \
+              -c https://prefix.dev/scns -c https://prefix.dev/lcforge
+            for file in output/**/*.conda; do
+              rattler-build upload prefix -c lcforge -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
+            done
