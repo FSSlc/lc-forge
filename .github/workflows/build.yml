@@ -25,13 +25,6 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
-        with:
-          pixi-version: v0.62.2
-          cache: false
-          auth-host: prefix.dev
-          auth-token: ${{ secrets.PREFIX_DEV_TOKEN }}
-
       - uses: kohlerdominik/docker-run-action@v2.0.0
         with:
           image: ghcr.io/fsslc/pixi:latest
@@ -40,9 +33,9 @@ jobs:
           workdir: ${{ github.workspace }}
           run: |
             rattler-build build --recipe-dir ./recipes \
-              -m ./conda_build_config.yaml --skip-existing=all \
+              -m ./conda_build_config.yaml \
               --target-platform=${{ matrix.target }} \
-              -c https://prefix.dev/scns -c https://prefix.dev/lcforge
+              -c https://prefix.dev/lcforge -c https://prefix.dev/scns 
             for file in output/**/*.conda; do
               rattler-build upload prefix -c lcforge -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
             done
