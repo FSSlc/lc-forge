@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - { target: linux-64, os: self-hosted }
-          - { target: linux-aarch64, os: ubuntu-22.04-arm }
+          - { target: linux-64, os: ubuntu-slim }
+          - { target: linux-aarch64, os: ubuntu-24.04-arm }
       fail-fast: false
 
     name: ${{ matrix.target }}
@@ -33,9 +33,10 @@ jobs:
           workdir: ${{ github.workspace }}
           run: |
             rattler-build build --recipe-dir ./recipes \
-              -m ./conda_build_config.yaml \
+              -m ./conda_build_config.yaml --skip-existing=all \
               --target-platform=${{ matrix.target }} \
               -c https://prefix.dev/lcforge -c https://prefix.dev/scns 
             for file in output/**/*.conda; do
               rattler-build upload prefix -c lcforge -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
+              rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
             done
