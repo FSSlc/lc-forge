@@ -1,0 +1,33 @@
+context:
+  version: "1.8.7"
+
+package:
+  name: libfind
+  version: ${{ version }}
+
+source:
+  url: https://github.com/FSSlc/libfind/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 68d418772d3a909a2efd9963410efd6d4ba0e6964f3fd6e20da981636df6b997
+
+build:
+  number: 0
+  noarch: generic
+  script:
+    - make DEST=${PREFIX} install
+
+requirements:
+  build:
+    - sed
+    - make
+  run:
+    - cmake >=3.12
+
+about:
+  homepage: https://github.com/FSSlc/libfind
+  repository: https://github.com/FSSlc/libfind
+  license: MIT
+  summary: A collection of cmake modules used in SCNS.
+
+extra:
+  recipe-maintainers:
+    - fsslc
