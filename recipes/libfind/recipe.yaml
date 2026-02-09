@@ -7,7 +7,7 @@ package:
 
 source:
   url: https://github.com/FSSlc/libfind/archive/refs/tags/v${{ version }}.tar.gz
-  sha256: 68d418772d3a909a2efd9963410efd6d4ba0e6964f3fd6e20da981636df6b997
+  sha256: 7b6cede89d2b627a491f08a9af5bdd3b27804ea2c4562d5b717e6307b1432f00
 
 build:
   number: 0
