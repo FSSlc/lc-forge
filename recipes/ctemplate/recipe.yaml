@@ -1,0 +1,49 @@
+context:
+  version: "2.0"
+
+package:
+  name: ctemplate
+  version: ${{ version }}
+
+source:
+  url: https://github.com/OlafvdSpek/ctemplate/archive/refs/tags/ctemplate-${{ version }}.tar.gz
+  sha256: a7dac437559c17bc6aa6eef8fb3634e01532cb23f19ede3cbdb8c9582c0aa0f0
+
+build:
+  number: 0
+  skip: [win]
+  script:
+    - 2to3 -w -n src/htmlparser/fsm_config.py
+    - 2to3 -w -n src/htmlparser/generate_fsm.py
+    - ./autogen.sh
+    - CXXFLAGS="-std=c++11" ./configure --prefix="${PREFIX}"
+    - sed -i 's/""str""/str/g' ./src/ctemplate/template_string.h.in
+    - sed -i 's/""str""/str/g' ./src/ctemplate/template_string.h
+    - sed -i 's/""suffix""/suffix/g' ./src/template.cc
+    - sed -i -e 's/""literal""/literal/g' -e 's/"" s ""/ s /g' ./src/template_modifiers.cc
+    - sed -i -E 's/\bmake_pair\s*\(/std::make_pair(/g' src/base/small_map.h
+    - make -j$CPU_COUNT
+    - make -j$CPU_COUNT install
+
+requirements:
+  build:
+    - sed
+    - make
+    - file
+    - python
+    - autoconf
+    - automake
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+
+about:
+  homepage: https://github.com/OlafvdSpek/ctemplate
+  repository: https://github.com/OlafvdSpek/ctemplate
+  license: BSD-3-Clause
+  license_file:
+    - COPYING
+  summary: This library provides an easy to use and lightning fast text templating system to use with C++ programs.
+
+extra:
+  recipe-maintainers:
+    - fsslc
