@@ -76,7 +76,7 @@ zip_keys:
     - python_impl
 
 python_min:
-  - 3.10
+  - 3.10.*
 
 pin_run_as_build:
   # boost is special, see https://github.com/conda-forge/boost-cpp-feedstock/pull/82
