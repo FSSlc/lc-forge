@@ -1,0 +1,51 @@
+{% set name = "et_xmlfile" %}
+{% set version = "2.0.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: dab3f4764309081ce75662649be815c4c9081e88f0837825f90fd28317d4da54
+
+build:
+  noarch: python
+  number: 1
+  script: {{ PYTHON }} -m pip install . -vv
+
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - setuptools
+  run:
+    - python >={{ python_min }}
+
+test:
+  imports:
+    - et_xmlfile
+  requires:
+    - pip
+    - python {{ python_min }}
+  commands:
+    - pip check
+
+about:
+  home: https://foss.heptapod.net/openpyxl/et_xmlfile
+  license: MIT
+  license_family: MIT
+  license_file: LICENCE.rst
+  summary: An implementation of lxml.xmlfile for the standard library
+
+  description: |
+    et_xmlfile is a low memory library for creating large XML files.
+  doc_url: https://et-xmlfile.readthedocs.io
+  dev_url: https://foss.heptapod.net/openpyxl/et_xmlfile
+
+
+extra:
+  recipe-maintainers:
+    - curtisalexander
+    - synapticarbors
