@@ -1,0 +1,57 @@
+{% set name = "cmake-package-check" %}
+{% set version = "0.0.4" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/ami-iit/{{ name }}/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: d4feeee40d58e18d90ddf5ed44aedefebe89ae4281c289c2a6d7a2c1d95fc70e
+
+build:
+  entry_points:
+    - cmake-package-check = cmake_package_check.cmake_package_check:main
+  noarch: python
+  script_env:
+    - SETUPTOOLS_SCM_PRETEND_VERSION={{ version }}
+  script: {{ PYTHON }} -m pip install --no-deps . -vv
+  number: 1
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - wheel
+    - setuptools >=45
+    - setuptools-scm >=6.2
+    - pip
+  run:
+    - python >={{ python_min }}
+    - jinja2
+    - cmake
+    - ninja
+    - pkg-config
+
+test:
+  imports:
+    - cmake_package_check
+  commands:
+    - pip check
+    - cmake-package-check --help
+    - cmake-package-check Threads
+  requires:
+    - pip
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - python {{ python_min }}
+
+about:
+  home: https://github.com/ami-iit/cmake-package-check
+  summary: Utility to check if a CMake package exists.
+  dev_url: https://github.com/ami-iit/cmake-package-check
+  license: BSD-3-Clause
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - traversaro
