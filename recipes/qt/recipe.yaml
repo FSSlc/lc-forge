@@ -1,0 +1,309 @@
+schema_version: 1
+
+context:
+  name: qt
+  version: 5.15.14
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+    - url: https://download.qt.io/archive/qt/5.15/${{ version }}/single/qt-everywhere-opensource-src-${{ version }}.tar.xz
+      sha256: fdd3a4f197d2c800ee0085c721f4bef60951cbda9e9c46e525d1412f74264ed7
+      patches:
+        - patches/qt5-qtbase-gcc11.patch
+        - patches/qt5-webengine-gcc11.patch
+        # qtbase
+        # - patches/0002-qtbase-osx-allow-any-xcrun-in-PATH.patch
+        - patches/0003-qtbase-use-better-clang-optimize-size.patch
+        - patches/0004-qtbase-never-enable-new-dtags.patch
+        - patches/0009-qtbase-fix-hardcoded-sysroot-path.patch
+        # - patches/0005-qtbase-link-xcb-shm.patch
+        # - patches/0006-qtbase-Do-not-set-PKG_CONFIG_SYSROOT_DIR-when-sysroo.patch
+        # - patches/0007-qtbase-Disable-kTLSProtocol13-for-macOS-10.12.patch
+        # - patches/0008-qtbase-Define-kIOSurfaceSuccess-if-it-is-not-defined.patch
+        # - patches/9999-qtbase-use-better-gcc-optimize-size.patch
+        # The following patches are required to cross-compile Qt host tools (osx)
+        # to work both on x86_64 and arm64
+        - if: arm64
+          then:
+            - patches/0005-Add-arm64-support-for-host-tools.patch
+            - patches/0006-Enable-arm64-x86_64-support-for-qttools.patch
+            - patches/0007-Make-qml-host-tools-to-be-arm64-compatiible.patch
+            - patches/0008-Make-repc-arm64-compatible.patch
+            - patches/0009-Enable-arm64-support-for-qgltf.patch
+            - patches/0010-Enable-arm64-support-for-qtscxmlc.patch
+        # https://bugreports.qt.io/browse/QTBUG-76777
+        # - patches/qcore_for_sdk_10_13_1.patch
+        # qtwinextras
+        # - patches/0001-shobjidl-Fix-compile-guard-around-SHARDAPPIDINFOLINK.patch
+        # qtscript
+        # - patches/0001-qtscript-mark-cti_vm_throw-as-REFERENCED_FROM_ASM.patch                                    # [win32]
+    - if: win64
+      then:
+        url: http://download.qt.io/development_releases/prebuilt/llvmpipe/windows/opengl32sw-64-mesa_12_0_rc2.7z
+        sha256: 2a0d2f92c60e0962ef5f6039d3793424c6f39e49ba27ac04a5b21ca4ae012e15
+        target_directory: opengl32sw
+
+build:
+  number: 2
+  prefix_detection:
+    ignore_binary_files: true
+  dynamic_linking:
+    missing_dso_allowlist:
+      - if: osx
+        then: 
+          - /usr/lib/libbsm.0.dylib
+          - /usr/lib/libcups.2.dylib
+          - /usr/lib/libresolv.9.dylib
+          - /usr/lib/libsandbox.1.dylib
+          - /System/Library/Frameworks/CoreLocation.framework/**
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - if: linux
+      then: 
+        - ${{ cdt('xorg-x11-proto-devel') }}
+        - ${{ cdt('libx11-devel') }}
+        - ${{ cdt('libxext') }}
+        - ${{ cdt('libxext-devel') }}
+        - ${{ cdt('libxrender-devel') }}
+        - ${{ cdt('mesa-libgl-devel') }}
+        - ${{ cdt('mesa-libegl') }}
+        - ${{ cdt('mesa-libegl-devel') }}
+        - ${{ cdt('mesa-dri-drivers') }}
+        - ${{ cdt('libxau-devel') }}
+        - ${{ cdt('alsa-lib-devel') }}
+        - ${{ cdt('gtk2-devel') }}
+        - ${{ cdt('gtkmm24-devel') }}
+        - ${{ cdt('libdrm-devel') }}
+        - ${{ cdt('libxcomposite-devel') }}
+        - ${{ cdt('libxcursor-devel') }}
+        - ${{ cdt('libxi-devel') }}
+        - ${{ cdt('libxrandr-devel') }}
+        - ${{ cdt('pciutils-devel') }}
+        - ${{ cdt('libxscrnsaver-devel') }}
+        - ${{ cdt('libxtst-devel') }}
+        - ${{ cdt('libselinux') }}
+        - ${{ cdt('libselinux-devel') }}
+        - ${{ cdt('libxdamage') }}
+        - ${{ cdt('libxdamage-devel') }}
+        - ${{ cdt('libxfixes') }}
+        - ${{ cdt('libxfixes-devel') }}
+        - ${{ cdt('libxxf86vm') }}
+        - ${{ cdt('libxxf86vm-devel') }}
+        - ${{ cdt('libsm-devel') }}
+        - ${{ cdt('libice-devel') }}
+        - ${{ cdt('libxcb') }}
+        - ${{ cdt('libxcb-devel') }}
+        - ${{ cdt('expat-devel') }}
+        - ${{ cdt('pcre') }}
+        - ${{ cdt('libglvnd-glx') }}
+        - ${{ cdt('libglvnd-egl') }}
+        - ${{ cdt('libxkbcommon-devel') }}
+        - ${{ cdt('xcb-util-devel') }}
+        - ${{ cdt('xcb-util-image-devel') }}
+        - ${{ cdt('xcb-util-keysyms-devel') }}
+        - ${{ cdt('xcb-util-renderutil-devel') }}
+        - ${{ cdt('xcb-util-wm-devel') }}
+    - if: unix
+      then: 
+        - pkg-config
+        - make
+    - ninja
+    - if: linux
+      then: 
+        - ruby >=2.5
+        - bison
+        - flex
+        - gperf
+    - if: win
+      then: 
+        - m2-gperf
+        - m2-bison
+        - m2-flex
+        - m2-patch
+        - jom
+        - curl
+    - perl 5.*
+    # Add openssl to build requirements so that it gets
+    # pinned correctly during the 1 -> 3 migration
+    - if: not osx
+      then: openssl
+    # Add readline here, so that newest readline is used.
+    # Otherwise build and host might end up with two different versions
+    # If they do, merge_build_host will fail.
+    - if: linux
+      then: readline
+    # libclang is required in order to enable simultaneous x86_64 and
+    # arm64 support for QDoc
+    - if: arm64
+      then: libclang
+    # Although these should be host-only dependencies, they are needed when
+    # cross-compiling arm64 binaries on x86_64 since llvm-config (host/arm64)
+    # cannot be executed on x86_64 to locate libclang successfully
+    - if: arm64
+      then: 
+        - llvmdev
+        - clangdev
+    # webengine
+    - nodejs >=16
+    - yasm
+  host:
+    # For pkg-config gl, fontconfig + freetype
+    - if: linux
+      then: 
+        - pthread-stubs
+        - dbus
+        - fontconfig
+        - freetype
+        - harfbuzz
+        - glib
+    - gst-plugins-base
+    - gstreamer
+    - if: linux
+      then:
+        - pulseaudio
+        - libxml2
+        - libxkbcommon
+        - expat
+        - libevent
+    - icu
+    - libiconv
+    - if: linux
+      then:    
+        - libopus
+    - libpng
+    - libjpeg-turbo
+    - if: unix
+      then: 
+        - nspr
+        - nss
+    - sqlite
+    # - mysql-devel                        # [not win]
+    # - postgresql                         # [not win]
+    - zlib
+    - if: linux
+      then:
+        - libxcb
+    - openssl
+    # For QDoc
+    # http://doc.qt.io/Qt-5/qdoc-guide-clang.html
+    # Only libclang is needed, but needs the full package for detection.
+    - llvmdev
+    - clangdev
+    - libclang
+    - if: linux
+      then:
+        - alsa-lib
+        - libcups
+    - zstd
+    - krb5
+    # webengine
+    - libiconv
+    - libglib
+    - libwebp
+    - if: linux
+      then: 
+        - libxkbfile
+  run:
+    - if: unix
+      then: 
+        - ${{ pin_compatible("nss") }}
+        - ${{ pin_compatible("nspr") }}
+    - if: linux
+      then: 
+        - ${{ cdt('mesa-libgl-devel') }}
+        - ${{ cdt('libxext-devel') }}
+        - ${{ cdt('libx11-devel') }}
+        - ${{ cdt('libxcb-devel') }}
+        - ${{ cdt('libxau-devel') }}
+  run_exports:
+    - ${{ pin_subpackage('qt', upper_bound='x.x') }}
+  run_constraints:
+    - if: osx and x86_64
+      then: __osx >=${{ MACOSX_DEPLOYMENT_TARGET|default("10.14") }}
+
+tests:
+  - files:
+      recipe:
+        - test/hello.pro
+        - test/main-qtwebengine.cpp
+        - test/main.cpp
+        - test/main.qml
+        - test/qml.qrc
+        - test/qrc_qml.cpp
+        - test/qtwebengine.pro
+        - xcodebuild
+        - xcrun
+    requirements:
+      run:
+        - ${{ compiler('cxx') }}
+        - if: linux
+          then: 
+            - ${{ cdt('xorg-x11-proto-devel') }}
+            - ${{ cdt('libx11-devel') }}
+            - ${{ cdt('libxext-devel') }}
+            - ${{ cdt('libxrender-devel') }}
+            - ${{ cdt('mesa-libgl-devel') }}
+            - ${{ cdt('mesa-libegl-devel') }}
+            - ${{ cdt('mesa-dri-drivers') }}
+            - ${{ cdt('libxau-devel') }}
+            - ${{ cdt('alsa-lib-devel') }}
+            - ${{ cdt('gtk2-devel') }}
+            - ${{ cdt('gtkmm24-devel') }}
+            - ${{ cdt('libdrm-devel') }}
+            - ${{ cdt('libxcomposite-devel') }}
+            - ${{ cdt('libxcursor-devel') }}
+            - ${{ cdt('libxi-devel') }}
+            - ${{ cdt('libxrandr-devel') }}
+            - ${{ cdt('pciutils-devel') }}
+            - ${{ cdt('libxscrnsaver-devel') }}
+            - ${{ cdt('libxtst-devel') }}
+            - ${{ cdt('libselinux-devel') }}
+            - ${{ cdt('libxdamage') }}
+            - ${{ cdt('libxdamage-devel') }}
+            - ${{ cdt('libxfixes') }}
+            - ${{ cdt('libxfixes-devel') }}
+            - ${{ cdt('libxxf86vm') }}
+            - ${{ cdt('libxcb') }}
+            - ${{ cdt('expat-devel') }}
+            - ${{ cdt('pcre') }}
+            - ${{ cdt('libglvnd-glx') }}
+        - if: unix
+          then: make
+    script:
+      - if: win
+        then: 
+          - if not exist %LIBRARY_BIN%\\Qt5WebEngine.dll exit 1
+          - if not exist %LIBRARY_PREFIX%\plugins\sqldrivers\qsqlite.dll exit 1
+      - if: unix
+        then: 
+          - test -f $PREFIX/lib/libQt5WebEngine${SHLIB_EXT}
+          - test -f $PREFIX/plugins/sqldrivers/libqsqlite${SHLIB_EXT}
+
+about:
+  license: LGPL-3.0-only
+  license_file: LICENSE.LGPLv3
+  summary: Qt is a cross-platform application and UI framework.
+  description: |
+    Qt helps you create connected devices, UIs & applications that run
+    anywhere on any device, on any operating system at any time.
+  homepage: http://qt.io
+  repository: https://github.com/qt
+  documentation: http://doc.qt.io/
+
+extra:
+  recipe-maintainers:
+    - andfoy
+    - ccordoba12
+    - duncanmmacleod
+    - gillins
+    - mingwandroid
+    - msarahan
+    - ocefpaf
+    - stuarteberg
+    - Tobias-Fischer
