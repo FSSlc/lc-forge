@@ -1,0 +1,46 @@
+{% set name = "GLM" %}
+{% set version = "1.0.1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/g-truc/glm/archive/refs/tags/{{ version }}.tar.gz
+  sha256: 9f3174561fd26904b23f0db5e560971cbf9b3cbda0b280f04d5c379d03bf234c
+  
+  patches:
+     - patches/macos_test_errors.patch
+
+build:
+  number: 0
+  skip: true  # [win and vc<14]
+
+requirements:
+  build:
+    - {{ stdlib("c") }}
+    - {{ compiler('cxx') }}
+    - cmake
+    - make  # [unix]
+
+test:
+  commands:
+    - test -r "${PREFIX}/include/glm"  # [unix]
+    - if not exist %LIBRARY_INC%\glm exit 1  # [win]
+    - cmake-package-check glm --targets glm::glm
+  requires:
+    - cmake-package-check
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+
+about:
+  home: https://glm.g-truc.net
+  license: MIT
+  license_family: MIT
+  license_file: manual.md
+  summary: OpenGL Mathematics
+  dev_url: https://github.com/g-truc/glm
+
+extra:
+  recipe-maintainers:
+    - traversaro
