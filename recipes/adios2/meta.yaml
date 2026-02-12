@@ -19,6 +19,7 @@ requirements:
   build:
     - cmake >=3.14
     - {{ compiler('cxx') }}
+    - {{ compiler('fortran') }}
     - {{ mpi }}
     - bzip2
     - perl 5.32.1
