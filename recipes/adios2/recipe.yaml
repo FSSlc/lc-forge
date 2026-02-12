@@ -25,6 +25,7 @@ requirements:
     - ${{ mpi }}
     - bzip2
     - perl 5.32.1.*
+    - make
   run:
     - ${{ mpi }}
     - bzip2
