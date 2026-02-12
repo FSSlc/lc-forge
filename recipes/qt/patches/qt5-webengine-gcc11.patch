@@ -1,0 +1,98 @@
+From: https://src.fedoraproject.org/rpms/qt5-qtwebengine/tree/rawhide
+---
+
+diff -uNr a/qtwebengine/src/3rdparty/chromium/media/cdm/supported_cdm_versions.h b/qtwebengine/src/3rdparty/chromium/media/cdm/supported_cdm_versions.h
+--- a/qtwebengine/src/3rdparty/chromium/media/cdm/supported_cdm_versions.h	2023-05-05 16:39:51.000000000 +0800
++++ b/qtwebengine/src/3rdparty/chromium/media/cdm/supported_cdm_versions.h	2024-08-20 10:43:27.097281529 +0800
+@@ -8,6 +8,7 @@
+ #include <stddef.h>
+ 
+ #include <array>
++#include <cstdlib>
+ #include <cstddef>
+ 
+ #include "media/base/media_export.h"
+diff -uNr a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/include/perfetto/base/task_runner.h b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/include/perfetto/base/task_runner.h
+--- a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/include/perfetto/base/task_runner.h	2023-05-05 16:39:51.000000000 +0800
++++ b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/include/perfetto/base/task_runner.h	2024-08-20 10:46:03.437273698 +0800
+@@ -20,6 +20,7 @@
+ #include <stdint.h>
+ 
+ #include <functional>
++#include <cstdint>
+ #include <stdint.h>
+ 
+ #include "perfetto/base/export.h"
+diff -uNr a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/containers/string_pool.cc b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/containers/string_pool.cc
+--- a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/containers/string_pool.cc	2023-05-05 16:39:51.000000000 +0800
++++ b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/containers/string_pool.cc	2024-08-20 10:46:53.947271163 +0800
+@@ -14,9 +14,8 @@
+  * limitations under the License.
+  */
+ 
+-#include "src/trace_processor/containers/string_pool.h"
+-
+ #include <limits>
++#include "src/trace_processor/containers/string_pool.h"
+ 
+ #include "perfetto/base/logging.h"
+ #include "perfetto/ext/base/utils.h"
+diff -uNr a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/db/column.cc b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/db/column.cc
+--- a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/db/column.cc	2023-05-05 16:39:51.000000000 +0800
++++ b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/db/column.cc	2024-08-20 10:47:17.140603331 +0800
+@@ -14,6 +14,8 @@
+  * limitations under the License.
+  */
+ 
++#include <limits>
++
+ #include "src/trace_processor/db/column.h"
+ 
+ #include "src/trace_processor/db/compare.h"
+diff -uNr a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/types/variadic.cc b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/types/variadic.cc
+--- a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/types/variadic.cc	2023-05-05 16:39:51.000000000 +0800
++++ b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/src/trace_processor/types/variadic.cc	2024-08-20 10:48:19.430600208 +0800
+@@ -14,6 +14,7 @@
+  * limitations under the License.
+  */
+ 
++#include <limits>
+ #include "src/trace_processor/types/variadic.h"
+ 
+ namespace perfetto {
+diff -uNr a/qtwebengine/src/3rdparty/chromium/third_party/webrtc/call/rtx_receive_stream.h b/qtwebengine/src/3rdparty/chromium/third_party/webrtc/call/rtx_receive_stream.h
+--- a/qtwebengine/src/3rdparty/chromium/third_party/webrtc/call/rtx_receive_stream.h	2023-05-05 16:39:51.000000000 +0800
++++ b/qtwebengine/src/3rdparty/chromium/third_party/webrtc/call/rtx_receive_stream.h	2024-08-20 10:48:54.580598446 +0800
+@@ -11,6 +11,7 @@
+ #ifndef CALL_RTX_RECEIVE_STREAM_H_
+ #define CALL_RTX_RECEIVE_STREAM_H_
+ 
++#include <cstdlib>
+ #include <cstdint>
+ #include <map>
+ #include <stdint.h>
+diff -uNr a/qtwebengine/src/3rdparty/chromium/third_party/webrtc/rtc_base/physical_socket_server.cc b/qtwebengine/src/3rdparty/chromium/third_party/webrtc/rtc_base/physical_socket_server.cc
+--- a/qtwebengine/src/3rdparty/chromium/third_party/webrtc/rtc_base/physical_socket_server.cc	2023-05-05 16:39:51.000000000 +0800
++++ b/qtwebengine/src/3rdparty/chromium/third_party/webrtc/rtc_base/physical_socket_server.cc	2024-08-20 10:49:51.913928908 +0800
+@@ -71,6 +71,11 @@
+ 
+ #if defined(WEBRTC_POSIX) && !defined(WEBRTC_MAC) && !defined(__native_client__)
+ 
++// Seems that kernel 5.2.0 renames this define to SIOCGSTAMP_OLD
++#ifndef SIOCGSTAMP
++#define SIOCGSTAMP        0x8906          /* Get stamp (timeval) */
++#endif
++
+ int64_t GetSocketRecvTimestamp(int socket) {
+   struct timeval tv_ioctl;
+   int ret = ioctl(socket, SIOCGSTAMP, &tv_ioctl);
+diff -uNr a/qtwebengine/src/buildtools/config/functions.pri b/qtwebengine/src/buildtools/config/functions.pri
+--- a/qtwebengine/src/buildtools/config/functions.pri	2023-05-05 16:39:51.000000000 +0800
++++ b/qtwebengine/src/buildtools/config/functions.pri	2024-08-20 10:50:12.790594530 +0800
+@@ -1,5 +1,5 @@
+ defineReplace(qtwebengine_extractCFlag) {
+-    CFLAGS = $$QMAKE_CC $$QMAKE_CFLAGS
++    CFLAGS = $$QMAKE_CC $$QMAKE_CFLAGS $$QMAKE_CFLAGS_RELEASE
+     OPTION = $$find(CFLAGS, $$1)
+     OPTION = $$split(OPTION, =)
+     PARAM = $$member(OPTION, 1)

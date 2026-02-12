@@ -1,0 +1,168 @@
+From: https://src.fedoraproject.org/rpms/qt5-qtbase/blob/rawhide/f/qt5-qtbase-gcc11.patch
+---
+
+diff -uNr a/qtbase/src/corelib/codecs/qtextcodec.cpp b/qtbase/src/corelib/codecs/qtextcodec.cpp
+--- a/qtbase/src/corelib/codecs/qtextcodec.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/codecs/qtextcodec.cpp	2024-08-20 10:34:05.430642923 +0800
+@@ -38,6 +38,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qplatformdefs.h"
+
+ #include "qtextcodec.h"
+diff -uNr a/qtbase/src/corelib/codecs/qutfcodec.cpp b/qtbase/src/corelib/codecs/qutfcodec.cpp
+--- a/qtbase/src/corelib/codecs/qutfcodec.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/codecs/qutfcodec.cpp	2024-08-20 10:34:33.163974871 +0800
+@@ -38,6 +38,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qutfcodec_p.h"
+ #include "qlist.h"
+ #include "qendian.h"
+diff -uNr a/qtbase/src/corelib/global/qendian.cpp b/qtbase/src/corelib/global/qendian.cpp
+--- a/qtbase/src/corelib/global/qendian.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/global/qendian.cpp	2024-08-20 10:34:57.703973644 +0800
+@@ -38,6 +38,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qendian.h"
+
+ #include "qalgorithms.h"
+diff -uNr a/qtbase/src/corelib/global/qfloat16.cpp b/qtbase/src/corelib/global/qfloat16.cpp
+--- a/qtbase/src/corelib/global/qfloat16.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/global/qfloat16.cpp	2024-08-20 10:35:57.697303980 +0800
+@@ -38,6 +38,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qfloat16.h"
+ #include "private/qsimd_p.h"
+ #include <cmath> // for fpclassify()'s return values
+diff -uNr a/qtbase/src/corelib/global/qrandom.cpp b/qtbase/src/corelib/global/qrandom.cpp
+--- a/qtbase/src/corelib/global/qrandom.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/global/qrandom.cpp	2024-08-20 10:36:47.290634838 +0800
+@@ -40,6 +40,7 @@
+ // for rand_s
+ #define _CRT_RAND_S
+
++#include <limits>
+ #include "qrandom.h"
+ #include "qrandom_p.h"
+ #include <qobjectdefs.h>
+diff -uNr a/qtbase/src/corelib/plugin/qelfparser_p.cpp b/qtbase/src/corelib/plugin/qelfparser_p.cpp
+--- a/qtbase/src/corelib/plugin/qelfparser_p.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/plugin/qelfparser_p.cpp	2024-08-20 10:37:16.373966719 +0800
+@@ -37,6 +37,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qelfparser_p.h"
+
+ #if defined (Q_OF_ELF) && defined(Q_CC_GNU)
+diff -uNr a/qtbase/src/corelib/plugin/qmachparser.cpp b/qtbase/src/corelib/plugin/qmachparser.cpp
+--- a/qtbase/src/corelib/plugin/qmachparser.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/plugin/qmachparser.cpp	2024-08-20 10:37:35.990632405 +0800
+@@ -37,6 +37,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qmachparser_p.h"
+
+ #if defined(Q_OF_MACH_O)
+diff -uNr a/qtbase/src/corelib/plugin/quuid.cpp b/qtbase/src/corelib/plugin/quuid.cpp
+--- a/qtbase/src/corelib/plugin/quuid.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/plugin/quuid.cpp	2024-08-20 10:37:55.287298106 +0800
+@@ -38,6 +38,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "quuid.h"
+
+ #include "qcryptographichash.h"
+diff -uNr a/qtbase/src/corelib/serialization/qdatastream.cpp b/qtbase/src/corelib/serialization/qdatastream.cpp
+--- a/qtbase/src/corelib/serialization/qdatastream.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/serialization/qdatastream.cpp	2024-08-20 10:38:14.903963794 +0800
+@@ -39,6 +39,7 @@
+
+ #include "qdatastream.h"
+ #include "qdatastream_p.h"
++#include <limits>
+
+ #if !defined(QT_NO_DATASTREAM) || defined(QT_BOOTSTRAPPED)
+ #include "qbuffer.h"
+diff -uNr a/qtbase/src/corelib/text/qbytearray.cpp b/qtbase/src/corelib/text/qbytearray.cpp
+--- a/qtbase/src/corelib/text/qbytearray.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/text/qbytearray.cpp	2024-08-20 10:38:34.540629482 +0800
+@@ -39,6 +39,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qbytearray.h"
+ #include "qbytearraymatcher.h"
+ #include "private/qtools_p.h"
+diff -uNr a/qtbase/src/corelib/text/qbytearray.h b/qtbase/src/corelib/text/qbytearray.h
+--- a/qtbase/src/corelib/text/qbytearray.h	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/text/qbytearray.h	2024-08-20 10:38:55.877295079 +0800
+@@ -51,6 +51,7 @@
+
+ #include <string>
+ #include <iterator>
++#include <limits>
+
+ #ifdef truncate
+ #error qbytearray.h must be included before any header file that defines truncate
+diff -uNr a/qtbase/src/corelib/text/qbytearraymatcher.cpp b/qtbase/src/corelib/text/qbytearraymatcher.cpp
+--- a/qtbase/src/corelib/text/qbytearraymatcher.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/text/qbytearraymatcher.cpp	2024-08-20 10:39:27.207293509 +0800
+@@ -37,6 +37,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qbytearraymatcher.h"
+
+ #include <limits.h>
+diff -uNr a/qtbase/src/corelib/tools/qbitarray.cpp b/qtbase/src/corelib/tools/qbitarray.cpp
+--- a/qtbase/src/corelib/tools/qbitarray.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/tools/qbitarray.cpp	2024-08-20 10:39:58.807291931 +0800
+@@ -38,6 +38,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qbitarray.h"
+ #include <qalgorithms.h>
+ #include <qdatastream.h>
+diff -uNr a/qtbase/src/corelib/tools/qcryptographichash.cpp b/qtbase/src/corelib/tools/qcryptographichash.cpp
+--- a/qtbase/src/corelib/tools/qcryptographichash.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/corelib/tools/qcryptographichash.cpp	2024-08-20 10:40:33.003956889 +0800
+@@ -38,6 +38,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include <qcryptographichash.h>
+ #include <qiodevice.h>
+ #include <qmutex.h>
+diff -uNr a/qtbase/src/gui/text/qfontengine_qpf2.cpp b/qtbase/src/gui/text/qfontengine_qpf2.cpp
+--- a/qtbase/src/gui/text/qfontengine_qpf2.cpp	2024-05-08 13:17:16.000000000 +0800
++++ b/qtbase/src/gui/text/qfontengine_qpf2.cpp	2024-08-20 10:40:53.270622545 +0800
+@@ -37,6 +37,7 @@
+ **
+ ****************************************************************************/
+
++#include <limits>
+ #include "qfontengine_qpf2_p.h"
+
+ #include <QtCore/QFile>
