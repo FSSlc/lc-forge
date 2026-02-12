@@ -13,8 +13,6 @@ source:
 
 build:
   number: 3
-  skip:
-    - py<36
   script: ${{ PYTHON }} -m pip install . -vv
 
 requirements:
