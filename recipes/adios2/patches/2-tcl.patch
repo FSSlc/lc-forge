@@ -1,0 +1,646 @@
+diff -Naur newADIOS2-2.10.0/thirdparty/atl/atl/atom.c fix-newADIOS2-2.10.0/thirdparty/atl/atl/atom.c
+--- newADIOS2-2.10.0/thirdparty/atl/atl/atom.c	2025-06-18 13:57:14.757821927 +0800
++++ fix-newADIOS2-2.10.0/thirdparty/atl/atl/atom.c	2025-07-03 11:24:06.858781911 +0800
+@@ -57,8 +57,8 @@
+     struct sockaddr_in their_addr;
+     int flags;
+     char *server_id;
+-    Tcl_HashTable string_hash_table;
+-    Tcl_HashTable value_hash_table;
++    Atl_Tcl_HashTable string_hash_table;
++    Atl_Tcl_HashTable value_hash_table;
+ } atom_server_struct;
+ 
+ static char *atom_server_host = NULL;
+@@ -111,7 +111,7 @@
+ {
+     switch (msg[0]) {
+     case 'E':{
+-	    Tcl_HashEntry *entry = NULL;
++	    Atl_Tcl_HashEntry *entry = NULL;
+ 	    char *str;
+ 	    int atom;
+ 	    atom = strtol(&msg[1], &str, 10);
+@@ -168,7 +168,7 @@
+     int new;
+     char *str;
+     send_get_atom_msg_ptr stored;
+-    Tcl_HashEntry *entry = NULL;
++    Atl_Tcl_HashEntry *entry = NULL;
+ 
+     if ((msg->atom_string == NULL) || (msg->atom == -1))
+ 	return 0;
+@@ -201,7 +201,7 @@
+ set_string_and_atom(atom_server as, char *str, atom_t atom)
+ {
+     send_get_atom_msg tmp_value;
+-    Tcl_HashEntry *entry = NULL, *entry2 = NULL;
++    Atl_Tcl_HashEntry *entry = NULL, *entry2 = NULL;
+     long numbytes, len;
+     unsigned char buf[MAXDATASIZE];
+     socklen_t addr_len = sizeof(struct sockaddr);
+@@ -417,7 +417,7 @@
+ {
+     send_get_atom_msg tmp_rec;
+     send_get_atom_msg_ptr stored;
+-    Tcl_HashEntry *entry = NULL;
++    Atl_Tcl_HashEntry *entry = NULL;
+     int numbytes;
+     char buf[MAXDATASIZE];
+ 
+@@ -584,17 +584,17 @@
+ void
+ free_atom_server(atom_server as)
+ {
+-  Tcl_HashSearch search;
+-  Tcl_HashEntry * entry = Tcl_FirstHashEntry(&as->string_hash_table, &search);
++  Atl_Tcl_HashSearch search;
++  Atl_Tcl_HashEntry * entry = Atl_Tcl_FirstHashEntry(&as->string_hash_table, &search);
+   while (entry) {
+     send_get_atom_msg_ptr stored;
+     stored = (send_get_atom_msg_ptr) Tcl_GetHashValue(entry);
+     free(stored->atom_string);
+     free(stored);
+-    entry = Tcl_NextHashEntry(&search);
++    entry = Atl_Tcl_NextHashEntry(&search);
+   }
+-  Tcl_DeleteHashTable(&as->string_hash_table);
+-  Tcl_DeleteHashTable(&as->value_hash_table);
++  Atl_Tcl_DeleteHashTable(&as->string_hash_table);
++  Atl_Tcl_DeleteHashTable(&as->value_hash_table);
+   free(as);
+ }
+ 
+@@ -615,8 +615,8 @@
+     as->use_tcp = (getenv("ATL_USE_TCP") != NULL);
+     as->no_server = 1;
+ 
+-    Tcl_InitHashTable(&as->string_hash_table, TCL_STRING_KEYS);
+-    Tcl_InitHashTable(&as->value_hash_table, TCL_ONE_WORD_KEYS);
++    Atl_Tcl_InitHashTable(&as->string_hash_table, TCL_STRING_KEYS);
++    Atl_Tcl_InitHashTable(&as->value_hash_table, TCL_ONE_WORD_KEYS);
+ 
+     if ((as->he = gethostbyname(atom_server_host)) == NULL) {
+ 	as->he = NULL;
+diff -Naur newADIOS2-2.10.0/thirdparty/atl/atl/atom_server.c fix-newADIOS2-2.10.0/thirdparty/atl/atl/atom_server.c
+--- newADIOS2-2.10.0/thirdparty/atl/atl/atom_server.c	2025-06-18 13:57:14.757821927 +0800
++++ fix-newADIOS2-2.10.0/thirdparty/atl/atl/atom_server.c	2025-07-03 11:23:55.746435688 +0800
+@@ -34,27 +34,27 @@
+ 
+ #define MAXBUFLEN 100
+ 
+-extern Tcl_HashTable *stringhash;
+-extern Tcl_HashTable *valuehash;
+-extern char *atom_to_string(Tcl_HashTable *, Tcl_HashTable *, int);
+-extern int string_to_atom(Tcl_HashTable *, Tcl_HashTable *, char *);
+-extern int set_string_and_atom(Tcl_HashTable *, Tcl_HashTable *, char *, int);
++extern Atl_Tcl_HashTable *stringhash;
++extern Atl_Tcl_HashTable *valuehash;
++extern char *atom_to_string(Atl_Tcl_HashTable *, Atl_Tcl_HashTable *, int);
++extern int string_to_atom(Atl_Tcl_HashTable *, Atl_Tcl_HashTable *, char *);
++extern int set_string_and_atom(Atl_Tcl_HashTable *, Atl_Tcl_HashTable *, char *, int);
+ static void close_client(int client);
+ static void server_init(int udp_socket, int tcp_socket);
+ static int poll_and_handle();
+ 
+ 
+-Tcl_HashTable *stringhash;
+-Tcl_HashTable *valuehash;
++Atl_Tcl_HashTable *stringhash;
++Atl_Tcl_HashTable *valuehash;
+ 
+ int verbose = 0;
+ 
+ #define LOG printf
+ 
+ char *
+-atom_to_string(Tcl_HashTable * string_hash_table, Tcl_HashTable * value_hash_table, int value)
++atom_to_string(Atl_Tcl_HashTable * string_hash_table, Atl_Tcl_HashTable * value_hash_table, int value)
+ {
+-    Tcl_HashEntry *entry = NULL;
++    Atl_Tcl_HashEntry *entry = NULL;
+     send_get_atom_msg_ptr value_string;
+ 
+     if (verbose)
+@@ -71,9 +71,9 @@
+ }
+ 
+ int
+-string_to_atom(Tcl_HashTable * string_hash_table, Tcl_HashTable * value_hash_table, char *a)
++string_to_atom(Atl_Tcl_HashTable * string_hash_table, Atl_Tcl_HashTable * value_hash_table, char *a)
+ {
+-    Tcl_HashEntry *entry = NULL;
++    Atl_Tcl_HashEntry *entry = NULL;
+     send_get_atom_msg_ptr return_msg;
+ 
+     if (verbose)
+@@ -90,11 +90,11 @@
+ }
+ 
+ int
+-set_string_and_atom(Tcl_HashTable * string_hash_table, Tcl_HashTable * value_hash_table, char *a, int set_atom)
++set_string_and_atom(Atl_Tcl_HashTable * string_hash_table, Atl_Tcl_HashTable * value_hash_table, char *a, int set_atom)
+ {
+ 
+     send_get_atom_msg_ptr return_msg;
+-    Tcl_HashEntry *entry = NULL;
++    Atl_Tcl_HashEntry *entry = NULL;
+     int new;
+     send_get_atom_msg_ptr stored;
+ 
+@@ -115,10 +115,10 @@
+ void
+ Initialize(void)
+ {
+-    stringhash = (Tcl_HashTable *) malloc(sizeof(Tcl_HashTable));
+-    Tcl_InitHashTable(stringhash, TCL_STRING_KEYS);
+-    valuehash = (Tcl_HashTable *) malloc(sizeof(Tcl_HashTable));
+-    Tcl_InitHashTable(valuehash, TCL_ONE_WORD_KEYS);
++    stringhash = (Atl_Tcl_HashTable *) malloc(sizeof(Atl_Tcl_HashTable));
++    Atl_Tcl_InitHashTable(stringhash, TCL_STRING_KEYS);
++    valuehash = (Atl_Tcl_HashTable *) malloc(sizeof(Atl_Tcl_HashTable));
++    Atl_Tcl_InitHashTable(valuehash, TCL_ONE_WORD_KEYS);
+ }
+ 
+ 
+@@ -299,7 +299,7 @@
+ 	/* create an association between a string and a value */
+ 	int atom = 0;
+ 	char *str;
+-	Tcl_HashEntry *entry = NULL;
++	Atl_Tcl_HashEntry *entry = NULL;
+ 
+ 	atom = strtol(&buf[1], &str, 10);
+ 	str++;
+diff -Naur newADIOS2-2.10.0/thirdparty/atl/atl/tclHash.c fix-newADIOS2-2.10.0/thirdparty/atl/atl/tclHash.c
+--- newADIOS2-2.10.0/thirdparty/atl/atl/tclHash.c	2025-06-18 13:57:14.758821924 +0800
++++ fix-newADIOS2-2.10.0/thirdparty/atl/atl/tclHash.c	2025-07-03 11:24:06.858781911 +0800
+@@ -55,30 +55,30 @@
+  * Procedure prototypes for static procedures in this file:
+  */
+ 
+-static Tcl_HashEntry *ArrayFind _ANSI_ARGS_((Tcl_HashTable * tablePtr,
++static Atl_Tcl_HashEntry *ArrayFind _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr,
+ 					     char *key));
+-static Tcl_HashEntry *ArrayCreate _ANSI_ARGS_((Tcl_HashTable * tablePtr,
++static Atl_Tcl_HashEntry *ArrayCreate _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr,
+ 					       char *key, int *newPtr));
+-static Tcl_HashEntry *BogusFind _ANSI_ARGS_((Tcl_HashTable * tablePtr,
++static Atl_Tcl_HashEntry *BogusFind _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr,
+ 					     char *key));
+-static Tcl_HashEntry *BogusCreate _ANSI_ARGS_((Tcl_HashTable * tablePtr,
++static Atl_Tcl_HashEntry *BogusCreate _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr,
+ 					       char *key, int *newPtr));
+ static unsigned int HashString _ANSI_ARGS_((char *string));
+-static void RebuildTable _ANSI_ARGS_((Tcl_HashTable * tablePtr));
+-static Tcl_HashEntry *StringFind _ANSI_ARGS_((Tcl_HashTable * tablePtr,
++static void RebuildTable _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr));
++static Atl_Tcl_HashEntry *StringFind _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr,
+ 					      char *key));
+-static Tcl_HashEntry *StringCreate _ANSI_ARGS_((Tcl_HashTable * tablePtr,
++static Atl_Tcl_HashEntry *StringCreate _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr,
+ 						char *key, int *newPtr));
+-static Tcl_HashEntry *OneWordFind _ANSI_ARGS_((Tcl_HashTable * tablePtr,
++static Atl_Tcl_HashEntry *OneWordFind _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr,
+ 					       char *key));
+-static Tcl_HashEntry *OneWordCreate _ANSI_ARGS_((Tcl_HashTable * tablePtr,
++static Atl_Tcl_HashEntry *OneWordCreate _ANSI_ARGS_((Atl_Tcl_HashTable * tablePtr,
+ 						 char *key, int *newPtr));
+ static void tcl_panic _ANSI_ARGS_((char *str));
+ 
+ /* 
+  *----------------------------------------------------------------------
+  *
+- * Tcl_InitHashTable --
++ * Atl_Tcl_InitHashTable --
+  *
+  *      Given storage for a hash table, set up the fields to prepare
+  *      the hash table for use.
+@@ -94,7 +94,7 @@
+  */
+ 
+ void
+-Tcl_InitHashTable(register Tcl_HashTable *tablePtr, int keyType)
++Atl_Tcl_InitHashTable(register Atl_Tcl_HashTable *tablePtr, int keyType)
+ {
+     tablePtr->buckets = tablePtr->staticBuckets;
+     tablePtr->staticBuckets[0] = tablePtr->staticBuckets[1] = 0;
+@@ -120,7 +120,7 @@
+ /* 
+  *----------------------------------------------------------------------
+  *
+- * Tcl_DeleteHashEntry --
++ * Atl_Tcl_DeleteHashEntry --
+  *
+  *      Remove a single entry from a hash table.
+  *
+@@ -137,16 +137,16 @@
+  */
+ 
+ void
+-Tcl_DeleteHashEntry(Tcl_HashEntry *entryPtr)
++Atl_Tcl_DeleteHashEntry(Atl_Tcl_HashEntry *entryPtr)
+ {
+-    register Tcl_HashEntry *prevPtr;
++    register Atl_Tcl_HashEntry *prevPtr;
+ 
+     if (*entryPtr->bucketPtr == entryPtr) {
+ 	*entryPtr->bucketPtr = entryPtr->nextPtr;
+     } else {
+ 	for (prevPtr = *entryPtr->bucketPtr;; prevPtr = prevPtr->nextPtr) {
+ 	    if (prevPtr == NULL) {
+-		tcl_panic("malformed bucket chain in Tcl_DeleteHashEntry");
++		tcl_panic("malformed bucket chain in Atl_Tcl_DeleteHashEntry");
+ 	    }
+ 	    if (prevPtr->nextPtr == entryPtr) {
+ 		prevPtr->nextPtr = entryPtr->nextPtr;
+@@ -161,7 +161,7 @@
+ /* 
+  *----------------------------------------------------------------------
+  *
+- * Tcl_DeleteHashTable --
++ * Atl_Tcl_DeleteHashTable --
+  *
+  *      Free up everything associated with a hash table except for
+  *      the record for the table itself.
+@@ -176,9 +176,9 @@
+  */
+ 
+ void
+-Tcl_DeleteHashTable(register Tcl_HashTable *tablePtr)
++Atl_Tcl_DeleteHashTable(register Atl_Tcl_HashTable *tablePtr)
+ {
+-    register Tcl_HashEntry *hPtr, *nextPtr;
++    register Atl_Tcl_HashEntry *hPtr, *nextPtr;
+     int i;
+ 
+     /* 
+@@ -213,7 +213,7 @@
+ /* 
+  *----------------------------------------------------------------------
+  *
+- * Tcl_FirstHashEntry --
++ * Atl_Tcl_FirstHashEntry --
+  *
+  *      Locate the first entry in a hash table and set up a record
+  *      that can be used to step through all the remaining entries
+@@ -223,7 +223,7 @@
+  *      The return value is a pointer to the first entry in tablePtr,
+  *      or NULL if tablePtr has no entries in it.  The memory at
+  *      *searchPtr is initialized so that subsequent calls to
+- *      Tcl_NextHashEntry will return all of the entries in the table,
++ *      Atl_Tcl_NextHashEntry will return all of the entries in the table,
+  *      one at a time.
+  *
+  * Side effects:
+@@ -232,22 +232,22 @@
+  *----------------------------------------------------------------------
+  */
+ 
+-Tcl_HashEntry *
+-Tcl_FirstHashEntry(Tcl_HashTable *tablePtr, Tcl_HashSearch *searchPtr)
++Atl_Tcl_HashEntry *
++Atl_Tcl_FirstHashEntry(Atl_Tcl_HashTable *tablePtr, Atl_Tcl_HashSearch *searchPtr)
+ {
+     searchPtr->tablePtr = tablePtr;
+     searchPtr->nextIndex = 0;
+     searchPtr->nextEntryPtr = NULL;
+-    return Tcl_NextHashEntry(searchPtr);
++    return Atl_Tcl_NextHashEntry(searchPtr);
+ }
+ 
+ /* 
+  *----------------------------------------------------------------------
+  *
+- * Tcl_NextHashEntry --
++ * Atl_Tcl_NextHashEntry --
+  *
+  *      Once a hash table enumeration has been initiated by calling
+- *      Tcl_FirstHashEntry, this procedure may be called to return
++ *      Atl_Tcl_FirstHashEntry, this procedure may be called to return
+  *      successive elements of the table.
+  *
+  * Results:
+@@ -260,10 +260,10 @@
+  *----------------------------------------------------------------------
+  */
+ 
+-Tcl_HashEntry *
+-Tcl_NextHashEntry(register Tcl_HashSearch *searchPtr)
++Atl_Tcl_HashEntry *
++Atl_Tcl_NextHashEntry(register Atl_Tcl_HashSearch *searchPtr)
+ {
+-    Tcl_HashEntry *hPtr;
++    Atl_Tcl_HashEntry *hPtr;
+ 
+     while (searchPtr->nextEntryPtr == NULL) {
+ 	if (searchPtr->nextIndex >= searchPtr->tablePtr->numBuckets) {
+@@ -281,7 +281,7 @@
+ /* 
+  *----------------------------------------------------------------------
+  *
+- * Tcl_HashStats --
++ * Atl_Tcl_HashStats --
+  *
+  *      Return statistics describing the layout of the hash table
+  *      in its hash buckets.
+@@ -298,12 +298,12 @@
+  */
+ 
+ char *
+-Tcl_HashStats(Tcl_HashTable *tablePtr)
++Atl_Tcl_HashStats(Atl_Tcl_HashTable *tablePtr)
+ {
+ #define NUM_COUNTERS 10
+     int count[NUM_COUNTERS], overflow, i, j;
+     double average, tmp;
+-    register Tcl_HashEntry *hPtr;
++    register Atl_Tcl_HashEntry *hPtr;
+     char *result, *p;
+ 
+     /* 
+@@ -419,10 +419,10 @@
+  *----------------------------------------------------------------------
+  */
+ 
+-static Tcl_HashEntry *
+-StringFind(Tcl_HashTable *tablePtr, char *key)
++static Atl_Tcl_HashEntry *
++StringFind(Atl_Tcl_HashTable *tablePtr, char *key)
+ {
+-    register Tcl_HashEntry *hPtr;
++    register Atl_Tcl_HashEntry *hPtr;
+     register char *p1, *p2;
+     int index;
+ 
+@@ -467,10 +467,10 @@
+  *----------------------------------------------------------------------
+  */
+ 
+-static Tcl_HashEntry *
+-StringCreate(Tcl_HashTable *tablePtr, char *key, int *newPtr)
++static Atl_Tcl_HashEntry *
++StringCreate(Atl_Tcl_HashTable *tablePtr, char *key, int *newPtr)
+ {
+-    register Tcl_HashEntry *hPtr;
++    register Atl_Tcl_HashEntry *hPtr;
+     register char *p1, *p2;
+     int index;
+ 
+@@ -498,8 +498,8 @@
+      */
+ 
+     *newPtr = 1;
+-    hPtr = (Tcl_HashEntry *) malloc((unsigned)
+-	(sizeof(Tcl_HashEntry) + strlen(key) - (sizeof(hPtr->key) - 1)));
++    hPtr = (Atl_Tcl_HashEntry *) malloc((unsigned)
++	(sizeof(Atl_Tcl_HashEntry) + strlen(key) - (sizeof(hPtr->key) - 1)));
+     hPtr->tablePtr = tablePtr;
+     hPtr->bucketPtr = &(tablePtr->buckets[index]);
+     hPtr->nextPtr = *hPtr->bucketPtr;
+@@ -537,10 +537,10 @@
+  *----------------------------------------------------------------------
+  */
+ 
+-static Tcl_HashEntry *
+-OneWordFind(Tcl_HashTable *tablePtr, register char *key)
++static Atl_Tcl_HashEntry *
++OneWordFind(Atl_Tcl_HashTable *tablePtr, register char *key)
+ {
+-    register Tcl_HashEntry *hPtr;
++    register Atl_Tcl_HashEntry *hPtr;
+     int index;
+ 
+     index = RANDOM_INDEX(tablePtr, key);
+@@ -579,10 +579,10 @@
+  *----------------------------------------------------------------------
+  */
+ 
+-static Tcl_HashEntry *
+-OneWordCreate(Tcl_HashTable *tablePtr, register char *key, int *newPtr)
++static Atl_Tcl_HashEntry *
++OneWordCreate(Atl_Tcl_HashTable *tablePtr, register char *key, int *newPtr)
+ {
+-    register Tcl_HashEntry *hPtr;
++    register Atl_Tcl_HashEntry *hPtr;
+     int index;
+ 
+     index = RANDOM_INDEX(tablePtr, key);
+@@ -604,7 +604,7 @@
+      */
+ 
+     *newPtr = 1;
+-    hPtr = (Tcl_HashEntry *) malloc(sizeof(Tcl_HashEntry));
++    hPtr = (Atl_Tcl_HashEntry *) malloc(sizeof(Atl_Tcl_HashEntry));
+     hPtr->tablePtr = tablePtr;
+     hPtr->bucketPtr = &(tablePtr->buckets[index]);
+     hPtr->nextPtr = *hPtr->bucketPtr;
+@@ -642,10 +642,10 @@
+  *----------------------------------------------------------------------
+  */
+ 
+-static Tcl_HashEntry *
+-ArrayFind(Tcl_HashTable *tablePtr, char *key)
++static Atl_Tcl_HashEntry *
++ArrayFind(Atl_Tcl_HashTable *tablePtr, char *key)
+ {
+-    register Tcl_HashEntry *hPtr;
++    register Atl_Tcl_HashEntry *hPtr;
+     int *arrayPtr = (int *) key;
+     register int *iPtr1, *iPtr2;
+     int index, count;
+@@ -696,10 +696,10 @@
+  *----------------------------------------------------------------------
+  */
+ 
+-static Tcl_HashEntry *
+-ArrayCreate(Tcl_HashTable *tablePtr, register char *key, int *newPtr)
++static Atl_Tcl_HashEntry *
++ArrayCreate(Atl_Tcl_HashTable *tablePtr, register char *key, int *newPtr)
+ {
+-    register Tcl_HashEntry *hPtr;
++    register Atl_Tcl_HashEntry *hPtr;
+     int *arrayPtr = (int *) key;
+     register int *iPtr1, *iPtr2;
+     int index, count;
+@@ -733,7 +733,7 @@
+      */
+ 
+     *newPtr = 1;
+-    hPtr = (Tcl_HashEntry *) malloc((unsigned) (sizeof(Tcl_HashEntry)
++    hPtr = (Atl_Tcl_HashEntry *) malloc((unsigned) (sizeof(Atl_Tcl_HashEntry)
+ 			       + (tablePtr->keyType * sizeof(int)) - 4));
+     hPtr->tablePtr = tablePtr;
+     hPtr->bucketPtr = &(tablePtr->buckets[index]);
+@@ -776,8 +776,8 @@
+  */
+ 
+ 	/* ARGSUSED */
+-static Tcl_HashEntry *
+-BogusFind(Tcl_HashTable *tablePtr, char *key)
++static Atl_Tcl_HashEntry *
++BogusFind(Atl_Tcl_HashTable *tablePtr, char *key)
+ {
+     tcl_panic("called Tcl_FindHashEntry on deleted table");
+     return NULL;
+@@ -802,8 +802,8 @@
+  */
+ 
+ 	/* ARGSUSED */
+-static Tcl_HashEntry *
+-BogusCreate(Tcl_HashTable *tablePtr, char *key, int *newPtr)
++static Atl_Tcl_HashEntry *
++BogusCreate(Atl_Tcl_HashTable *tablePtr, char *key, int *newPtr)
+ {
+     tcl_panic("called Tcl_CreateHashEntry on deleted table");
+     return NULL;
+@@ -830,12 +830,12 @@
+  */
+ 
+ static void
+-RebuildTable(register Tcl_HashTable *tablePtr)
++RebuildTable(register Atl_Tcl_HashTable *tablePtr)
+ {
+     int oldSize, count, index;
+-    Tcl_HashEntry **oldBuckets;
+-    register Tcl_HashEntry **oldChainPtr, **newChainPtr;
+-    register Tcl_HashEntry *hPtr;
++    Atl_Tcl_HashEntry **oldBuckets;
++    register Atl_Tcl_HashEntry **oldChainPtr, **newChainPtr;
++    register Atl_Tcl_HashEntry *hPtr;
+ 
+     oldSize = tablePtr->numBuckets;
+     oldBuckets = tablePtr->buckets;
+@@ -846,8 +846,8 @@
+      */
+ 
+     tablePtr->numBuckets *= 4;
+-    tablePtr->buckets = (Tcl_HashEntry **) malloc((unsigned)
+-		       (tablePtr->numBuckets * sizeof(Tcl_HashEntry *)));
++    tablePtr->buckets = (Atl_Tcl_HashEntry **) malloc((unsigned)
++		       (tablePtr->numBuckets * sizeof(Atl_Tcl_HashEntry *)));
+     for (count = tablePtr->numBuckets, newChainPtr = tablePtr->buckets;
+ 	 count > 0; count--, newChainPtr++) {
+ 	*newChainPtr = NULL;
+diff -Naur newADIOS2-2.10.0/thirdparty/atl/atl/tclHash.h fix-newADIOS2-2.10.0/thirdparty/atl/atl/tclHash.h
+--- newADIOS2-2.10.0/thirdparty/atl/atl/tclHash.h	2025-06-18 13:57:14.758821924 +0800
++++ fix-newADIOS2-2.10.0/thirdparty/atl/atl/tclHash.h	2025-07-03 11:24:06.859776314 +0800
+@@ -85,13 +85,13 @@
+ 
+ 
+ /*
+- * Forward declaration of Tcl_HashTable.  Needed by some C++ compilers
+- * to prevent errors when the forward reference to Tcl_HashTable is
+- * encountered in the Tcl_HashEntry structure.
++ * Forward declaration of Atl_Tcl_HashTable.  Needed by some C++ compilers
++ * to prevent errors when the forward reference to Atl_Tcl_HashTable is
++ * encountered in the Atl_Tcl_HashEntry structure.
+  */
+ 
+ #ifdef __cplusplus
+-struct Tcl_HashTable;
++struct Atl_Tcl_HashTable;
+ #endif
+ 
+ /*
+@@ -100,12 +100,12 @@
+  * defined below.
+  */
+ 
+-typedef struct Tcl_HashEntry {
+-    struct Tcl_HashEntry *nextPtr;	/* Pointer to next entry in this
++typedef struct Atl_Tcl_HashEntry {
++    struct Atl_Tcl_HashEntry *nextPtr;	/* Pointer to next entry in this
+ 					 * hash bucket, or NULL for end of
+ 					 * chain. */
+-    struct Tcl_HashTable *tablePtr;	/* Pointer to table containing entry. */
+-    struct Tcl_HashEntry **bucketPtr;	/* Pointer to bucket that points to
++    struct Atl_Tcl_HashTable *tablePtr;	/* Pointer to table containing entry. */
++    struct Atl_Tcl_HashEntry **bucketPtr;	/* Pointer to bucket that points to
+ 					 * first entry in this entry's chain:
+ 					 * used for deleting the entry. */
+     ClientData clientData;		/* Application stores something here
+@@ -120,7 +120,7 @@
+ 					 * will be as large as needed to hold
+ 					 * the key. */
+     } key;				/* MUST BE LAST FIELD IN RECORD!! */
+-} Tcl_HashEntry;
++} Atl_Tcl_HashEntry;
+ 
+ /*
+  * Structure definition for a hash table.  Must be in tcl.h so clients
+@@ -129,11 +129,11 @@
+  */
+ 
+ #define TCL_SMALL_HASH_TABLE 4
+-typedef struct Tcl_HashTable {
+-    Tcl_HashEntry **buckets;		/* Pointer to bucket array.  Each
++typedef struct Atl_Tcl_HashTable {
++    Atl_Tcl_HashEntry **buckets;		/* Pointer to bucket array.  Each
+ 					 * element points to first entry in
+ 					 * bucket's hash chain, or NULL. */
+-    Tcl_HashEntry *staticBuckets[TCL_SMALL_HASH_TABLE];
++    Atl_Tcl_HashEntry *staticBuckets[TCL_SMALL_HASH_TABLE];
+ 					/* Bucket array used for small tables
+ 					 * (to avoid mallocs and frees). */
+     int numBuckets;			/* Total number of buckets allocated
+@@ -152,24 +152,24 @@
+ 					 * TCL_ONE_WORD_KEYS, or an integer
+ 					 * giving the number of ints in a
+ 					 */
+-    Tcl_HashEntry *(*findProc) _ANSI_ARGS_((struct Tcl_HashTable *tablePtr,
++    Atl_Tcl_HashEntry *(*findProc) _ANSI_ARGS_((struct Atl_Tcl_HashTable *tablePtr,
+ 	    char *key));
+-    Tcl_HashEntry *(*createProc) _ANSI_ARGS_((struct Tcl_HashTable *tablePtr,
++    Atl_Tcl_HashEntry *(*createProc) _ANSI_ARGS_((struct Atl_Tcl_HashTable *tablePtr,
+ 	    char *key, int *newPtr));
+-} Tcl_HashTable;
++} Atl_Tcl_HashTable;
+ 
+ /*
+  * Structure definition for information used to keep track of searches
+  * through hash tables:
+  */
+ 
+-typedef struct Tcl_HashSearch {
+-    Tcl_HashTable *tablePtr;		/* Table being searched. */
++typedef struct Atl_Tcl_HashSearch {
++    Atl_Tcl_HashTable *tablePtr;		/* Table being searched. */
+     int nextIndex;			/* Index of next bucket to be
+ 					 * enumerated after present one. */
+-    Tcl_HashEntry *nextEntryPtr;	/* Next entry to be enumerated in the
++    Atl_Tcl_HashEntry *nextEntryPtr;	/* Next entry to be enumerated in the
+ 					 * the current bucket. */
+-} Tcl_HashSearch;
++} Atl_Tcl_HashSearch;
+ 
+ /*
+  * Acceptable key types for hash tables:
+@@ -198,16 +198,16 @@
+ 	(*((tablePtr)->createProc))(tablePtr, key, newPtr)
+ 
+ 
+-EXTERN void		Tcl_DeleteHashEntry _ANSI_ARGS_((
+-			    Tcl_HashEntry *entryPtr));
+-EXTERN void		Tcl_DeleteHashTable _ANSI_ARGS_((
+-			    Tcl_HashTable *tablePtr));
+-EXTERN Tcl_HashEntry *	Tcl_FirstHashEntry _ANSI_ARGS_((
+-			    Tcl_HashTable *tablePtr,
+-			    Tcl_HashSearch *searchPtr));
+-EXTERN char *		Tcl_HashStats _ANSI_ARGS_((Tcl_HashTable *tablePtr));
+-EXTERN void		Tcl_InitHashTable _ANSI_ARGS_((Tcl_HashTable *tablePtr,
++EXTERN void		Atl_Tcl_DeleteHashEntry _ANSI_ARGS_((
++			    Atl_Tcl_HashEntry *entryPtr));
++EXTERN void		Atl_Tcl_DeleteHashTable _ANSI_ARGS_((
++			    Atl_Tcl_HashTable *tablePtr));
++EXTERN Atl_Tcl_HashEntry *	Atl_Tcl_FirstHashEntry _ANSI_ARGS_((
++			    Atl_Tcl_HashTable *tablePtr,
++			    Atl_Tcl_HashSearch *searchPtr));
++EXTERN char *		Atl_Tcl_HashStats _ANSI_ARGS_((Atl_Tcl_HashTable *tablePtr));
++EXTERN void		Atl_Tcl_InitHashTable _ANSI_ARGS_((Atl_Tcl_HashTable *tablePtr,
+ 			    int keyType));
+-EXTERN Tcl_HashEntry *	Tcl_NextHashEntry _ANSI_ARGS_((
+-			    Tcl_HashSearch *searchPtr));
++EXTERN Atl_Tcl_HashEntry *	Atl_Tcl_NextHashEntry _ANSI_ARGS_((
++			    Atl_Tcl_HashSearch *searchPtr));
+ #endif /* _TCL_HASH */

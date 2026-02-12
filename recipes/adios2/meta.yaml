@@ -1,0 +1,50 @@
+{% set version = "2.10.0" %}
+{% set mpi = mpi or 'mpich' %}
+
+package:
+  name: adios2
+  version: {{ version }}
+
+source:
+  url: https://github.com/ornladios/ADIOS2/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: e5984de488bda546553dd2f46f047e539333891e63b9fe73944782ba6c2d95e4
+  patches:
+    - patches/1-campaign.patch
+    - patches/2-tcl.patch
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - cmake >=3.14
+    - {{ compiler('cxx') }}
+    - {{ mpi }}
+    - bzip2
+    - perl 5.32.1
+  run:
+    - {{ mpi }}
+    - bzip2
+    - perl 5.32.1
+
+about:
+  home: https://www.olcf.ornl.gov/center-projects/adios/
+  license: Apache-2.0
+  license_file: LICENSE
+  summary: Next generation of ADIOS developed in the Exascale Computing Program
+
+  description: |
+    ADIOS2 is the latest implementation of the ADaptable Input Output System,
+    ADIOS. This brand new architecture was designed to continue supporting the
+    performance legacy of ADIOS, and extend its current capabilities to address
+    current and future input/output (IO) challenges in the scientific data
+    lifecycle through effective research and development (R&D) activities.
+  doc_url: https://adios2.readthedocs.io
+  dev_url: https://github.com/ornladios/ADIOS2
+
+extra:
+  feedstock-name: adios2
+  recipe-maintainers:
+    - ax3l
+    - vicentebolea
+    - williamfgc

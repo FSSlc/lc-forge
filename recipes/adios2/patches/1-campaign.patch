@@ -1,0 +1,12 @@
+diff -Naur ADIOS2-2.10.0/source/adios2/core/ADIOS.cpp newADIOS2-2.10.0/source/adios2/core/ADIOS.cpp
+--- ADIOS2-2.10.0/source/adios2/core/ADIOS.cpp	2024-04-04 06:20:05.000000000 +0800
++++ newADIOS2-2.10.0/source/adios2/core/ADIOS.cpp	2025-06-18 13:58:23.537066885 +0800
+@@ -185,7 +185,7 @@
+ {
+     m_UserOptions.general.verbose = 0;
+ 
+-    m_UserOptions.campaign.active = true;
++    m_UserOptions.campaign.active = false;
+     m_UserOptions.campaign.verbose = 0;
+     m_UserOptions.campaign.hostname = "";
+     m_UserOptions.campaign.campaignstorepath = "";
