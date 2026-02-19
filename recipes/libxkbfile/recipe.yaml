@@ -1,0 +1,49 @@
+schema_version: 1
+
+context:
+  name: libxkbfile
+  version: 1.1.0
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://www.x.org/releases/individual/lib/${{ name }}-${{ version }}.tar.bz2
+  sha256: 758dbdaa20add2db4902df0b1b7c936564b7376c02a0acd1f2a331bd334b38c7
+
+build:
+  number: 1
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - autoconf
+    - make
+    - libtool
+    - gnuconfig
+    - automake
+    - pkg-config
+    - xorg-util-macros
+  host:
+    - xorg-kbproto
+    - xorg-libx11
+    - pthread-stubs
+
+tests:
+  - script:
+      - test -f "${PREFIX}/lib/libxkbfile${SHLIB_EXT}"
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: Parses the XKB configuration data files
+  homepage: https://www.x.org/wiki/
+  repository: https://gitlab.freedesktop.org/xorg/lib/libxkbfile
+  documentation: https://www.x.org/wiki/
+
+extra:
+  recipe-maintainers:
+    - scopatz
+    - erykoff

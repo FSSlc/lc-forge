@@ -1,0 +1,4180 @@
+From 41762bead150fdae59687b35c8acd1c4ae0f1575 Mon Sep 17 00:00:00 2001
+From: Peter Johnson <johnson.peter@gmail.com>
+Date: Sat, 10 Jul 2021 14:12:45 -0500
+Subject: [PATCH] Update Mach-O for newer macOS (#180)
+
+- Create a dummy .llvmasm section for bitcode
+- Add [buildversion] directive for setting minos and sdk versions, e.g. [buildversion minos="10.14" sdk="10.14"]. This defaults to 10.5 on x64 and 10.4 on x86.
+---
+ modules/objfmts/macho/macho-objfmt.c          | 106 +++++-
+ .../objfmts/macho/tests/gas32/gas-macho32.hex | 184 +++++++---
+ .../macho/tests/gas64/gas-macho64-pic.hex     | 134 +++++++-
+ .../objfmts/macho/tests/gas64/gas-macho64.hex | 148 ++++++--
+ .../macho/tests/nasm32/macho-reloc.hex        | 140 ++++++--
+ .../macho/tests/nasm32/macho32-pext.hex       | 122 ++++++-
+ .../macho/tests/nasm32/macho32-pic.hex        | 136 ++++++--
+ .../macho/tests/nasm32/macho32-sect.hex       | 156 +++++++--
+ .../macho/tests/nasm32/macho32-size.hex       | 132 ++++++--
+ .../objfmts/macho/tests/nasm32/machotest.hex  | 184 +++++++---
+ .../tests/nasm64/macho64-buildversion.asm     |   2 +
+ .../tests/nasm64/macho64-buildversion.hex     | 317 ++++++++++++++++++
+ .../macho/tests/nasm64/machotest64.hex        | 194 ++++++++---
+ .../macho/tests/nasm64/nasm-macho64-pic.hex   | 134 +++++++-
+ 14 files changed, 1786 insertions(+), 303 deletions(-)
+ create mode 100644 modules/objfmts/macho/tests/nasm64/macho64-buildversion.asm
+ create mode 100644 modules/objfmts/macho/tests/nasm64/macho64-buildversion.hex
+
+diff --git a/modules/objfmts/macho/macho-objfmt.c b/modules/objfmts/macho/macho-objfmt.c
+index 0a48d9b9..74ac3573 100644
+--- a/modules/objfmts/macho/macho-objfmt.c
++++ b/modules/objfmts/macho/macho-objfmt.c
+@@ -102,6 +102,7 @@
+ #define MACHO_SYMCMD_SIZE       24
+ #define MACHO_NLIST_SIZE        12
+ #define MACHO_RELINFO_SIZE      8
++#define MACHO_BUILDVERSION_SIZE 24
+ 
+ /* 64 bit sizes */
+ #define MACHO_HEADER64_SIZE     32
+@@ -145,7 +146,10 @@
+ #define LC_SEGMENT              0x1     /* segment load command */
+ #define LC_SYMTAB               0x2     /* symbol table load command */
+ #define LC_SEGMENT_64           0x19    /* segment load command */
++#define LC_BUILD_VERSION        0x32    /* build version command */
+ 
++/* Values for platform field in build version command */
++#define PLATFORM_MACOS          1
+ 
+ #define VM_PROT_NONE            0x00
+ #define VM_PROT_READ            0x01
+@@ -287,6 +291,9 @@ typedef struct yasm_objfmt_macho {
+     int bits;                   /* 32 / 64 */
+ 
+     yasm_symrec *gotpcrel_sym;  /* ..gotpcrel */
++
++    unsigned long minos;        /* minimum os version */
++    unsigned long sdk;          /* sdk version */
+ } yasm_objfmt_macho;
+ 
+ 
+@@ -356,6 +363,8 @@ macho_objfmt_create_common(yasm_object *object, yasm_objfmt_module *module,
+         (bits_pref == 0 || bits_pref == 32)) {
+         objfmt_macho->bits = 32;
+         objfmt_macho->gotpcrel_sym = NULL;
++        objfmt_macho->minos = 0x000a0400;   /* min OS version: 10.4 */
++        objfmt_macho->sdk = 0x000a0400;     /* SDK version: 10.4 */
+     } else if (yasm__strcasecmp(yasm_arch_get_machine(object->arch),
+                               "amd64") == 0 &&
+              (bits_pref == 0 || bits_pref == 64)) {
+@@ -363,6 +372,8 @@ macho_objfmt_create_common(yasm_object *object, yasm_objfmt_module *module,
+         /* FIXME: misuse of NULL bytecode */
+         objfmt_macho->gotpcrel_sym =
+             yasm_symtab_define_label(object->symtab, "..gotpcrel", NULL, 0, 0);
++        objfmt_macho->minos = 0x000a0500;   /* min OS version: 10.5 */
++        objfmt_macho->sdk = 0x000a0500;     /* SDK version: 10.5 */
+     } else {
+         yasm_xfree(objfmt_macho);
+         return NULL;
+@@ -1062,7 +1073,7 @@ macho_objfmt_output(yasm_object *object, FILE *f, int all_syms,
+         headsize =
+             MACHO_HEADER64_SIZE + MACHO_SEGCMD64_SIZE +
+             (MACHO_SECTCMD64_SIZE * (objfmt_macho->parse_scnum)) +
+-            MACHO_SYMCMD_SIZE;
++            MACHO_SYMCMD_SIZE + MACHO_BUILDVERSION_SIZE;
+         macho_segcmd = LC_SEGMENT_64;
+         macho_segcmdsize = MACHO_SEGCMD64_SIZE;
+         macho_sectcmdsize = MACHO_SECTCMD64_SIZE;
+@@ -1072,7 +1083,7 @@ macho_objfmt_output(yasm_object *object, FILE *f, int all_syms,
+         headsize =
+             MACHO_HEADER_SIZE + MACHO_SEGCMD_SIZE +
+             (MACHO_SECTCMD_SIZE * (objfmt_macho->parse_scnum)) +
+-            MACHO_SYMCMD_SIZE;
++            MACHO_SYMCMD_SIZE + MACHO_BUILDVERSION_SIZE;
+         macho_segcmd = LC_SEGMENT;
+         macho_segcmdsize = MACHO_SEGCMD_SIZE;
+         macho_sectcmdsize = MACHO_SECTCMD_SIZE;
+@@ -1132,8 +1143,8 @@ macho_objfmt_output(yasm_object *object, FILE *f, int all_syms,
+     YASM_WRITE_32_L(localbuf, MH_OBJECT);       /* MACH file type */
+ 
+     /* calculate number of commands and their size, put to stream */
+-    head_ncmds = 0;
+-    head_sizeofcmds = 0;
++    head_ncmds = 1;
++    head_sizeofcmds = MACHO_BUILDVERSION_SIZE;
+     if (objfmt_macho->parse_scnum > 0) {
+         head_ncmds++;
+         head_sizeofcmds +=
+@@ -1155,6 +1166,14 @@ macho_objfmt_output(yasm_object *object, FILE *f, int all_syms,
+         fileoffset = MACHO_HEADER_SIZE + head_sizeofcmds;
+     }
+ 
++    /* --------------- write build version command ---------------- */
++    YASM_WRITE_32_L(localbuf, LC_BUILD_VERSION);
++    YASM_WRITE_32_L(localbuf, MACHO_BUILDVERSION_SIZE);
++    YASM_WRITE_32_L(localbuf, PLATFORM_MACOS);
++    YASM_WRITE_32_L(localbuf, objfmt_macho->minos);
++    YASM_WRITE_32_L(localbuf, objfmt_macho->sdk);
++    YASM_WRITE_32_L(localbuf, 0); /* number of tools */
++
+     /* --------------- write segment header command ---------------- */
+     YASM_WRITE_32_L(localbuf, macho_segcmd);    /* command LC_SEGMENT */
+     /* size of load command including section load commands */
+@@ -1286,6 +1305,25 @@ macho_objfmt_add_default_section(yasm_object *object)
+     macho_section_data *msd;
+     int isnew;
+ 
++    /* Create a dummy __asm marker section with a single zero byte. This tells
++     * the Apple toolchain that the code came from assembler and has no bitcode.
++     */
++    retval = yasm_object_get_general(object, ".llvmasm", 0, 0, 0, &isnew, 0);
++    if (isnew) {
++        yasm_datavalhead dvs;
++
++        msd = yasm_section_get_data(retval, &macho_section_data_cb);
++        msd->segname = yasm__xstrdup("__LLVM");
++        msd->sectname = yasm__xstrdup("__asm");
++        yasm_section_set_align(retval, 0, 0);
++        yasm_dvs_initialize(&dvs);
++        yasm_dvs_append(&dvs, yasm_dv_create_expr(
++            yasm_expr_create_ident(
++                yasm_expr_int(yasm_intnum_create_uint(0)), 0)));
++        yasm_section_bcs_append(retval,
++            yasm_bc_create_data(&dvs, 1, 0, object->arch, 0));
++    }
++
+     retval = yasm_object_get_general(object, "LC_SEGMENT.__TEXT.__text", 0, 1,
+                                      0, &isnew, 0);
+     if (isnew) {
+@@ -1346,6 +1384,7 @@ macho_objfmt_section_switch(yasm_object *object, yasm_valparamhead *valparams,
+         {".const_data",     "__DATA", "__const",        S_REGULAR, 0},
+         {".rodata",         "__DATA", "__const",        S_REGULAR, 0},
+         {".bss",            "__DATA", "__bss",          S_ZEROFILL, 0},
++        {".llvmasm",        "__LLVM", "__asm",          S_REGULAR, 0},
+         {".objc_class_names",   "__TEXT", "__cstring",  S_CSTRING_LITERALS, 0},
+         {".objc_meth_var_types","__TEXT", "__cstring",  S_CSTRING_LITERALS, 0},
+         {".objc_meth_var_names","__TEXT", "__cstring",  S_CSTRING_LITERALS, 0},
+@@ -1554,6 +1593,53 @@ macho_symrec_data_print(void *data, FILE *f, int indent_level)
+         fprintf(f, "nil\n");
+ }
+ 
++static void
++parse_version(unsigned long *out, const yasm_valparam *vp)
++{
++    unsigned long major, minor, subminor;
++    int m;
++
++    if (vp->type != YASM_PARAM_STRING) {
++        yasm_error_set(YASM_ERROR_VALUE,
++                       N_("argument to `%s' is not a string"), vp->val);
++        return;
++    }
++
++    m = sscanf(vp->param.str, "%lu.%lu.%lu", &major, &minor, &subminor);
++    if (m < 2) {
++        yasm_error_set(YASM_ERROR_VALUE,
++                       N_("argument to `%s' must be `MAJOR.MINOR[.SUBMINOR]`"),
++                       vp->val);
++        return;
++    }
++
++    *out = ((major & 0xffff) << 16) | ((minor & 0xff) << 8) | (subminor & 0xff);
++}
++
++static void
++dir_buildversion(yasm_object *object, yasm_valparamhead *valparams,
++                 yasm_valparamhead *objext_valparams, unsigned long line)
++{
++    yasm_objfmt_macho *objfmt_macho = (yasm_objfmt_macho *)object->objfmt;
++    yasm_valparam *vp;
++
++    /* Accept, but do nothing with empty ident */
++    if (!valparams)
++        return;
++
++    vp = yasm_vps_first(valparams);
++    while (vp) {
++        if (vp->val && yasm__strcasecmp(vp->val, "minos") == 0) {
++            parse_version(&objfmt_macho->minos, vp);
++        } else if (vp->val && yasm__strcasecmp(vp->val, "sdk") == 0) {
++            parse_version(&objfmt_macho->sdk, vp);
++        } else {
++            yasm_dir_helper_valparam_warn(object, vp, line, NULL);
++        }
++        vp = yasm_vps_next(vp);
++    }
++}
++
+ 
+ /* Define valid debug formats to use with this object format */
+ static const char *macho_objfmt_dbgfmt_keywords[] = {
+@@ -1561,6 +1647,12 @@ static const char *macho_objfmt_dbgfmt_keywords[] = {
+     NULL
+ };
+ 
++static const yasm_directive macho_objfmt_directives[] = {
++    { ".buildversion", "gas",  dir_buildversion, YASM_DIR_ANY },
++    { "buildversion",  "nasm", dir_buildversion, YASM_DIR_ANY },
++    { NULL, NULL, NULL, 0 }
++};
++
+ /* Define objfmt structure -- see objfmt.h for details */
+ yasm_objfmt_module yasm_macho_LTX_objfmt = {
+     "Mac OS X ABI Mach-O File Format",
+@@ -1570,7 +1662,7 @@ yasm_objfmt_module yasm_macho_LTX_objfmt = {
+     0,
+     macho_objfmt_dbgfmt_keywords,
+     "null",
+-    NULL,   /* no directives */
++    macho_objfmt_directives,
+     NULL,   /* no standard macros */
+     macho_objfmt_create,
+     macho_objfmt_output,
+@@ -1589,7 +1681,7 @@ yasm_objfmt_module yasm_macho32_LTX_objfmt = {
+     0,
+     macho_objfmt_dbgfmt_keywords,
+     "null",
+-    NULL,   /* no directives */
++    macho_objfmt_directives,
+     NULL,   /* no standard macros */
+     macho32_objfmt_create,
+     macho_objfmt_output,
+@@ -1608,7 +1700,7 @@ yasm_objfmt_module yasm_macho64_LTX_objfmt = {
+     0,
+     macho_objfmt_dbgfmt_keywords,
+     "null",
+-    NULL,   /* no directives */
++    macho_objfmt_directives,
+     NULL,   /* no standard macros */
+     macho64_objfmt_create,
+     macho_objfmt_output,
+diff --git a/modules/objfmts/macho/tests/gas32/gas-macho32.hex b/modules/objfmts/macho/tests/gas32/gas-macho32.hex
+index 72cdabde..ba0d6c4d 100644
+--- a/modules/objfmts/macho/tests/gas32/gas-macho32.hex
++++ b/modules/objfmts/macho/tests/gas32/gas-macho32.hex
+@@ -14,11 +14,11 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 00 
+-1c 
++78 
+ 01 
+ 00 
+ 00 
+@@ -26,15 +26,36 @@ fe
+ 00 
+ 00 
+ 00 
++32 
++00 
++00 
++00 
++18 
++00 
++00 
++00 
+ 01 
+ 00 
+ 00 
+ 00 
++00 
+ 04 
++0a 
++00 
++00 
++04 
++0a 
++00 
++00 
++00 
++00 
++00 
+ 01 
+ 00 
+ 00 
+ 00 
++48 
++01 
+ 00 
+ 00 
+ 00 
+@@ -54,15 +75,18 @@ fe
+ 00 
+ 00 
+ 00 
+-89 
+ 00 
+ 00 
+ 00 
+-38 
++8a 
++00 
++00 
++00 
++94 
+ 01 
+ 00 
+ 00 
+-81 
++82 
+ 00 
+ 00 
+ 00 
+@@ -74,7 +98,75 @@ fe
+ 00 
+ 00 
+ 00 
+-03 
++04 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++94 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -114,7 +206,7 @@ fe
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -122,7 +214,7 @@ fe
+ 00 
+ 00 
+ 00 
+-38 
++95 
+ 01 
+ 00 
+ 00 
+@@ -130,8 +222,8 @@ fe
+ 00 
+ 00 
+ 00 
+-bc 
+-01 
++18 
++02 
+ 00 
+ 00 
+ 07 
+@@ -182,7 +274,7 @@ bc
+ 00 
+ 00 
+ 00 
+-41 
++42 
+ 00 
+ 00 
+ 00 
+@@ -190,7 +282,7 @@ bc
+ 00 
+ 00 
+ 00 
+-79 
++d6 
+ 01 
+ 00 
+ 00 
+@@ -198,8 +290,8 @@ bc
+ 00 
+ 00 
+ 00 
+-f4 
+-01 
++50 
++02 
+ 00 
+ 00 
+ 03 
+@@ -250,7 +342,7 @@ f4
+ 00 
+ 00 
+ 00 
+-81 
++82 
+ 00 
+ 00 
+ 00 
+@@ -294,7 +386,7 @@ f4
+ 00 
+ 00 
+ 00 
+-0c 
++68 
+ 02 
+ 00 
+ 00 
+@@ -302,7 +394,7 @@ f4
+ 00 
+ 00 
+ 00 
+-6c 
++c8 
+ 02 
+ 00 
+ 00 
+@@ -310,6 +402,7 @@ f4
+ 00 
+ 00 
+ 00 
++00 
+ 55 
+ 89 
+ e5 
+@@ -328,13 +421,13 @@ ec
+ 5d 
+ c3 
+ a1 
+-81 
++82 
+ 00 
+ 00 
+ 00 
+ 40 
+ a3 
+-85 
++86 
+ 00 
+ 00 
+ 00 
+@@ -345,7 +438,7 @@ ff
+ 00 
+ 00 
+ a1 
+-75 
++76 
+ 00 
+ 00 
+ 00 
+@@ -353,13 +446,13 @@ ff
+ 30 
+ ff 
+ 35 
+-81 
++82 
+ 00 
+ 00 
+ 00 
+ ff 
+ 35 
+-4e 
++4f 
+ 00 
+ 00 
+ 00 
+@@ -427,16 +520,15 @@ c3
+ 64 
+ 0a 
+ 00 
+-85 
++86 
+ 00 
+ 00 
+ 00 
+-11 
+-00 
++12 
+ 00 
+ 00 
+-7d 
+ 00 
++7e 
+ 00 
+ 00 
+ 00 
+@@ -446,7 +538,7 @@ c3
+ 00 
+ 00 
+ 00 
+-03 
++04 
+ 00 
+ 00 
+ 04 
+@@ -454,7 +546,7 @@ c3
+ 00 
+ 00 
+ 00 
+-03 
++04 
+ 00 
+ 00 
+ 04 
+@@ -470,7 +562,7 @@ c3
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 04 
+@@ -478,7 +570,7 @@ c3
+ 00 
+ 00 
+ 00 
+-03 
++04 
+ 00 
+ 00 
+ 04 
+@@ -486,7 +578,7 @@ c3
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 04 
+@@ -502,7 +594,7 @@ c3
+ 00 
+ 00 
+ 00 
+-03 
++04 
+ 00 
+ 00 
+ 04 
+@@ -510,7 +602,7 @@ c3
+ 00 
+ 00 
+ 00 
+-01 
++02 
+ 00 
+ 00 
+ 04 
+@@ -518,7 +610,7 @@ c3
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 04 
+@@ -527,10 +619,10 @@ c3
+ 00 
+ 00 
+ 0f 
+-01 
+-00 
++02 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -539,10 +631,10 @@ c3
+ 00 
+ 00 
+ 0f 
+-01 
++02 
+ 00 
+ 00 
+-11 
++12 
+ 00 
+ 00 
+ 00 
+@@ -551,10 +643,10 @@ c3
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-41 
++42 
+ 00 
+ 00 
+ 00 
+@@ -563,10 +655,10 @@ c3
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-79 
++7a 
+ 00 
+ 00 
+ 00 
+@@ -575,10 +667,10 @@ c3
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-7d 
++7e 
+ 00 
+ 00 
+ 00 
+@@ -587,10 +679,10 @@ c3
+ 00 
+ 00 
+ 0f 
+-03 
++04 
+ 00 
+ 00 
+-81 
++82 
+ 00 
+ 00 
+ 00 
+diff --git a/modules/objfmts/macho/tests/gas64/gas-macho64-pic.hex b/modules/objfmts/macho/tests/gas64/gas-macho64-pic.hex
+index 83bb7bbf..f84e075b 100644
+--- a/modules/objfmts/macho/tests/gas64/gas-macho64-pic.hex
++++ b/modules/objfmts/macho/tests/gas64/gas-macho64-pic.hex
+@@ -14,11 +14,12 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 00 
+-b0 
++18 
++01 
+ 00 
+ 00 
+ 00 
+@@ -29,28 +30,36 @@ b0
+ 00 
+ 00 
+ 00 
++32 
+ 00 
+-19 
+ 00 
+ 00 
++18 
+ 00 
+-98 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+ 00 
++05 
++0a 
+ 00 
+ 00 
++05 
++0a 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
++19 
+ 00 
+ 00 
+ 00 
++e8 
++00 
+ 00 
+ 00 
+ 00 
+@@ -62,7 +71,6 @@ b0
+ 00 
+ 00 
+ 00 
+-34 
+ 00 
+ 00 
+ 00 
+@@ -70,7 +78,6 @@ b0
+ 00 
+ 00 
+ 00 
+-d0 
+ 00 
+ 00 
+ 00 
+@@ -78,7 +85,24 @@ d0
+ 00 
+ 00 
+ 00 
+-34 
++00 
++35 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++38 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++35 
+ 00 
+ 00 
+ 00 
+@@ -94,6 +118,63 @@ d0
+ 00 
+ 00 
+ 00 
++02 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++38 
+ 01 
+ 00 
+ 00 
+@@ -102,6 +183,29 @@ d0
+ 00 
+ 00 
+ 00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 5f 
+ 5f 
+ 74 
+@@ -134,7 +238,7 @@ d0
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -150,15 +254,15 @@ d0
+ 00 
+ 00 
+ 00 
+-d0 
+-00 
++39 
++01 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+-04 
++70 
+ 01 
+ 00 
+ 00 
+@@ -190,7 +294,7 @@ d0
+ 00 
+ 00 
+ 00 
+-44 
++b0 
+ 01 
+ 00 
+ 00 
+@@ -198,7 +302,7 @@ d0
+ 00 
+ 00 
+ 00 
+-54 
++c0 
+ 01 
+ 00 
+ 00 
+@@ -206,6 +310,7 @@ d0
+ 00 
+ 00 
+ 00 
++00 
+ e8 
+ 00 
+ 00 
+@@ -258,6 +363,9 @@ ff
+ 56 
+ 34 
+ 12 
++00 
++00 
++00 
+ 01 
+ 00 
+ 00 
+diff --git a/modules/objfmts/macho/tests/gas64/gas-macho64.hex b/modules/objfmts/macho/tests/gas64/gas-macho64.hex
+index e4fa4882..6e281529 100644
+--- a/modules/objfmts/macho/tests/gas64/gas-macho64.hex
++++ b/modules/objfmts/macho/tests/gas64/gas-macho64.hex
+@@ -14,8 +14,27 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
++00 
++00 
++00 
++68 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
++32 
++00 
++00 
++00 
++18 
+ 00 
+ 00 
+ 00 
+@@ -24,7 +43,12 @@ fe
+ 00 
+ 00 
+ 00 
++05 
++0a 
++00 
+ 00 
++05 
++0a 
+ 00 
+ 00 
+ 00 
+@@ -34,8 +58,8 @@ fe
+ 00 
+ 00 
+ 00 
+-e8 
+-00 
++38 
++01 
+ 00 
+ 00 
+ 00 
+@@ -62,7 +86,7 @@ e8
+ 00 
+ 00 
+ 00 
+-c5 
++c6 
+ 00 
+ 00 
+ 00 
+@@ -70,7 +94,7 @@ c5
+ 00 
+ 00 
+ 00 
+-20 
++88 
+ 01 
+ 00 
+ 00 
+@@ -78,7 +102,7 @@ c5
+ 00 
+ 00 
+ 00 
+-c5 
++c6 
+ 00 
+ 00 
+ 00 
+@@ -94,7 +118,87 @@ c5
+ 00 
+ 00 
+ 00 
+-02 
++03 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++88 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -134,7 +238,7 @@ c5
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -150,7 +254,7 @@ c5
+ 00 
+ 00 
+ 00 
+-20 
++89 
+ 01 
+ 00 
+ 00 
+@@ -158,8 +262,8 @@ c5
+ 00 
+ 00 
+ 00 
+-e8 
+-01 
++50 
++02 
+ 00 
+ 00 
+ 0c 
+@@ -214,7 +318,7 @@ e8
+ 00 
+ 00 
+ 00 
+-5d 
++5e 
+ 00 
+ 00 
+ 00 
+@@ -230,7 +334,7 @@ e8
+ 00 
+ 00 
+ 00 
+-7d 
++e6 
+ 01 
+ 00 
+ 00 
+@@ -270,7 +374,7 @@ e8
+ 00 
+ 00 
+ 00 
+-48 
++b0 
+ 02 
+ 00 
+ 00 
+@@ -278,7 +382,7 @@ e8
+ 00 
+ 00 
+ 00 
+-88 
++f0 
+ 02 
+ 00 
+ 00 
+@@ -286,6 +390,7 @@ e8
+ 00 
+ 00 
+ 00 
++00 
+ e8 
+ 00 
+ 00 
+@@ -485,7 +590,6 @@ ff
+ 00 
+ 00 
+ 00 
+-00 
+ 01 
+ 00 
+ 00 
+@@ -603,10 +707,10 @@ ff
+ 00 
+ 00 
+ 0e 
+-02 
++03 
+ 00 
+ 00 
+-c5 
++c6 
+ 00 
+ 00 
+ 00 
+@@ -619,10 +723,10 @@ c5
+ 00 
+ 00 
+ 0e 
+-02 
++03 
+ 00 
+ 00 
+-b3 
++b4 
+ 00 
+ 00 
+ 00 
+@@ -635,10 +739,10 @@ b3
+ 00 
+ 00 
+ 0e 
+-02 
++03 
+ 00 
+ 00 
+-b3 
++b4 
+ 00 
+ 00 
+ 00 
+diff --git a/modules/objfmts/macho/tests/nasm32/macho-reloc.hex b/modules/objfmts/macho/tests/nasm32/macho-reloc.hex
+index 7ef6e8a1..8dc58940 100644
+--- a/modules/objfmts/macho/tests/nasm32/macho-reloc.hex
++++ b/modules/objfmts/macho/tests/nasm32/macho-reloc.hex
+@@ -14,34 +14,48 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 00 
+-d8 
++34 
++01 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
++32 
++00 
++00 
++00 
++18 
++00 
++00 
+ 00 
+ 01 
+ 00 
+ 00 
+ 00 
+-c0 
+ 00 
++04 
++0a 
+ 00 
+ 00 
++04 
++0a 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
++04 
++01 
+ 00 
+ 00 
+ 00 
+@@ -54,15 +68,25 @@ c0
+ 00 
+ 00 
+ 00 
+-2b 
+ 00 
+ 00 
+ 00 
+-f4 
+ 00 
+ 00 
+ 00 
+-2b 
++00 
++00 
++00 
++00 
++2c 
++00 
++00 
++00 
++50 
++01 
++00 
++00 
++2c 
+ 00 
+ 00 
+ 00 
+@@ -74,7 +98,75 @@ f4
+ 00 
+ 00 
+ 00 
+-02 
++03 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++50 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -114,7 +206,7 @@ f4
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -122,15 +214,15 @@ f4
+ 00 
+ 00 
+ 00 
+-f4 
+-00 
++51 
++01 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+-20 
++7c 
+ 01 
+ 00 
+ 00 
+@@ -182,7 +274,7 @@ f4
+ 00 
+ 00 
+ 00 
+-28 
++29 
+ 00 
+ 00 
+ 00 
+@@ -190,7 +282,7 @@ f4
+ 00 
+ 00 
+ 00 
+-1c 
++79 
+ 01 
+ 00 
+ 00 
+@@ -226,7 +318,7 @@ f4
+ 00 
+ 00 
+ 00 
+-58 
++b4 
+ 01 
+ 00 
+ 00 
+@@ -234,7 +326,7 @@ f4
+ 00 
+ 00 
+ 00 
+-7c 
++d8 
+ 01 
+ 00 
+ 00 
+@@ -242,6 +334,7 @@ f4
+ 00 
+ 00 
+ 00 
++00 
+ b8 
+ 02 
+ 00 
+@@ -263,17 +356,17 @@ a1
+ 00 
+ 00 
+ b8 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+ b8 
+-19 
++1a 
+ 00 
+ 00 
+ 00 
+ b8 
+-22 
++23 
+ 00 
+ 00 
+ 00 
+@@ -285,7 +378,6 @@ b8
+ 05 
+ 05 
+ 00 
+-00 
+ 01 
+ 00 
+ 00 
+@@ -322,7 +414,7 @@ b8
+ 00 
+ 00 
+ 00 
+-01 
++02 
+ 00 
+ 00 
+ 04 
+@@ -330,7 +422,7 @@ b8
+ 00 
+ 00 
+ 00 
+-01 
++02 
+ 00 
+ 00 
+ 04 
+@@ -338,7 +430,7 @@ b8
+ 00 
+ 00 
+ 00 
+-01 
++02 
+ 00 
+ 00 
+ 04 
+@@ -347,10 +439,10 @@ b8
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-29 
++2a 
+ 00 
+ 00 
+ 00 
+diff --git a/modules/objfmts/macho/tests/nasm32/macho32-pext.hex b/modules/objfmts/macho/tests/nasm32/macho32-pext.hex
+index 6a8eb4f4..c57c549a 100644
+--- a/modules/objfmts/macho/tests/nasm32/macho32-pext.hex
++++ b/modules/objfmts/macho/tests/nasm32/macho32-pext.hex
+@@ -14,30 +14,48 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
++00 
++00 
+ 00 
++f0 
+ 00 
+ 00 
+-94 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
++32 
++00 
++00 
++00 
++18 
++00 
+ 00 
+ 00 
+ 01 
+ 00 
+ 00 
+ 00 
+-7c 
++00 
++04 
++0a 
++00 
++00 
++04 
++0a 
++00 
+ 00 
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
++c0 
++00 
+ 00 
+ 00 
+ 00 
+@@ -54,17 +72,23 @@ fe
+ 00 
+ 00 
+ 00 
+-01 
+ 00 
+ 00 
+ 00 
+-b0 
+ 00 
+ 00 
+ 00 
++02 
++00 
++00 
++00 
++0c 
+ 01 
+ 00 
+ 00 
++02 
++00 
++00 
+ 00 
+ 07 
+ 00 
+@@ -74,10 +98,78 @@ b0
+ 00 
+ 00 
+ 00 
++02 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 01 
+ 00 
+ 00 
+ 00 
++0c 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -114,7 +206,7 @@ b0
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -122,8 +214,8 @@ b0
+ 00 
+ 00 
+ 00 
+-b0 
+-00 
++0d 
++01 
+ 00 
+ 00 
+ 00 
+@@ -158,24 +250,24 @@ b0
+ 00 
+ 00 
+ 00 
+-b4 
+-00 
++10 
++01 
+ 00 
+ 00 
+ 01 
+ 00 
+ 00 
+ 00 
+-c0 
+-00 
++1c 
++01 
+ 00 
+ 00 
+ 0a 
+ 00 
+ 00 
+ 00 
+-c3 
+ 00 
++c3 
+ 00 
+ 00 
+ 01 
+@@ -183,10 +275,10 @@ c3
+ 00 
+ 00 
+ 1f 
+-01 
+-00 
++02 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+diff --git a/modules/objfmts/macho/tests/nasm32/macho32-pic.hex b/modules/objfmts/macho/tests/nasm32/macho32-pic.hex
+index f81f708c..9b92e0bf 100644
+--- a/modules/objfmts/macho/tests/nasm32/macho32-pic.hex
++++ b/modules/objfmts/macho/tests/nasm32/macho32-pic.hex
+@@ -14,30 +14,48 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
++00 
++00 
++00 
++34 
++01 
+ 00 
+ 00 
+ 00 
+-d8 
+ 00 
+ 00 
+ 00 
++32 
+ 00 
+ 00 
+ 00 
++18 
++00 
++00 
+ 00 
+ 01 
+ 00 
+ 00 
+ 00 
+-c0 
++00 
++04 
++0a 
++00 
++00 
++04 
++0a 
++00 
+ 00 
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
++04 
++01 
+ 00 
+ 00 
+ 00 
+@@ -54,15 +72,21 @@ c0
+ 00 
+ 00 
+ 00 
+-29 
+ 00 
+ 00 
+ 00 
+-f4 
+ 00 
+ 00 
+ 00 
+-29 
++2a 
++00 
++00 
++00 
++50 
++01 
++00 
++00 
++2a 
+ 00 
+ 00 
+ 00 
+@@ -74,7 +98,75 @@ f4
+ 00 
+ 00 
+ 00 
+-02 
++03 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++50 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -114,7 +206,7 @@ f4
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -122,15 +214,15 @@ f4
+ 00 
+ 00 
+ 00 
+-f4 
+-00 
++51 
++01 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+-20 
++7c 
+ 01 
+ 00 
+ 00 
+@@ -182,7 +274,7 @@ f4
+ 00 
+ 00 
+ 00 
+-29 
++2a 
+ 00 
+ 00 
+ 00 
+@@ -190,7 +282,7 @@ f4
+ 00 
+ 00 
+ 00 
+-1d 
++7a 
+ 01 
+ 00 
+ 00 
+@@ -226,7 +318,7 @@ f4
+ 00 
+ 00 
+ 00 
+-40 
++9c 
+ 01 
+ 00 
+ 00 
+@@ -234,7 +326,7 @@ f4
+ 00 
+ 00 
+ 00 
+-4c 
++a8 
+ 01 
+ 00 
+ 00 
+@@ -242,8 +334,9 @@ f4
+ 00 
+ 00 
+ 00 
++00 
+ e9 
+-24 
++25 
+ 00 
+ 00 
+ 00 
+@@ -267,13 +360,13 @@ ed
+ 8d 
+ 9c 
+ e9 
+-0c 
++0d 
+ 00 
+ 00 
+ 00 
+ 5d 
+ e9 
+-06 
++07 
+ 00 
+ 00 
+ 00 
+@@ -285,12 +378,11 @@ ff
+ c3 
+ 00 
+ 00 
+-00 
+ 01 
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 05 
+@@ -298,7 +390,7 @@ c3
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 05 
+@@ -306,7 +398,7 @@ c3
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 05 
+diff --git a/modules/objfmts/macho/tests/nasm32/macho32-sect.hex b/modules/objfmts/macho/tests/nasm32/macho32-sect.hex
+index aeaec6f9..d4e35f01 100644
+--- a/modules/objfmts/macho/tests/nasm32/macho32-sect.hex
++++ b/modules/objfmts/macho/tests/nasm32/macho32-sect.hex
+@@ -14,31 +14,48 @@ fe
+ 00 
+ 00 
+ 00 
+-01 
++02 
++00 
++00 
++00 
++3c 
++03 
++00 
+ 00 
+ 00 
+ 00 
+-e0 
+-02 
+ 00 
+ 00 
++32 
++00 
+ 00 
+ 00 
++18 
++00 
+ 00 
+ 00 
+ 01 
+ 00 
+ 00 
+ 00 
+-e0 
+-02 
++00 
++04 
++0a 
++00 
++00 
++04 
++0a 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
++01 
++00 
+ 00 
+ 00 
++24 
++03 
+ 00 
+ 00 
+ 00 
+@@ -58,11 +75,18 @@ e0
+ 00 
+ 00 
+ 00 
+-fc 
+-02 
+ 00 
+ 00 
+ 00 
++01 
++00 
++00 
++00 
++58 
++03 
++00 
++00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -74,7 +98,75 @@ fc
+ 00 
+ 00 
+ 00 
+-0a 
++0b 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++70 
++03 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -114,6 +206,7 @@ fc
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -121,8 +214,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -182,6 +274,7 @@ fc
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -189,8 +282,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -250,6 +342,7 @@ fc
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -257,8 +350,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -318,6 +410,7 @@ fc
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -325,8 +418,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -386,6 +478,7 @@ fc
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -393,8 +486,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -454,6 +546,7 @@ fc
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -461,8 +554,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -522,6 +614,7 @@ fc
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -529,8 +622,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -590,6 +682,7 @@ fc
+ 45 
+ 47 
+ 4e 
++01 
+ 00 
+ 00 
+ 00 
+@@ -597,8 +690,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -658,6 +750,7 @@ fc
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -665,8 +758,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -726,6 +818,7 @@ fc
+ 53 
+ 45 
+ 47 
++01 
+ 00 
+ 00 
+ 00 
+@@ -733,8 +826,7 @@ fc
+ 00 
+ 00 
+ 00 
+-00 
+-14 
++71 
+ 03 
+ 00 
+ 00 
+@@ -770,7 +862,7 @@ fc
+ 00 
+ 00 
+ 00 
+-14 
++74 
+ 03 
+ 00 
+ 00 
+@@ -778,7 +870,7 @@ fc
+ 00 
+ 00 
+ 00 
+-14 
++74 
+ 03 
+ 00 
+ 00 
+@@ -787,3 +879,7 @@ fc
+ 00 
+ 00 
+ 00 
++00 
++00 
++00 
++00 
+diff --git a/modules/objfmts/macho/tests/nasm32/macho32-size.hex b/modules/objfmts/macho/tests/nasm32/macho32-size.hex
+index 2ed324ea..3ae12b81 100644
+--- a/modules/objfmts/macho/tests/nasm32/macho32-size.hex
++++ b/modules/objfmts/macho/tests/nasm32/macho32-size.hex
+@@ -14,31 +14,49 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 00 
+-d8 
++34 
++01 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
++32 
++00 
++00 
++00 
++18 
++00 
++00 
+ 00 
+ 01 
+ 00 
+ 00 
+ 00 
+-c0 
++00 
++04 
++0a 
++00 
++00 
++04 
++0a 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
++04 
++01 
++00 
+ 00 
+ 00 
+ 00 
+@@ -54,15 +72,21 @@ c0
+ 00 
+ 00 
+ 00 
+-38 
+ 00 
+ 00 
+ 00 
+-f4 
+ 00 
+ 00 
+ 00 
+-2e 
++48 
++00 
++00 
++00 
++50 
++01 
++00 
++00 
++2f 
+ 00 
+ 00 
+ 00 
+@@ -74,7 +98,75 @@ f4
+ 00 
+ 00 
+ 00 
+-02 
++03 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++50 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -114,7 +206,7 @@ f4
+ 00 
+ 00 
+ 00 
+-00 
++10 
+ 00 
+ 00 
+ 00 
+@@ -122,15 +214,15 @@ f4
+ 00 
+ 00 
+ 00 
+-f4 
+-00 
++51 
++01 
+ 00 
+ 00 
+ 04 
+ 00 
+ 00 
+ 00 
+-24 
++80 
+ 01 
+ 00 
+ 00 
+@@ -182,7 +274,7 @@ f4
+ 00 
+ 00 
+ 00 
+-30 
++40 
+ 00 
+ 00 
+ 00 
+@@ -190,7 +282,7 @@ f4
+ 00 
+ 00 
+ 00 
+-1a 
++77 
+ 01 
+ 00 
+ 00 
+@@ -226,7 +318,7 @@ f4
+ 00 
+ 00 
+ 00 
+-2c 
++88 
+ 01 
+ 00 
+ 00 
+@@ -234,7 +326,7 @@ f4
+ 00 
+ 00 
+ 00 
+-38 
++94 
+ 01 
+ 00 
+ 00 
+@@ -242,6 +334,7 @@ f4
+ 00 
+ 00 
+ 00 
++00 
+ 53 
+ 52 
+ 56 
+@@ -270,7 +363,7 @@ f4
+ 0f 
+ 6f 
+ 35 
+-30 
++40 
+ 00 
+ 00 
+ 00 
+@@ -289,12 +382,11 @@ ff
+ ff 
+ 00 
+ 00 
+-00 
+ 1c 
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 04 
+@@ -303,10 +395,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-01 
+-00 
++02 
+ 00 
+ 00 
++10 
+ 00 
+ 00 
+ 00 
+diff --git a/modules/objfmts/macho/tests/nasm32/machotest.hex b/modules/objfmts/macho/tests/nasm32/machotest.hex
+index e6791e4e..e4c5442a 100644
+--- a/modules/objfmts/macho/tests/nasm32/machotest.hex
++++ b/modules/objfmts/macho/tests/nasm32/machotest.hex
+@@ -14,11 +14,11 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 00 
+-1c 
++78 
+ 01 
+ 00 
+ 00 
+@@ -26,15 +26,36 @@ fe
+ 00 
+ 00 
+ 00 
++32 
++00 
++00 
++00 
++18 
++00 
++00 
++00 
+ 01 
+ 00 
+ 00 
+ 00 
++00 
+ 04 
++0a 
++00 
++00 
++04 
++0a 
++00 
++00 
++00 
++00 
++00 
+ 01 
+ 00 
+ 00 
+ 00 
++48 
++01 
+ 00 
+ 00 
+ 00 
+@@ -54,15 +75,18 @@ fe
+ 00 
+ 00 
+ 00 
+-8f 
+ 00 
+ 00 
+ 00 
+-38 
++90 
++00 
++00 
++00 
++94 
+ 01 
+ 00 
+ 00 
+-87 
++88 
+ 00 
+ 00 
+ 00 
+@@ -74,7 +98,75 @@ fe
+ 00 
+ 00 
+ 00 
+-03 
++04 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++94 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -114,7 +206,7 @@ fe
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -122,7 +214,7 @@ fe
+ 00 
+ 00 
+ 00 
+-38 
++95 
+ 01 
+ 00 
+ 00 
+@@ -130,8 +222,8 @@ fe
+ 00 
+ 00 
+ 00 
+-c0 
+-01 
++1c 
++02 
+ 00 
+ 00 
+ 07 
+@@ -182,7 +274,7 @@ c0
+ 00 
+ 00 
+ 00 
+-47 
++48 
+ 00 
+ 00 
+ 00 
+@@ -190,7 +282,7 @@ c0
+ 00 
+ 00 
+ 00 
+-7f 
++dc 
+ 01 
+ 00 
+ 00 
+@@ -198,8 +290,8 @@ c0
+ 00 
+ 00 
+ 00 
+-f8 
+-01 
++54 
++02 
+ 00 
+ 00 
+ 03 
+@@ -250,7 +342,7 @@ f8
+ 00 
+ 00 
+ 00 
+-87 
++88 
+ 00 
+ 00 
+ 00 
+@@ -294,7 +386,7 @@ f8
+ 00 
+ 00 
+ 00 
+-10 
++6c 
+ 02 
+ 00 
+ 00 
+@@ -302,7 +394,7 @@ f8
+ 00 
+ 00 
+ 00 
+-70 
++cc 
+ 02 
+ 00 
+ 00 
+@@ -310,6 +402,7 @@ f8
+ 00 
+ 00 
+ 00 
++00 
+ 55 
+ 89 
+ e5 
+@@ -328,13 +421,13 @@ ec
+ 5d 
+ c3 
+ a1 
+-87 
++88 
+ 00 
+ 00 
+ 00 
+ 40 
+ a3 
+-8b 
++8c 
+ 00 
+ 00 
+ 00 
+@@ -345,7 +438,7 @@ ff
+ 00 
+ 00 
+ a1 
+-7b 
++7c 
+ 00 
+ 00 
+ 00 
+@@ -353,12 +446,12 @@ ff
+ 30 
+ ff 
+ 35 
+-87 
++88 
+ 00 
+ 00 
+ 00 
+ 68 
+-54 
++55 
+ 00 
+ 00 
+ 00 
+@@ -433,16 +526,15 @@ ff
+ 64 
+ 0a 
+ 00 
+-8b 
+-00 
++8c 
+ 00 
+ 00 
+-11 
+ 00 
++12 
+ 00 
+ 00 
+-83 
+ 00 
++84 
+ 00 
+ 00 
+ 00 
+@@ -450,7 +542,7 @@ ff
+ 00 
+ 00 
+ 00 
+-03 
++04 
+ 00 
+ 00 
+ 04 
+@@ -458,7 +550,7 @@ ff
+ 00 
+ 00 
+ 00 
+-03 
++04 
+ 00 
+ 00 
+ 04 
+@@ -474,7 +566,7 @@ ff
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 04 
+@@ -482,7 +574,7 @@ ff
+ 00 
+ 00 
+ 00 
+-03 
++04 
+ 00 
+ 00 
+ 04 
+@@ -490,7 +582,7 @@ ff
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 04 
+@@ -506,7 +598,7 @@ ff
+ 00 
+ 00 
+ 00 
+-03 
++04 
+ 00 
+ 00 
+ 04 
+@@ -514,7 +606,7 @@ ff
+ 00 
+ 00 
+ 00 
+-01 
++02 
+ 00 
+ 00 
+ 04 
+@@ -522,7 +614,7 @@ ff
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 04 
+@@ -531,10 +623,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-01 
+-00 
++02 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -543,10 +635,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-01 
++02 
+ 00 
+ 00 
+-11 
++12 
+ 00 
+ 00 
+ 00 
+@@ -555,10 +647,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-47 
++48 
+ 00 
+ 00 
+ 00 
+@@ -567,10 +659,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-7f 
++80 
+ 00 
+ 00 
+ 00 
+@@ -579,10 +671,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-83 
++84 
+ 00 
+ 00 
+ 00 
+@@ -591,10 +683,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-03 
++04 
+ 00 
+ 00 
+-87 
++88 
+ 00 
+ 00 
+ 00 
+diff --git a/modules/objfmts/macho/tests/nasm64/macho64-buildversion.asm b/modules/objfmts/macho/tests/nasm64/macho64-buildversion.asm
+new file mode 100644
+index 00000000..a277f7c4
+--- /dev/null
++++ b/modules/objfmts/macho/tests/nasm64/macho64-buildversion.asm
+@@ -0,0 +1,2 @@
++[buildversion minos="10.14.2" sdk="10.7"]
++
+diff --git a/modules/objfmts/macho/tests/nasm64/macho64-buildversion.hex b/modules/objfmts/macho/tests/nasm64/macho64-buildversion.hex
+new file mode 100644
+index 00000000..bbb9efaa
+--- /dev/null
++++ b/modules/objfmts/macho/tests/nasm64/macho64-buildversion.hex
+@@ -0,0 +1,317 @@
++cf 
++fa 
++ed 
++fe 
++07 
++00 
++00 
++01 
++03 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++02 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++32 
++00 
++00 
++00 
++18 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++02 
++0e 
++0a 
++00 
++02 
++07 
++0a 
++00 
++00 
++00 
++00 
++00 
++19 
++00 
++00 
++00 
++e8 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++20 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++07 
++00 
++00 
++00 
++07 
++00 
++00 
++00 
++02 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++38 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++74 
++65 
++78 
++74 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++54 
++45 
++58 
++54 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++39 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++80 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++02 
++00 
++00 
++00 
++18 
++00 
++00 
++00 
++3c 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++3c 
++01 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+diff --git a/modules/objfmts/macho/tests/nasm64/machotest64.hex b/modules/objfmts/macho/tests/nasm64/machotest64.hex
+index 21395186..e8b38768 100644
+--- a/modules/objfmts/macho/tests/nasm64/machotest64.hex
++++ b/modules/objfmts/macho/tests/nasm64/machotest64.hex
+@@ -14,11 +14,11 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 00 
+-50 
++b8 
+ 01 
+ 00 
+ 00 
+@@ -30,11 +30,35 @@ fe
+ 00 
+ 00 
+ 00 
++32 
++00 
++00 
++00 
++18 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++05 
++0a 
++00 
++00 
++05 
++0a 
++00 
++00 
++00 
++00 
++00 
+ 19 
+ 00 
+ 00 
+ 00 
+-38 
++88 
+ 01 
+ 00 
+ 00 
+@@ -62,7 +86,7 @@ fe
+ 00 
+ 00 
+ 00 
+-d6 
++d7 
+ 00 
+ 00 
+ 00 
+@@ -70,7 +94,7 @@ d6
+ 00 
+ 00 
+ 00 
+-70 
++d8 
+ 01 
+ 00 
+ 00 
+@@ -78,7 +102,7 @@ d6
+ 00 
+ 00 
+ 00 
+-c6 
++c7 
+ 00 
+ 00 
+ 00 
+@@ -94,7 +118,87 @@ c6
+ 00 
+ 00 
+ 00 
+-03 
++04 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++d8 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 00 
+ 00 
+ 00 
+@@ -134,7 +238,7 @@ c6
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -150,7 +254,7 @@ c6
+ 00 
+ 00 
+ 00 
+-70 
++d9 
+ 01 
+ 00 
+ 00 
+@@ -158,7 +262,7 @@ c6
+ 00 
+ 00 
+ 00 
+-38 
++a0 
+ 02 
+ 00 
+ 00 
+@@ -214,7 +318,7 @@ c6
+ 00 
+ 00 
+ 00 
+-7a 
++7b 
+ 00 
+ 00 
+ 00 
+@@ -230,15 +334,15 @@ c6
+ 00 
+ 00 
+ 00 
+-ea 
+-01 
++53 
++02 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+-88 
++f0 
+ 02 
+ 00 
+ 00 
+@@ -294,7 +398,7 @@ ea
+ 00 
+ 00 
+ 00 
+-c6 
++c7 
+ 00 
+ 00 
+ 00 
+@@ -350,15 +454,15 @@ c6
+ 00 
+ 00 
+ 00 
+-a0 
+-02 
++08 
++03 
+ 00 
+ 00 
+ 0f 
+ 00 
+ 00 
+ 00 
+-90 
++f8 
+ 03 
+ 00 
+ 00 
+@@ -366,6 +470,7 @@ a0
+ 00 
+ 00 
+ 00 
++00 
+ 51 
+ 48 
+ 89 
+@@ -565,7 +670,6 @@ ff
+ 64 
+ 00 
+ 00 
+-00 
+ 10 
+ 00 
+ 00 
+@@ -675,10 +779,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-01 
+-00 
++02 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -691,10 +795,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-01 
++02 
+ 00 
+ 00 
+-2f 
++30 
+ 00 
+ 00 
+ 00 
+@@ -707,10 +811,10 @@ ff
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-b9 
++ba 
+ 00 
+ 00 
+ 00 
+@@ -723,10 +827,10 @@ b9
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-a9 
++aa 
+ 00 
+ 00 
+ 00 
+@@ -739,10 +843,10 @@ a9
+ 00 
+ 00 
+ 0f 
+-02 
++03 
+ 00 
+ 00 
+-b1 
++b2 
+ 00 
+ 00 
+ 00 
+@@ -755,10 +859,10 @@ b1
+ 00 
+ 00 
+ 0f 
+-03 
++04 
+ 00 
+ 00 
+-c6 
++c7 
+ 00 
+ 00 
+ 00 
+@@ -803,10 +907,10 @@ c6
+ 00 
+ 00 
+ 0f 
+-01 
++02 
+ 00 
+ 00 
+-0e 
++0f 
+ 00 
+ 00 
+ 00 
+@@ -819,10 +923,10 @@ c6
+ 00 
+ 00 
+ 0f 
+-01 
++02 
+ 00 
+ 00 
+-19 
++1a 
+ 00 
+ 00 
+ 00 
+@@ -835,10 +939,10 @@ c6
+ 00 
+ 00 
+ 0e 
+-01 
++02 
+ 00 
+ 00 
+-07 
++08 
+ 00 
+ 00 
+ 00 
+@@ -851,10 +955,10 @@ c6
+ 00 
+ 00 
+ 0e 
+-03 
++04 
+ 00 
+ 00 
+-ce 
++cf 
+ 00 
+ 00 
+ 00 
+@@ -867,10 +971,10 @@ ce
+ 00 
+ 00 
+ 0e 
+-01 
++02 
+ 00 
+ 00 
+-24 
++25 
+ 00 
+ 00 
+ 00 
+@@ -883,10 +987,10 @@ ce
+ 00 
+ 00 
+ 0e 
+-02 
++03 
+ 00 
+ 00 
+-a1 
++a2 
+ 00 
+ 00 
+ 00 
+@@ -899,10 +1003,10 @@ a1
+ 00 
+ 00 
+ 0e 
+-02 
++03 
+ 00 
+ 00 
+-7a 
++7b 
+ 00 
+ 00 
+ 00 
+diff --git a/modules/objfmts/macho/tests/nasm64/nasm-macho64-pic.hex b/modules/objfmts/macho/tests/nasm64/nasm-macho64-pic.hex
+index 83bb7bbf..f84e075b 100644
+--- a/modules/objfmts/macho/tests/nasm64/nasm-macho64-pic.hex
++++ b/modules/objfmts/macho/tests/nasm64/nasm-macho64-pic.hex
+@@ -14,11 +14,12 @@ fe
+ 00 
+ 00 
+ 00 
+-02 
++03 
+ 00 
+ 00 
+ 00 
+-b0 
++18 
++01 
+ 00 
+ 00 
+ 00 
+@@ -29,28 +30,36 @@ b0
+ 00 
+ 00 
+ 00 
++32 
+ 00 
+-19 
+ 00 
+ 00 
++18 
+ 00 
+-98 
+ 00 
+ 00 
++01 
+ 00 
+ 00 
+ 00 
+ 00 
++05 
++0a 
+ 00 
+ 00 
++05 
++0a 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
++19 
+ 00 
+ 00 
+ 00 
++e8 
++00 
+ 00 
+ 00 
+ 00 
+@@ -62,7 +71,6 @@ b0
+ 00 
+ 00 
+ 00 
+-34 
+ 00 
+ 00 
+ 00 
+@@ -70,7 +78,6 @@ b0
+ 00 
+ 00 
+ 00 
+-d0 
+ 00 
+ 00 
+ 00 
+@@ -78,7 +85,24 @@ d0
+ 00 
+ 00 
+ 00 
+-34 
++00 
++35 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++38 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++35 
+ 00 
+ 00 
+ 00 
+@@ -94,6 +118,63 @@ d0
+ 00 
+ 00 
+ 00 
++02 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++61 
++73 
++6d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++5f 
++5f 
++4c 
++4c 
++56 
++4d 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++01 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++38 
+ 01 
+ 00 
+ 00 
+@@ -102,6 +183,29 @@ d0
+ 00 
+ 00 
+ 00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
++00 
+ 5f 
+ 5f 
+ 74 
+@@ -134,7 +238,7 @@ d0
+ 00 
+ 00 
+ 00 
+-00 
++01 
+ 00 
+ 00 
+ 00 
+@@ -150,15 +254,15 @@ d0
+ 00 
+ 00 
+ 00 
+-d0 
+-00 
++39 
++01 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+ 00 
+-04 
++70 
+ 01 
+ 00 
+ 00 
+@@ -190,7 +294,7 @@ d0
+ 00 
+ 00 
+ 00 
+-44 
++b0 
+ 01 
+ 00 
+ 00 
+@@ -198,7 +302,7 @@ d0
+ 00 
+ 00 
+ 00 
+-54 
++c0 
+ 01 
+ 00 
+ 00 
+@@ -206,6 +310,7 @@ d0
+ 00 
+ 00 
+ 00 
++00 
+ e8 
+ 00 
+ 00 
+@@ -258,6 +363,9 @@ ff
+ 56 
+ 34 
+ 12 
++00 
++00 
++00 
+ 01 
+ 00 
+ 00 

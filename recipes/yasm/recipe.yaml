@@ -1,0 +1,58 @@
+schema_version: 1
+
+context:
+  version: 1.3.0
+
+package:
+  name: yasm
+  version: ${{ version }}
+
+source:
+  url: http://www.tortall.net/projects/yasm/releases/yasm-${{ version }}.tar.gz
+  patches:
+    - gh180.patch
+  sha256: 3dce6601b495f5b3d45b59f7d2492a340ee7e84b5beca17e48f862502bd5603f
+
+build:
+  number: 1003
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - if: win
+      then: cmake
+    - if: not win
+      then: make
+    - if: unix
+      then: gnuconfig
+  host:
+    - python ${{ python_min }}
+
+tests:
+  - script:
+      - if: unix
+        then: test -f ${PREFIX}/lib/libyasm.a
+      - if: win
+        then: if not exist %LIBRARY_LIB%\\yasm.lib exit 1
+      - if: win
+        then: if not exist %LIBRARY_BIN%\\yasm.dll exit 1
+      - vsyasm --help
+      - yasm --help
+      - ytasm /h
+      - yasm --version
+
+about:
+  license: BSD-2-Clause AND BSD-3-Clause AND Artistic-1.0
+  license_file:
+    - Artistic.txt
+    - BSD.txt
+  summary: "Yasm is a complete rewrite of the NASM assembler under the \"new\" BSD License."
+  homepage: http://www.tortall.net/projects/yasm/
+  repository: https://github.com/yasm/yasm
+
+extra:
+  recipe-maintainers:
+    - jakirkham
+    - ocefpaf
+    - patricksnape
+    - matthiasdiener
