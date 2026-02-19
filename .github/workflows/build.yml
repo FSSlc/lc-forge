@@ -27,15 +27,29 @@ jobs:
 
       - uses: kohlerdominik/docker-run-action@v2.0.0
         with:
+          image: ghcr.io/fsslc/pixi:gui
+          volumes: ${{ github.workspace }}:${{ github.workspace }}
+          shell: /bin/bash
+          workdir: ${{ github.workspace }}
+          run: |
+            rattler-build build -m ./conda_build_config.yaml --skip-existing=all --target-platform=${{ matrix.target }} -c https://prefix.dev/scns -r recipes/qt
+            count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
+            if (( count > 0 )); then
+              for file in output/**/*.conda; do
+                rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
+              done
+            else
+              echo "nothing to do"
+            fi
+
+      - uses: kohlerdominik/docker-run-action@v2.0.0
+        with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
           shell: /bin/bash
           workdir: ${{ github.workspace }}
           run: |
-            rattler-build build --recipe-dir ./recipes \
-              -m ./conda_build_config.yaml --skip-existing=all \
-              --target-platform=${{ matrix.target }} \
-              -c https://prefix.dev/scns
+            rattler-build build -m ./conda_build_config.yaml --skip-existing=all --target-platform=${{ matrix.target }} -c https://prefix.dev/scns --recipe-dir ./recipes
             count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
             if (( count > 0 )); then
               for file in output/**/*.conda; do

@@ -1,0 +1,73 @@
+schema_version: 1
+
+context:
+  xorg_name: xorgproto
+  xorg_category: proto
+  name: xorg-xorgproto
+  version: 2025.1
+  sha256: 56898c716c0578df8a2d828c9c3e5c528277705c0484381a81960fe1a67668e8
+  am_version: 1.15  # keep synchronized with build.sh
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://www.x.org/releases/individual/${{ xorg_category }}/${{ xorg_name }}-${{ version }}.tar.xz
+  sha256: ${{ sha256 }}
+  patches:
+    - if: win
+      then: 0001-windows-fds-bits.patch
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - if: win
+      then: m2-autoconf
+    - if: win
+      then: m2-automake${{ am_version }}
+    - if: win
+      then: m2-libtool
+    - if: win
+      then: m2-pkg-config
+    - if: win
+      then: m2-base
+    - if: win
+      then: m2-make
+    - if: win
+      then: ${{ compiler('m2w64_c') }}
+    - if: win
+      then: ${{ stdlib("m2w64_c") }}
+    - if: unix
+      then: pkg-config
+    - if: unix
+      then: gnuconfig
+    - if: unix
+      then: make
+    - if: unix
+      then: gnuconfig
+    - if: unix
+      then: ${{ compiler('c') }}
+    - if: unix
+      then: ${{ stdlib("c") }}
+  host:
+    - xorg-util-macros
+    - python ${{ python_min }}
+
+tests:
+  - script:
+      - if: not win
+        then: test -e $PREFIX/include/X11/extensions/damageproto.h
+
+about:
+  license: MIT
+  license_file: licenses/
+  summary: X.org protocol headers
+  homepage: https://www.x.org/
+
+extra:
+  recipe-maintainers:
+    - pkgw
+
