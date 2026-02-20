@@ -32,7 +32,7 @@ jobs:
           shell: /bin/bash
           workdir: ${{ github.workspace }}
           run: |
-            rattler-build build -m ./conda_build_config.yaml --skip-existing=all --target-platform=${{ matrix.target }} -c https://prefix.dev/scns -r recipes/qt
+            conda build --experimental jlap -m ./conda_build_config.yaml --skip-existing -c https://prefix.dev/scns --croot ./output recipes/qt
             count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
             if (( count > 0 )); then
               for file in output/**/*.conda; do
