@@ -1,0 +1,84 @@
+schema_version: 1
+
+context:
+  xorg_name: libXft
+  xorg_category: lib
+  name: xorg-libXft
+  version: 2.3.4
+  sha256: 57dedaab20914002146bdae0cb0c769ba3f75214c4c91bd2613d6ef79fc9abdd
+  am_version: 1.15  # keep synchronized with build.sh
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  # url: ../../pkgs/libXft-2.3.4.tar.bz2
+  url: https://www.x.org/releases/individual/${{ xorg_category }}/${{ xorg_name }}-${{ version }}.tar.bz2
+  sha256: ${{ sha256 }}
+
+build:
+  # Would need some library futzing to get the build fully working on Windows:
+  number: 1
+  skip: win
+  prefix_detection:
+    ignore_binary_files: true
+
+requirements:
+  build:
+    - if: win
+      then: m2-autoconf
+    - if: win
+      then: m2-automake${{ am_version }}
+    - if: win
+      then: m2-libtool
+    - if: win
+      then: m2w64-pkg-config
+    - if: not win
+      then: pkg-config
+    - if: win
+      then: posix
+    - if: unix
+      then: ${{ compiler('c') }}
+    - if: win
+      then: ${{ compiler('m2w64_c') }}
+    - if: unix
+      then: make
+    - freetype
+    - zlib
+  host:
+    - pthread-stubs
+    - xorg-util-macros
+    - xorg-libx11 1.7.*
+    - xorg-libxrender 0.9.*
+    - freetype
+    - zlib
+    - fontconfig
+  run:
+    - xorg-libx11 1.7.*
+    - xorg-libxrender 0.9.*
+    - freetype
+    - fontconfig
+
+tests:
+  - script:
+      - if: osx
+        then: test -f $PREFIX/lib/libXft.dylib
+      - if: linux
+        then: test -f $PREFIX/lib/libXft.so
+      - if: win
+        then: if not exist %PREFIX%/Library/lib/libXft.dll.a exit /b 1
+      - if: win
+        then: if not exist %PREFIX%/Library/bin/msys-Xft-*.dll exit /b 1
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: The X.org FreeType library.
+  homepage: https://www.x.org/
+
+extra:
+  recipe-maintainers:
+    - pkgw
+    - epruesse
+

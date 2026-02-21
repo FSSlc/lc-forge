@@ -1,0 +1,118 @@
+# Prior to conda-forge, Copyright 2018-2019 Peter Williams and collaborators.
+# This file is licensed under a 3-clause BSD license; see LICENSE.txt.
+schema_version: 1
+
+context:
+  name: epoxy
+  version: 1.5.10
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  # url: ../../pkgs/libepoxy-1.5.10.tar.xz
+  url: https://github.com/anholt/libepoxy/archive/refs/tags/${{ version }}.tar.gz
+  sha256: a7ced37f4102b745ac86d6a70a9da399cc139ff168ba6b8002b4d8d43c900c15
+
+build:
+  number: 1
+  skip: win and vc<14
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    # The following CDTs are needed for building against egl/gl.
+    # We only actually need the headers, as epoxy doesn't link to the gl libs.
+    # We can ignore pkg-config saying it can't find egl/gl (due to missing deps
+    # included in the .pc files) since this is only currently used to add
+    # egl/gl as Requires.private dependencies in the epoxy.pc file, which
+    # itself is only used to propagate build flags from the GL libs to epoxy,
+    # and there is nothing interesting to propagate from mesa. If needed, this
+    # should get pkg-config to find egl/gl (check their .pc files to verify,
+    # probably only needed for mesa < 19):
+    #   build:
+    #     - {{ cdt('libxxf86vm-devel') }}   # [linux]
+    #   host:
+    #     - libdrm                 # [linux]
+    #     - xorg-libxdamage        # [linux]
+    #     - xorg-libxext           # [linux]
+    #     - xorg-libxfixes         # [linux]
+    #     - xorg-xf86vidmodeproto  # [linux]
+    # Since these dependencies would be needed wherever epoxy.pc is consumed,
+    # it is simpler to leave them off for now while we can.
+    - if: linux
+      then: ${{ cdt('mesa-libegl-devel') }}
+    - if: linux
+      then: ${{ cdt('mesa-libgl-devel') }}
+    - meson
+    - ninja
+    - pkg-config
+  host:
+    - if: linux
+      then: xorg-libx11
+  run_exports:
+    - ${{ pin_subpackage('epoxy', upper_bound='x.x') }}
+
+tests:
+  - requirements:
+      run:
+        - pkg-config
+    script:
+      - if: unix
+        then: test -f $PREFIX/include/epoxy/common.h
+      - if: linux
+        then: test -f $PREFIX/include/epoxy/egl.h
+      - if: linux
+        then: test -f $PREFIX/include/epoxy/egl_generated.h
+      - if: unix
+        then: test -f $PREFIX/include/epoxy/gl.h
+      - if: unix
+        then: test -f $PREFIX/include/epoxy/gl_generated.h
+      - if: linux
+        then: test -f $PREFIX/include/epoxy/glx.h
+      - if: linux
+        then: test -f $PREFIX/include/epoxy/glx_generated.h
+      - if: unix
+        then: test -f $PREFIX/lib/libepoxy${SHLIB_EXT}
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\epoxy\\common.h exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\epoxy\\gl.h exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\epoxy\\gl_generated.h exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\epoxy\\wgl.h exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\epoxy\\wgl_generated.h exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\bin\\epoxy-0.dll exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\lib\\epoxy.lib exit 1
+      - pkg-config --debug --exists epoxy
+      - pkg-config --validate epoxy
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: A library for handling OpenGL function pointer management for you.
+  description: |
+    Epoxy is a library for handling OpenGL function pointer management for you.
+
+    It hides the complexity of dlopen(), dlsym(), glXGetProcAddress(),
+    eglGetProcAddress(), etc. from the app developer, with very little
+    knowledge needed on their part. They get to read GL specs and write code
+    using undecorated function names like glCompileShader().
+
+    Don't forget to check for your extensions or versions being present before
+    you use them, just like before! We'll tell you what you forgot to check
+    for instead of just segfaulting, though.
+  homepage: https://github.com/anholt/libepoxy
+  repository: https://github.com/anholt/libepoxy
+
+extra:
+  recipe-maintainers:
+    - ryanvolz
+    - stuarteberg
+    - tschoonj
+

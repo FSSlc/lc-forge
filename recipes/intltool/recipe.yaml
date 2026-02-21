@@ -1,0 +1,55 @@
+schema_version: 1
+
+context:
+  version: 0.51.0
+
+package:
+  name: intltool
+  version: ${{ version }}
+
+source:
+  # url: ../../pkgs/intltool-0.51.0.tar.gz
+  url: https://launchpad.net/intltool/trunk/${{ version }}/+download/intltool-${{ version }}.tar.gz
+  sha256: 67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd
+  patches:
+    # Patch from https://raw.githubusercontent.com/archlinux/svntogit-packages/packages/intltool/trunk/intltool-0.51.0-perl-5.26.patch
+    # Avoids warnings in perl 5.22 which became errors in 5.26
+    - intltool-0.51.0-perl-5.26.patch
+    # Remove the -w from shebangs; conda turns this into
+    # "/usr/bin/env perl -w" which looks for an executable named "perl -w".
+    - remove-w.patch
+
+build:
+  number: 0
+  skip: win
+  prefix_detection:
+    ignore_binary_files: true
+
+requirements:
+  build:
+    - make
+  host:
+    - perl
+    - perl-xml-parser
+  run:
+    - perl
+    - perl-xml-parser
+    - gettext
+
+tests:
+  - script:
+      - intltool-update --help
+
+about:
+  license: GPL-2.0-only
+  license_file: COPYING
+  summary: Utility scripts for internationalizing XML
+  homepage: https://launchpad.net/intltool
+
+extra:
+  recipe-maintainers:
+    - pkgw
+    - ocefpaf
+    - djsutherland
+    - scopatz
+

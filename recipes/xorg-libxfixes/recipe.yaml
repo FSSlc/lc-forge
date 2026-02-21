@@ -1,0 +1,87 @@
+schema_version: 1
+
+context:
+  xorg_name: libXfixes
+  xorg_category: lib
+  name: xorg-libxfixes
+  version: 5.0.3
+  sha256: de1cd33aff226e08cefd0e6759341c2c8e8c9faf8ce9ac6ec38d43e287b22ad6
+  am_version: 1.15  # keep synchronized with build.sh
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  # fn: {{ name }}-{{ version }}.tar.bz2
+  # url: ../../pkgs/xorg-libXfixes-5.0.3.tar.bz2
+  url: https://www.x.org/releases/individual/${{ xorg_category }}/${{ xorg_name }}-${{ version }}.tar.bz2
+  sha256: ${{ sha256 }}
+
+build:
+  number: 1004
+  prefix_detection:
+    ignore_binary_files: true
+
+requirements:
+  build:
+    - if: win
+      then: m2-autoconf
+    - if: win
+      then: m2-automake${{ am_version }}
+    - if: win
+      then: m2-libtool
+    - if: win
+      then: m2w64-pkg-config
+    - if: not win
+      then: pkg-config
+    - if: win
+      then: posix
+    - if: unix
+      then: ${{ compiler('c') }}
+    - if: win
+      then: ${{ compiler('m2w64_c') }}
+    - if: unix
+      then: make
+    - if: unix
+      then: autoconf
+    - if: unix
+      then: automake
+    - if: unix
+      then: gettext
+    - if: unix
+      then: libtool
+  host:
+    - pthread-stubs
+    - xorg-libx11 1.7.*
+    - xorg-util-macros
+    - xorg-xorgproto
+  run:
+    - xorg-xorgproto
+    - xorg-libx11 1.7.*
+
+tests:
+  - script:
+      - if: osx
+        then: test -f $PREFIX/lib/libXfixes.dylib
+      - if: linux
+        then: test -f $PREFIX/lib/libXfixes.so
+      - if: win
+        then: if not exist %PREFIX%/Library/lib/libXfixes.dll.a exit /b 1
+      - if: win
+        then: if not exist %PREFIX%/Library/bin/msys-Xfixes-*.dll exit /b 1
+      - if: not win
+        then: conda inspect linkages -p $PREFIX $PKG_NAME
+      - if: osx
+        then: conda inspect objects -p $PREFIX $PKG_NAME
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: The X.org library for simple protocol fixes.
+  homepage: https://www.x.org/
+
+extra:
+  recipe-maintainers:
+    - pkgw
+

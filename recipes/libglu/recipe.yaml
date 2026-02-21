@@ -1,0 +1,90 @@
+schema_version: 1
+
+context:
+  version: 9.0.0
+
+package:
+  name: libglu
+  version: ${{ version }}
+
+source:
+  # url: ../../pkgs/glu-9.0.0.tar.gz
+  url: https://archive.mesa3d.org/glu/glu-${{ version }}.tar.gz
+  sha256: 4387476a1933f36fec1531178ea204057bbeb04cc2d8396c9ea32720a1f7e264
+  patches:
+    - 001-update-config-guess.patch
+
+build:
+  number: 1000
+  skip: win or osx
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - if: linux
+      then: ${{ cdt('mesa-libgl-devel') }}
+    - if: linux
+      then: ${{ cdt('mesa-libglapi') }}
+    - if: linux
+      then: ${{ cdt('mesa-dri-drivers') }}
+    - if: linux
+      then: ${{ cdt('libselinux') }}
+    - if: linux
+      then: ${{ cdt('libxdamage-devel') }}
+    - if: linux
+      then: ${{ cdt('libxxf86vm-devel') }}
+    # These dependencies are only for cos7 platforms
+    - if: linux and aarch64
+      then: ${{ cdt('libglvnd-glx') }}
+    - if: linux and aarch64
+      then: ${{ cdt('libglvnd') }}
+    - if: linux and aarch64
+      then: ${{ cdt('libxshmfence-devel') }}
+    - if: linux and aarch64
+      then: ${{ cdt('libxfixes-devel') }}
+    - if: linux and aarch64
+      then: ${{ cdt('libxext-devel') }}
+    - if: linux and aarch64
+      then: ${{ cdt('libx11-devel') }}
+    - if: linux and aarch64
+      then: ${{ cdt('libx11-common') }}
+    - if: linux and aarch64
+      then: ${{ cdt('libdrm-devel') }}
+    - if: linux and aarch64
+      then: ${{ cdt('mesa-khr-devel') }}
+    - if: linux and aarch64
+      then: xorg-xorgproto
+    - if: linux and aarch64
+      then: xorg-libxau
+    - if: linux and aarch64
+      then: xorg-libxdmcp
+    - if: unix
+      then: pkg-config
+    - if: unix
+      then: make
+    - if: unix
+      then: autoconf
+    - if: unix
+      then: automake
+    - if: unix
+      then: gettext
+    - if: unix
+      then: libtool
+
+tests:
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/lib/libGLU.a
+      - if: not win
+        then: test -f ${PREFIX}/lib/libGLU${SHLIB_EXT}
+
+about:
+  license: SGI-B-2.0
+  summary: Mesa OpenGL utility library (GLU)
+  homepage: http://www.mesa3d.org/glu.html
+
+extra:
+  recipe-maintainers:
+    - bgruening
+

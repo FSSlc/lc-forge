@@ -1,0 +1,47 @@
+{% set name = "libpciaccess" %}
+{% set version = "0.17" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://gitlab.freedesktop.org/xorg/lib/{{ name }}/-/archive/{{ name }}-{{ version }}/{{ name }}-{{ name }}-{{ version }}.tar.bz2
+  # url: ../../pkgs/libpciaccess-libpciaccess-0.17.tar.bz2
+  sha256: 6e6d69d3cf5ee294dcb38ccfb360f1895a263df5dd8058563cdee62d9b9c17fd
+
+build:
+  skip: true  # [not linux]
+  number: 0
+  run_exports:
+    - {{ pin_subpackage('libpciaccess', max_pin='x.x') }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - libtool
+    - autoconf
+    - automake
+    - pkg-config
+    - make        # [unix]
+  host:
+    - xorg-util-macros
+
+test:
+  commands:
+    - test -f $PREFIX/lib/libpciaccess.a
+    - test -f $PREFIX/lib/libpciaccess.so
+    - test -f $PREFIX/lib/libpciaccess.so.0
+    - test -f $PREFIX/lib/pkgconfig/pciaccess.pc
+    - test -f $PREFIX/include/pciaccess.h
+
+about:
+  home: https://gitlab.freedesktop.org/xorg/lib/libpciaccess
+  license: MIT
+  license_family: MIT
+  license_file: COPYING
+  summary: Generic PCI access library
+
+extra:
+  recipe-maintainers:
+    - hmaarrfk

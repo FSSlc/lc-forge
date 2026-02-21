@@ -46,7 +46,6 @@ source:
           then:
             - patches/0001-aarch64-sys-state-structs.patch
             - patches/add_missing_dependency_on_spellcheck.diff
-        - patches/const-fix.patch
         - patches/cxx17_support_std_begin_std_end.patch
         - patches/ffmpeg-mathops.patch
         - patches/fix-perfetto-compilation.patch

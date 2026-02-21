@@ -1,0 +1,61 @@
+{% set name = "libdrm" %}
+{% set version = "2.4.114" %}
+
+# http://www.linuxfromscratch.org/blfs/view/8.2/x/libdrm.html
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://gitlab.freedesktop.org/mesa/drm/-/archive/libdrm-{{ version }}/drm-libdrm-{{ version }}.tar.gz
+  # url: ../../pkgs/libdrm-2.4.114.tar.xz
+  sha256: 9e016709425027f3d4b3a93eae5b89d7d2579e20cb6d9b8e3622b03aa3c30961
+  patches:
+    # https://gitlab.freedesktop.org/mesa/drm/-/issues/72
+    - link_rt.patch
+
+build:
+  skip: true  # [not linux]
+  number: 0
+  run_exports:
+    - {{ pin_subpackage('libdrm', max_pin='x.x') }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - meson
+  host:
+    - libpciaccess
+
+test:
+  commands:
+    - test -f $PREFIX/include/xf86drm.h
+    - test -f $PREFIX/include/xf86drmMode.h
+    - test -f $PREFIX/include/libsync.h
+    - test -d $PREFIX/include/libdrm
+    - test -f $PREFIX/lib/libdrm.so
+    - test -f $PREFIX/lib/libdrm.so.2
+
+about:
+  home: https://gitlab.freedesktop.org/mesa/drm
+  license: MIT
+  license_family: MIT
+  # License extracted from xf86drm.h
+  license_file: LICENSE
+  summary: userspace library for drm
+  description: |
+    This  is libdrm,  a userspace  library for  accessing the  DRM, direct
+    rendering  manager, on  Linux,  BSD and  other  operating systems that
+    support the  ioctl interface.  The library  provides wrapper functions
+    for the  ioctls to avoid  exposing the kernel interface  directly, and
+    for chipsets with drm memory manager, support for tracking relocations
+    and  buffers.   libdrm  is  a  low-level library,  typically  used  by
+    graphics drivers  such as the Mesa  DRI drivers, the  X drivers, libva
+    and  similar projects.  New  functionality in  the kernel  DRM drivers
+    typically requires  a new  libdrm, but a  new libdrm will  always work
+    with an older kernel.
+
+extra:
+  recipe-maintainers:
+    - hmaarrfk

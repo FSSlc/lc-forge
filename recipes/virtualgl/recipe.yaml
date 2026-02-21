@@ -1,0 +1,84 @@
+#
+# Conda recipe for VirtualGL
+#
+schema_version: 1
+
+context:
+  name: virtualgl
+  version: 3.1
+  sha256: 57bd20a9b1127de344313b6178b19610838a6af6309c059702788e41b6a875d0
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  # url: ../../pkgs/{{ name }}-{{ version }}.tar.gz
+  url: https://github.com/VirtualGL/virtualgl/releases/download/${{ version }}/VirtualGL-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  prefix_detection:
+    ignore_binary_files: false
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - ocl-icd
+    - cmake
+    - libjpeg-turbo
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxtst
+    - xcb-util-keysyms
+    - libglu
+    - libxcb
+    - openssl
+    - if: linux
+      then: ${{ cdt('mesa-libgl-devel') }}
+    - if: linux
+      then: ${{ cdt('mesa-libegl-devel') }}
+    - if: linux
+      then: ${{ cdt('libglvnd-glx') }}
+    - if: linux
+      then: ${{ cdt('libglvnd-egl') }}
+    - if: linux
+      then: ${{ cdt('libxext-devel') }}
+    - if: linux
+      then: ${{ cdt('libxau-devel') }}
+    - if: linux
+      then: ${{ cdt('libxcb-devel') }}
+  host:
+    - libjpeg-turbo
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxtst
+    - xcb-util-keysyms
+    - libglu
+    - libxcb
+    - if: linux
+      then: ${{ cdt('mesa-libgl-devel') }}
+    - if: linux
+      then: ${{ cdt('mesa-libegl-devel') }}
+    - if: linux
+      then: ${{ cdt('libglvnd-glx') }}
+    - if: linux
+      then: ${{ cdt('libglvnd-egl') }}
+    - if: linux
+      then: ${{ cdt('libxext-devel') }}
+    - if: linux
+      then: ${{ cdt('libxau-devel') }}
+    - if: linux
+      then: ${{ cdt('libxcb-devel') }}
+  run:
+    - xorg-libx11
+    - libjpeg-turbo
+    - libglu
+
+about:
+  summary: VirtualGL is an open source toolkit that gives any Linux or Unix remote display software the ability to run OpenGL applications with full hardware acceleration.
+  license: LGPL-2.1-or-later
+  license_file: LGPL.txt
+  homepage: https://virtualgl.org/
+

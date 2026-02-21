@@ -1,0 +1,111 @@
+#
+# Conda recipe for OpenBox
+#
+schema_version: 1
+
+context:
+  name: openbox
+  version: 3.6.1
+  sha256: abe75855cc5616554ffd47134ad15291fe37ebbebf1a80b69cbde9d670f0e26d
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  # - url: ../../pkgs/{{ name }}-{{ version }}.tar.xz
+  - url: http://openbox.org/dist/openbox/openbox-${{ version }}.tar.xz
+    sha256: ${{ sha256 }}
+  - path: ./menu.xml
+  - path: ./setlayout.c
+  - path: ./terminals.menu
+  - path: ./xdg-menu
+
+build:
+  number: 0
+  prefix_detection:
+    ignore_binary_files: false
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - make
+    - libtool
+    - automake
+    - gettext
+    - pyxdg
+    - pkg-config
+    - xorg-libxft
+    - freetype <3.0a0
+    - zlib <1.3.0a0
+    - pcre
+    - fribidi
+    - harfbuzz
+    - if: linux
+      then: ${{ cdt('pango-devel') }}
+    - if: linux
+      then: ${{ cdt('libxml2-devel') }}
+    - if: linux
+      then: ${{ cdt('libxcursor-devel') }}
+    - if: linux
+      then: ${{ cdt('libxt-devel') }}
+    - if: linux
+      then: ${{ cdt('libxrandr-devel') }}
+    - if: linux
+      then: ${{ cdt('libxinerama-devel') }}
+    - if: linux
+      then: ${{ cdt('glib2-devel') }}
+  host:
+    - pyxdg
+    - pkg-config
+    - xorg-libxft
+    - freetype <3.0a0
+    - zlib <1.3.0a0
+    - libgcc-ng >=11
+    - pcre
+    - fribidi
+    - harfbuzz
+    - if: linux
+      then: ${{ cdt('pango-devel') }}
+    - if: linux
+      then: ${{ cdt('libxml2-devel') }}
+    - if: linux
+      then: ${{ cdt('libxcursor-devel') }}
+    - if: linux
+      then: ${{ cdt('libxt-devel') }}
+    - if: linux
+      then: ${{ cdt('libxrandr-devel') }}
+    - if: linux
+      then: ${{ cdt('libxinerama-devel') }}
+    - if: linux
+      then: ${{ cdt('glib2-devel') }}
+  run:
+    - pyxdg
+    - python >=3
+    - pkg-config
+    - xorg-libxft
+    - zlib
+    - pcre
+    - fribidi
+    - harfbuzz
+    - if: linux
+      then: ${{ cdt('pango-devel') }}
+    - if: linux
+      then: ${{ cdt('libxml2-devel') }}
+    - if: linux
+      then: ${{ cdt('libxcursor-devel') }}
+    - if: linux
+      then: ${{ cdt('libxt-devel') }}
+    - if: linux
+      then: ${{ cdt('libxrandr-devel') }}
+    - if: linux
+      then: ${{ cdt('libxinerama-devel') }}
+    - if: linux
+      then: ${{ cdt('glib2-devel') }}
+
+about:
+  summary: Openbox is a highly configurable, next generation window manager with extensive standards support.
+  license: GPL-2.0-only
+  license_file: COPYING
+  homepage: http://openbox.org
+

@@ -110,6 +110,7 @@ if [[ $(uname) == "Linux" ]]; then
     if [ ${target_platform} == "linux-aarch64" ] || [ ${target_platform} == "linux-ppc64le" ]; then
         # The -reduce-relations option doesn't seem to pass for aarch64 and ppc64le
         REDUCE_RELOCATIONS=
+        SKIPS+=(-skip); SKIPS+=(qtwebengine) # TODO: fix qtwebengine build
     else
         REDUCE_RELOCATIONS=-reduce-relocations
     fi
@@ -190,10 +191,12 @@ if [[ $(uname) == "Linux" ]]; then
   # With these sed commands, we get about 1_054_756 characters for getting as
   # far in the build process.
   if [[ ${MINIMAL_BUILD} != yes ]]; then
-    CPATH=$PREFIX/include:$BUILD_PREFIX/src/core/api make -j${MAKE_JOBS} module-qtwebengine | sed "s/^g++.*-o/g++ [...] -o/" | sed "s/-DQT.* //" || exit 1
-    if find . -name "libQt5WebEngine*so" -exec false {} +; then
-      echo "Did not build qtwebengine, exiting"
-      exit 1
+    if [[ ${target_platform} != "linux-aarch64" ]]; then
+      CPATH=$PREFIX/include:$BUILD_PREFIX/src/core/api make -j${MAKE_JOBS} module-qtwebengine | sed "s/^g++.*-o/g++ [...] -o/" | sed "s/-DQT.* //" || exit 1
+      if find . -name "libQt5WebEngine*so" -exec false {} +; then
+        echo "Did not build qtwebengine, exiting"
+        exit 1
+      fi
     fi
   fi
   CPATH=$PREFIX/include:$BUILD_PREFIX/src/core/api make -j${MAKE_JOBS} module-qtwebsockets | sed "s/^g++.*-o/g++ [...] -o/" | sed "s/-DQT.* //" || exit 1

@@ -1,0 +1,60 @@
+{% set version = '9.0.0' %}
+
+package:
+  name: libglu
+  version: {{ version }}
+
+source:
+  # url: ../../pkgs/glu-9.0.0.tar.gz
+  url: https://archive.mesa3d.org/glu/glu-${{ version }}.tar.gz
+  sha256: 4387476a1933f36fec1531178ea204057bbeb04cc2d8396c9ea32720a1f7e264
+  patches:
+    - 001-update-config-guess.patch
+
+build:
+  number: 1000
+  skip: True  # [win or osx]
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - {{ cdt('mesa-libgl-devel') }}  # [linux]
+    - {{ cdt('mesa-libglapi') }}  # [linux]
+    - {{ cdt('mesa-dri-drivers') }}  # [linux]
+    - {{ cdt('libselinux') }}  # [linux]
+    - {{ cdt('libxdamage-devel') }}  # [linux]
+    - {{ cdt('libxxf86vm-devel') }}  # [linux]
+    # These dependencies are only for cos7 platforms
+    - {{ cdt('libglvnd-glx') }}  # [linux and (ppc64le or aarch64)]
+    - {{ cdt('libglvnd') }}  # [linux and (ppc64le or aarch64)]
+    - {{ cdt('libxshmfence-devel') }}  # [linux and (ppc64le or aarch64)]
+    - {{ cdt('libxfixes-devel') }}  # [linux and (ppc64le or aarch64)]
+    - {{ cdt('libxext-devel') }}  # [linux and (ppc64le or aarch64)]
+    - {{ cdt('libx11-devel') }}  # [linux and (ppc64le or aarch64)]
+    - {{ cdt('libx11-common') }}  # [linux and (ppc64le or aarch64)]
+    - {{ cdt('libdrm-devel') }}  # [linux and (ppc64le or aarch64)]
+    - {{ cdt('mesa-khr-devel') }}  # [linux and (ppc64le or aarch64)]
+    - xorg-xorgproto  # [linux and (ppc64le or aarch64)]
+    - xorg-libxau  # [linux and (ppc64le or aarch64)]
+    - xorg-libxdmcp  # [linux and (ppc64le or aarch64)]
+    - pkg-config                    # [unix]
+    - make                          # [unix]
+    - autoconf                      # [unix]
+    - automake                      # [unix]
+    - gettext                       # [unix]
+    - libtool                       # [unix]
+
+test:
+  commands:
+    - test -f ${PREFIX}/lib/libGLU.a  # [not win]
+    - test -f ${PREFIX}/lib/libGLU${SHLIB_EXT}  # [not win]
+
+about:
+  home: http://www.mesa3d.org/glu.html
+  license: SGI-2
+  summary: Mesa OpenGL utility library (GLU)
+
+extra:
+  recipe-maintainers:
+    - bgruening

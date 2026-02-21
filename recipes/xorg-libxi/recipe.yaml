@@ -1,0 +1,91 @@
+schema_version: 1
+
+context:
+  xorg_name: libXi
+  xorg_category: lib
+  name: xorg-libXi
+  version: 1.7.10
+  sha256: 36a30d8f6383a72e7ce060298b4b181fd298bc3a135c8e201b7ca847f5f81061
+  am_version: 1.15  # keep synchronized with build.sh
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  # fn: {{ name }}-{{ version }}.tar.bz2
+  # url: ../../pkgs/xorg-libXi-1.7.10.tar.bz2
+  url: https://www.x.org/releases/individual/${{ xorg_category }}/${{ xorg_name }}-${{ version }}.tar.bz2
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  prefix_detection:
+    ignore_binary_files: true
+
+requirements:
+  build:
+    - if: win
+      then: m2-autoconf
+    - if: win
+      then: m2-automake${{ am_version }}
+    - if: win
+      then: m2-libtool
+    - if: win
+      then: m2w64-pkg-config
+    - if: not win
+      then: pkg-config
+    - if: win
+      then: posix
+    - if: unix
+      then: ${{ compiler('c') }}
+    - if: win
+      then: ${{ compiler('m2w64_c') }}
+    - if: unix
+      then: make
+    - if: unix
+      then: autoconf
+    - if: unix
+      then: automake
+    - if: unix
+      then: gettext
+    - if: unix
+      then: libtool
+  host:
+    - pthread-stubs
+    - xorg-xorgproto
+    - xorg-libx11 1.7.*
+    - xorg-libxext 1.3.*
+    - xorg-libxfixes 5.0.*
+    - xorg-util-macros
+  run:
+    - xorg-xorgproto
+    - xorg-libx11 1.7.*
+    - xorg-libxext 1.3.*
+    - xorg-libxfixes 5.0.*
+
+tests:
+  - script:
+      - if: osx
+        then: test -f $PREFIX/lib/libXi.dylib
+      - if: linux
+        then: test -f $PREFIX/lib/libXi.so
+      - if: win
+        then: if not exist %PREFIX%/Library/lib/libXi.dll.a exit /b 1
+      - if: win
+        then: if not exist %PREFIX%/Library/bin/msys-Xi-*.dll exit /b 1
+      - if: not win
+        then: conda inspect linkages -p $PREFIX $PKG_NAME
+      - if: osx
+        then: conda inspect objects -p $PREFIX $PKG_NAME
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: The X.org input library.
+  homepage: https://www.x.org/
+
+extra:
+  recipe-maintainers:
+    - pkgw
+

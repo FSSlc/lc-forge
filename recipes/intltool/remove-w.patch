@@ -1,0 +1,55 @@
+From b175f354706b5c9fea5b2e5a9582db6233ec789b Mon Sep 17 00:00:00 2001
+From: Ista Zahn <istazahn@gmail.com>
+Date: Fri, 27 Aug 2021 14:40:50 -0400
+Subject: [PATCH] fix hashbang
+
+---
+ intltool-extract.in | 2 +-
+ intltool-merge.in   | 2 +-
+ intltool-prepare.in | 2 +-
+ intltool-update.in  | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/intltool-extract.in b/intltool-extract.in
+index 47a539b..af3632a 100644
+--- a/intltool-extract.in
++++ b/intltool-extract.in
+@@ -1,4 +1,4 @@
+-#!@INTLTOOL_PERL@ -w 
++#!/usr/bin/env perl 
+ # -*- Mode: perl; indent-tabs-mode: nil; c-basic-offset: 4  -*-
+ 
+ #
+diff --git a/intltool-merge.in b/intltool-merge.in
+index 05db7cf..da14117 100644
+--- a/intltool-merge.in
++++ b/intltool-merge.in
+@@ -1,4 +1,4 @@
+-#!@INTLTOOL_PERL@ -w
++#!/usr/bin/env perl
+ # -*- Mode: perl; indent-tabs-mode: nil; c-basic-offset: 4  -*-
+ 
+ #
+diff --git a/intltool-prepare.in b/intltool-prepare.in
+index e25451c..90d48f2 100644
+--- a/intltool-prepare.in
++++ b/intltool-prepare.in
+@@ -1,4 +1,4 @@
+-#!@INTLTOOL_PERL@ -w
++#!/usr/bin/env perl
+ # -*- Mode: perl; indent-tabs-mode: nil; c-basic-offset: 4  -*-
+ 
+ #  Intltool .desktop, .directory Prepare Tool
+diff --git a/intltool-update.in b/intltool-update.in
+index 6992ab4..d2b8ae9 100644
+--- a/intltool-update.in
++++ b/intltool-update.in
+@@ -1,4 +1,4 @@
+-#!@INTLTOOL_PERL@ -w
++#!/usr/bin/env perl
+ # -*- Mode: perl; indent-tabs-mode: nil; c-basic-offset: 4  -*-
+ 
+ #
+-- 
+2.33.0
+

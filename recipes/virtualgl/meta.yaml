@@ -1,0 +1,69 @@
+#
+# Conda recipe for VirtualGL
+#
+
+{% set name = "virtualgl" %}
+{% set version = "3.1" %}
+{% set sha256 = "57bd20a9b1127de344313b6178b19610838a6af6309c059702788e41b6a875d0" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/VirtualGL/virtualgl/releases/download/{{ version }}/VirtualGL-{{ version }}.tar.gz
+  # url: ../../pkgs/{{ name }}-{{ version }}.tar.gz
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  detect_binary_files_with_prefix: False
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - ocl-icd 
+    - cmake
+    - libjpeg-turbo
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxtst
+    - xcb-util-keysyms
+    - libglu
+    - libxcb
+    - openssl
+    - {{ cdt('mesa-libgl-devel') }}      # [linux]
+    - {{ cdt('mesa-libegl-devel') }}     # [linux]
+    - {{ cdt('libglvnd-glx') }}  # [linux]
+    - {{ cdt('libglvnd-egl') }}  # [linux]
+    - {{ cdt('libxext-devel') }}  # [linux]
+    - {{ cdt('libxau-devel') }}  # [linux]
+    - {{ cdt('libxcb-devel') }}  # [linux]
+
+  host:
+    - libjpeg-turbo
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxtst
+    - xcb-util-keysyms
+    - libglu
+    - libxcb
+    - {{ cdt('mesa-libgl-devel') }}      # [linux]
+    - {{ cdt('mesa-libegl-devel') }}     # [linux]
+    - {{ cdt('libglvnd-glx') }}  # [linux]
+    - {{ cdt('libglvnd-egl') }}  # [linux]
+    - {{ cdt('libxext-devel') }}  # [linux]
+    - {{ cdt('libxau-devel') }}  # [linux]
+    - {{ cdt('libxcb-devel') }}  # [linux]
+
+  run:
+    - xorg-libx11
+    - libjpeg-turbo
+    - libglu
+
+about:
+  home: https://virtualgl.org/
+  summary: VirtualGL is an open source toolkit that gives any Linux or Unix remote display software the ability to run OpenGL applications with full hardware acceleration.
+  license: LGPL-2.1-or-later
+  license_file: LGPL.txt
+  license_family: LGPL

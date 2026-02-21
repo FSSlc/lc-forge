@@ -1,0 +1,60 @@
+schema_version: 1
+
+context:
+  name: ocl-icd
+  version: 2.3.1
+  sha256: a32b67c2d52ffbaf490be9fc18b46428ab807ab11eff7664d7ff75e06cfafd6d
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  # url: ../../pkgs/ocl-icd-v2.3.1.tar.gz
+  #git_url: https://github.com/OCL-dev/{{ name }}.git
+  #git_rev: 97e3fb5d4b005f931f224d9f7903f95ed66ec642
+  url: https://github.com/OCL-dev/${{ name }}/archive/v${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+  patches:
+    # Makes ocl-icd install the OpenCL headers it ships
+    - install-headers.patch
+    # Recursively check for icds in vendor dir
+    - check_icds_recursively.diff
+
+build:
+  number: 0
+  skip: not linux
+
+requirements:
+  build:
+    - pkg-config
+    - libtool
+    - automake
+    - autoconf
+    - make
+    - ${{ compiler('c') }}
+    - ruby *
+  host:
+  run_exports:
+    - ${{ pin_subpackage("ocl-icd") }}
+
+tests:
+  - script:
+      - if: unix
+        then: test -f "${PREFIX}/include/CL/cl.h"
+      - if: linux
+        then: test -f "${PREFIX}/lib/libOpenCL.so.1"
+      - test -d "${PREFIX}/etc/OpenCL/vendors"
+
+about:
+  # https://forge.imag.fr/projects/ocl-icd/ also exists but appears out of date
+  license: BSD-2-Clause
+  license_file: COPYING
+  summary: An OpenCL ICD Loader under an open-source license
+  homepage: https://github.com/OCL-dev/ocl-icd
+
+extra:
+  recipe-maintainers:
+    - inducer
+    - isuruf
+

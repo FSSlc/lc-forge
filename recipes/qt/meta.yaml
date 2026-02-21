@@ -6,8 +6,8 @@ package:
   version: {{ version }}
 
 source:
-  # - url: ../../pkgs/qt-everywhere-opensource-src-{{ version }}.tar.xz
-  - url: https://download.qt.io/archive/qt/{{ version.rpartition('.')[0] }}/{{ version }}/single/qt-everywhere-opensource-src-{{ version }}.tar.xz
+  - url: ../../pkgs/qt-everywhere-opensource-src-{{ version }}.tar.xz
+  # - url: https://download.qt.io/archive/qt/{{ version.rpartition('.')[0] }}/{{ version }}/single/qt-everywhere-opensource-src-{{ version }}.tar.xz
   # - url: http://download.qt.io/official_releases/qt/{{ version.rpartition('.')[0] }}/{{ version }}/single/qt-everywhere-opensource-src-{{ version }}.tar.xz
     sha256: fdd3a4f197d2c800ee0085c721f4bef60951cbda9e9c46e525d1412f74264ed7
     patches:
@@ -44,7 +44,6 @@ source:
       # qtwebengine 
       - patches/0001-aarch64-sys-state-structs.patch                   # [aarch64]
       - patches/add_missing_dependency_on_spellcheck.diff              # [aarch64]
-      - patches/const-fix.patch
       - patches/cxx17_support_std_begin_std_end.patch
       - patches/ffmpeg-mathops.patch
       - patches/fix-perfetto-compilation.patch

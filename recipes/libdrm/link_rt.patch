@@ -1,0 +1,22 @@
+diff --git a/tests/amdgpu/meson.build b/tests/amdgpu/meson.build
+index 3a3b7601..b19cc454 100644
+--- a/tests/amdgpu/meson.build
++++ b/tests/amdgpu/meson.build
+@@ -27,7 +27,7 @@ if dep_cunit.found()
+       'vm_tests.c', 'ras_tests.c', 'syncobj_tests.c', 'security_tests.c',
+       'hotunplug_tests.c'
+     ),
+-    dependencies : [dep_cunit, dep_threads, dep_atomic_ops],
++    dependencies : [dep_cunit, dep_threads, dep_atomic_ops, dep_rt],
+     include_directories : [inc_root, inc_drm, include_directories('../../amdgpu')],
+     link_with : [libdrm, libdrm_amdgpu],
+     install : with_install_tests,
+@@ -39,7 +39,7 @@ amdgpu_stress = executable(
+   files(
+     'amdgpu_stress.c'
+   ),
+-  dependencies : [dep_threads, dep_atomic_ops],
++  dependencies : [dep_threads, dep_atomic_ops, dep_rt],
+   include_directories : [inc_root, inc_drm, include_directories('../../amdgpu')],
+   link_with : [libdrm, libdrm_amdgpu],
+   install : with_install_tests,
