@@ -39,6 +39,8 @@ requirements:
       then: posix
     - if: unix
       then: ${{ compiler('c') }}
+    - if: unix
+      then: make
     - if: win
       then: ${{ compiler('m2w64_c') }}
   host:

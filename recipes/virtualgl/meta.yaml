@@ -24,6 +24,7 @@ requirements:
     - {{ compiler('cxx') }}
     - ocl-icd 
     - cmake
+    - make
     - libjpeg-turbo
     - xorg-libx11
     - xorg-libxext

@@ -28,6 +28,7 @@ requirements:
     - pkg-config  # [not win]
     - posix  # [win]
     - {{ compiler('c') }}        # [unix]
+    - make                       # [unix]
     - {{ compiler('m2w64_c') }}  # [win]
   host:
     - xorg-util-macros
