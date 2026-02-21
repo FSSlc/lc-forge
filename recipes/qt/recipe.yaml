@@ -40,6 +40,17 @@ source:
         # - patches/0001-shobjidl-Fix-compile-guard-around-SHARDAPPIDINFOLINK.patch
         # qtscript
         # - patches/0001-qtscript-mark-cti_vm_throw-as-REFERENCED_FROM_ASM.patch                                    # [win32]
+
+        # qtwebengine
+        - if: aarch64
+          then:
+            - patches/0001-aarch64-sys-state-structs.patch
+        - patches/add_missing_dependency_on_spellcheck.diff
+        - patches/const-fix.patch
+        - patches/cxx17_support_std_begin_std_end.patch
+        - patches/ffmpeg-mathops.patch
+        - patches/fix-perfetto-compilation.patch
+
     - if: win64
       then:
         url: http://download.qt.io/development_releases/prebuilt/llvmpipe/windows/opengl32sw-64-mesa_12_0_rc2.7z
@@ -53,7 +64,7 @@ build:
   dynamic_linking:
     missing_dso_allowlist:
       - if: osx
-        then: 
+        then:
           - /usr/lib/libbsm.0.dylib
           - /usr/lib/libcups.2.dylib
           - /usr/lib/libresolv.9.dylib
@@ -65,7 +76,7 @@ requirements:
     - ${{ compiler('c') }}
     - ${{ compiler('cxx') }}
     - if: linux
-      then: 
+      then:
         - ${{ cdt('xorg-x11-proto-devel') }}
         - ${{ cdt('libx11-devel') }}
         - ${{ cdt('libxext') }}
@@ -110,18 +121,18 @@ requirements:
         - ${{ cdt('xcb-util-renderutil-devel') }}
         - ${{ cdt('xcb-util-wm-devel') }}
     - if: unix
-      then: 
+      then:
         - pkg-config
         - make
     - ninja
     - if: linux
-      then: 
+      then:
         - ruby >=2.5
         - bison
         - flex
         - gperf
     - if: win
-      then: 
+      then:
         - m2-gperf
         - m2-bison
         - m2-flex
@@ -146,7 +157,7 @@ requirements:
     # cross-compiling arm64 binaries on x86_64 since llvm-config (host/arm64)
     # cannot be executed on x86_64 to locate libclang successfully
     - if: arm64
-      then: 
+      then:
         - llvmdev
         - clangdev
     # webengine
@@ -155,7 +166,7 @@ requirements:
   host:
     # For pkg-config gl, fontconfig + freetype
     - if: linux
-      then: 
+      then:
         - pthread-stubs
         - dbus
         - fontconfig
@@ -174,12 +185,12 @@ requirements:
     - icu
     - libiconv
     - if: linux
-      then:    
+      then:
         - libopus
     - libpng
     - libjpeg-turbo
     - if: unix
-      then: 
+      then:
         - nspr
         - nss
     - sqlite
@@ -207,15 +218,15 @@ requirements:
     - libglib
     - libwebp
     - if: linux
-      then: 
+      then:
         - libxkbfile
   run:
     - if: unix
-      then: 
+      then:
         - ${{ pin_compatible("nss") }}
         - ${{ pin_compatible("nspr") }}
     - if: linux
-      then: 
+      then:
         - ${{ cdt('mesa-libgl-devel') }}
         - ${{ cdt('libxext-devel') }}
         - ${{ cdt('libx11-devel') }}
@@ -243,7 +254,7 @@ tests:
       run:
         - ${{ compiler('cxx') }}
         - if: linux
-          then: 
+          then:
             - ${{ cdt('xorg-x11-proto-devel') }}
             - ${{ cdt('libx11-devel') }}
             - ${{ cdt('libxext-devel') }}
@@ -277,11 +288,11 @@ tests:
           then: make
     script:
       - if: win
-        then: 
+        then:
           - if not exist %LIBRARY_BIN%\\Qt5WebEngine.dll exit 1
           - if not exist %LIBRARY_PREFIX%\plugins\sqldrivers\qsqlite.dll exit 1
       - if: unix
-        then: 
+        then:
           - test -f $PREFIX/lib/libQt5WebEngine${SHLIB_EXT}
           - test -f $PREFIX/plugins/sqldrivers/libqsqlite${SHLIB_EXT}
 
