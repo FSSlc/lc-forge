@@ -53,8 +53,8 @@ Change-Id: I1cfb44dac646f455157ce08b15e14b3349e5a7de
 
 diff --git a/include/perfetto/ext/base/circular_queue.h b/include/perfetto/ext/base/circular_queue.h
 index 18ca770261..8d1f1b7e38 100644
---- a/src/3rdparty/chromium/third_party/perfetto/include/perfetto/ext/base/circular_queue.h
-+++ b/src/3rdparty/chromium/third_party/perfetto/include/perfetto/ext/base/circular_queue.h
+--- a/qtwebengine/src/3rdparty/chromium/third_party/perfetto/include/perfetto/ext/base/circular_queue.h
++++ b/qtwebengine/src/3rdparty/chromium/third_party/perfetto/include/perfetto/ext/base/circular_queue.h
 @@ -67,26 +67,22 @@ class CircularQueue {
        ignore_result(generation);
      }

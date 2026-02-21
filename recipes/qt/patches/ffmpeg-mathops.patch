@@ -14,8 +14,8 @@ Signed-off-by: James Almer <jamrial@gmail.com>
 
 diff --git a/libavcodec/x86/mathops.h b/libavcodec/x86/mathops.h
 index 6298f5ed19..ca7e2dffc1 100644
---- a/src/3rdparty/chromium/third_party/ffmpeg/libavcodec/x86/mathops.h
-+++ b/src/3rdparty/chromium/third_party/ffmpeg/libavcodec/x86/mathops.h
+--- a/qtwebengine/src/3rdparty/chromium/third_party/ffmpeg/libavcodec/x86/mathops.h
++++ b/qtwebengine/src/3rdparty/chromium/third_party/ffmpeg/libavcodec/x86/mathops.h
 @@ -35,12 +35,20 @@
  static av_always_inline av_const int MULL(int a, int b, unsigned shift)
  {
