@@ -27,23 +27,6 @@ jobs:
 
       - uses: kohlerdominik/docker-run-action@v2.0.0
         with:
-          image: ghcr.io/fsslc/pixi:gui
-          volumes: ${{ github.workspace }}:${{ github.workspace }}
-          shell: /bin/bash
-          workdir: ${{ github.workspace }}
-          run: |
-            conda build --experimental jlap -m ./conda_build_config.yaml --skip-existing -c https://prefix.dev/scns --croot ./output recipes/qt
-            count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
-            if (( count > 0 )); then
-              for file in output/**/*.conda; do
-                rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
-              done
-            else
-              echo "nothing to do"
-            fi
-
-      - uses: kohlerdominik/docker-run-action@v2.0.0
-        with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
           shell: /bin/bash
