@@ -30,6 +30,7 @@ requirements:
     - xorg-libxext
     - xorg-libxtst
     - xcb-util-keysyms
+    - xorg-xorgproto
     - libglu
     - libxcb
     - openssl
