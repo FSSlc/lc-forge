@@ -1,0 +1,160 @@
+schema_version: 1
+
+context:
+  name: openjdk
+  version: 17.0.3
+  major_version: 17
+  zulu_build: 17.34.19-ca
+  zulu_build_arm64: 17.34.19-ca
+  openjdk_revision: 7
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  - if: build_platform == "linux-ppc64le"
+    then:
+      url: https://github.com/adoptium/temurin17-binaries/releases/download/jdk-{{ version }}+{{ openjdk_revision }}/OpenJDK17U-jdk_ppc64le_linux_hotspot_{{ version }}_{{ openjdk_revision }}.tar.gz
+      sha256: a04587018c9719dca21073f19d56b335c4985f41afe7d99b24852c1a94b917e5
+
+  - if: build_platform == "linux-aarch64"
+    then:
+      url: https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${{ version }}+${{ openjdk_revision }}/OpenJDK17U-jdk_aarch64_linux_hotspot_${{ version }}_${{ openjdk_revision }}.tar.gz
+      sha256: 2e3c19c1707205c6b90cc04b416e8d83078ed98417d5a69dce3cf7dc0d7cfbca
+  
+  - if: build_platform == "linux-64"
+    then:
+      url: https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${{ version }}+${{ openjdk_revision }}/OpenJDK17U-jdk_x64_linux_hotspot_${{ version }}_${{ openjdk_revision }}.tar.gz
+      sha256: 81f5bed21077f9fbb04909b50391620c78b9a3c376593c0992934719c0de6b73
+  - if: osx and x86_64
+    then:
+      url: https://cdn.azul.com/zulu/bin/zulu${{ zulu_build }}-jdk${{ version }}-macosx_x64.zip
+      sha256: bcb6d5be984ce3ea7ff60d1ea49a264c622512d96671bb3a94893fca5048aab2
+  - if: osx and arm64
+    then:
+      url: https://cdn.azul.com/zulu/bin/zulu${{ zulu_build_arm64 }}-jdk${{ version }}-macosx_aarch64.zip
+      sha256: 2694bfd4cb489823eb005e3f920f086b468fa5719632688894a055adb4007251
+  - if: win64
+    then:
+      url: https://cdn.azul.com/zulu/bin/zulu${{ zulu_build }}-jdk${{ version }}-win_x64.zip
+      sha256: db4e1d0b5ed9dfe22e87aebc0314f15e7941e2d4b6122f64f557146004800ffe
+  - if: linux
+    then:
+      url: https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.zip
+      sha256: 7576310b219e04159d35ff61dd4a4ec4cdba4f35c00e002a136f00e96a908b0a
+      target_directory: fonts
+  - if: linux
+    then:
+      url: https://github.com/openjdk/jdk${{ major_version }}u/archive/refs/tags/jdk-${{ version }}+${{ openjdk_revision }}.tar.gz
+      sha256: 22575340d080a396442658356583d9c7dc0c44cefa52842fbfcf23eef23c39a0
+      target_directory: src
+
+build:
+  number: 2
+
+requirements:
+  build:
+    # We also need a compiler on osx to produce correct signatures
+    - if: not win
+      then: ${{ compiler('cxx') }}
+    - if: linux
+      then: 
+        - file
+        - make
+        - pkg-config
+        - autoconf
+        - unzip
+        - zip
+    - if: linux and (build_platform != target_platform)
+      then: 
+        - zlib
+        - freetype
+        - harfbuzz
+        - libpng
+        - giflib
+        - harfbuzz
+        - jpeg
+        - libcups
+        - alsa-lib
+        - fontconfig
+        - xorg-libx11
+        - xorg-libxext
+        - xorg-libxt
+        - xorg-libxtst
+        - xorg-libxrender
+        - xorg-libxrandr
+        - xorg-libxi
+        - lcms2
+  host:
+    - if: linux or osx
+      then: zlib
+    - if: linux
+      then:
+        - freetype
+        - harfbuzz
+        - libpng
+        - giflib
+        - harfbuzz
+        - jpeg
+        - libcups
+        - alsa-lib
+        - fontconfig
+        - xorg-libx11
+        - xorg-libxext
+        - xorg-libxt
+        - xorg-libxtst
+        - xorg-libxrender
+        - xorg-libxrandr
+        - xorg-libxi
+        - lcms2
+    - if: win
+      then: vs2015_runtime
+  run:
+    - if: linux
+      then:
+        - xorg-libx11
+        - xorg-libxext
+        - xorg-libxtst
+        - xorg-libxrender
+        - xorg-libxi
+        - ${{ pin_compatible("alsa-lib", upper_bound="x.x.x") }}
+    - if: win
+      then: vs2015_runtime
+
+tests:
+  - files:
+      recipe:
+        - if: not win
+          then: 
+            - test-jni
+            - test-jni.sh
+        - test-nio
+    requirements:
+      run:
+        - if: not win
+          then: ${{ compiler('c') }}
+    script:
+      - java -version
+      - if: not win and not ppc64le
+        then: ./test-jni.sh
+
+about:
+  license: GPL-2.0-or-later WITH Classpath-exception-2.0
+  license_file:
+    - LICENSE
+    - if: linux
+      then: fonts/LICENSE
+  summary: The Zulu OpenJDK build. (not linux) or An open-source implementation of the JDK  (linux)
+  description: ${{ 'Zulu OpenJDK is an open source build of the Java JDK.' if not linux else '' }}
+  homepage: https://www.azul.com/products/zulu/ (not linux)  or https://openjdk.java.net (linux)
+
+extra:
+  recipe-maintainers:
+    - johanneskoester
+    - sodre
+    - mingwandroid
+    - CJ-Wright
+    - xhochy
+    - izahn
+
