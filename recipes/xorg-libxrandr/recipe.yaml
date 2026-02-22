@@ -1,0 +1,84 @@
+schema_version: 1
+
+context:
+  xorg_name: libXrandr
+  xorg_category: lib
+  name: xorg-libXrandr
+  version: 1.5.2
+  sha256: 8aea0ebe403d62330bb741ed595b53741acf45033d3bda1792f1d4cc3daee023
+  am_version: 1.15  # keep synchronized with build.sh
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  # fn: {{ name }}-{{ version }}.tar.bz2
+  # url: ../../pkgs/xorg-libXrandr-1.5.2.tar.bz2
+  url: https://www.x.org/releases/individual/${{ xorg_category }}/${{ xorg_name }}-${{ version }}.tar.bz2
+  sha256: ${{ sha256 }}
+
+build:
+  number: 1
+  prefix_detection:
+    ignore_binary_files: true
+
+requirements:
+  build:
+    - if: win
+      then: m2-autoconf
+    - if: win
+      then: m2-automake${{ am_version }}
+    - if: win
+      then: m2-libtool
+    - if: win
+      then: m2w64-pkg-config
+    - make
+    - if: not win
+      then: pkg-config
+    - if: win
+      then: posix
+    - if: unix
+      then: gnuconfig
+    - if: unix
+      then: ${{ compiler('c') }}
+    - if: win
+      then: ${{ compiler('m2w64_c') }}
+  host:
+    - pthread-stubs
+    - xorg-libx11 >=1.6,<2
+    # Additional constraintless xorg-libx11 dep below is for conda-build to add potential pinning to.
+    - xorg-libx11
+    - xorg-libxrender
+    - xorg-libxext
+    - xorg-xorgproto
+    - xorg-util-macros
+  run:
+    - xorg-libxrender
+    - xorg-libxext
+    - xorg-xorgproto
+    - ${{ pin_compatible('xorg-libx11') }}
+
+tests:
+  - script:
+      - if: osx
+        then: test -f $PREFIX/lib/libXrandr.dylib
+      - if: linux
+        then: test -f $PREFIX/lib/libXrandr.so
+      - if: win
+        then: if not exist %PREFIX%/Library/lib/libXrandr.dll.a exit /b 1
+      - if: win
+        then: if not exist %PREFIX%/Library/bin/msys-Xrandr-*.dll exit /b 1
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: The X.org Xrandr library
+  homepage: https://www.x.org/
+
+extra:
+  recipe-maintainers:
+    - Xarthisius
+    - pkgw
+    - scopatz
+

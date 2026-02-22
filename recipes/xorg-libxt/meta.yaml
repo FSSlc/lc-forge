@@ -1,0 +1,67 @@
+{% set xorg_name = "libXt" %}
+{% set xorg_category = "lib" %}
+{% set name = "xorg-libXt" %}
+{% set version = "1.2.1" %}
+{% set sha256 = "679cc08f1646dbd27f5e48ffe8dd49406102937109130caab02ca32c083a3d60" %}
+{% set am_version = "1.15" %} # keep synchronized with build.sh
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://www.x.org/releases/individual/{{ xorg_category }}/{{ xorg_name }}-{{ version }}.tar.bz2
+  # url: ../../pkgs/xorg-libXt-1.2.1.tar.bz2
+  # fn: {{ name }}-{{ version }}.tar.bz2
+  sha256: {{ sha256 }}
+  patches:
+    - windows.patch  # [win]
+
+build:
+  number: 1
+  detect_binary_files_with_prefix: true
+
+requirements:
+  build:
+    - m2-autoconf  # [win]
+    - m2-automake{{ am_version }}  # [win]
+    - m2-libtool  # [win]
+    - m2w64-pkg-config  # [win]
+    - pkg-config  # [not win]
+    - posix  # [win]
+    - make  # [not win]
+    - {{ compiler('c') }}        # [unix]
+    - {{ compiler('m2w64_c') }}  # [win]
+  host:
+    - xorg-kbproto
+    - xorg-libice 1.0.*
+    - xorg-libsm 1.2.*
+    - xorg-libx11 >=1.6,<2
+    # Additional constraintless xorg-libx11 dep below is for conda-build to add potential pinning to.
+    - xorg-libx11
+    - xorg-util-macros
+    - xorg-xproto
+  run:
+    - xorg-kbproto
+    - xorg-libice 1.0.*
+    - xorg-libsm 1.2.*
+    - {{ pin_compatible('xorg-libx11') }}
+    - xorg-xproto
+
+test:
+  commands:
+    - test -f $PREFIX/lib/libXt.dylib  # [osx]
+    - test -f $PREFIX/lib/libXt.so  # [linux]
+    - if not exist %PREFIX%/Library/lib/libXt.dll.a exit /b 1  # [win]
+    - if not exist %PREFIX%/Library/bin/msys-Xt-*.dll exit /b 1  # [win]
+
+about:
+  home: https://www.x.org/
+  license: MIT
+  license_family: MIT
+  license_file: COPYING
+  summary: The X.org X11 toolkit intrinsics library.
+
+extra:
+  recipe-maintainers:
+    - pkgw

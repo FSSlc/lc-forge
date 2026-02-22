@@ -1,0 +1,44 @@
+schema_version: 1
+
+context:
+  version: 3.0
+
+package:
+  name: zip
+  version: ${{ version }}
+
+source:
+  # patches as applied in
+  # https://gitlab.archlinux.org/archlinux/packaging/packages/zip/-/blob/main/PKGBUILD?ref_type=heads
+  - url: https://downloads.sourceforge.net/infozip/zip${{ version | replace(".", "") }}.tar.gz
+    sha256: f0e8bb1f9b7eb0b01285495a2699df3a4b766784c1765a8f1aeedf63c0806369
+
+build:
+  number: 3
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - make
+    - sed
+
+tests:
+  - script:
+      - which zip
+      - which zip | grep "${PREFIX}"
+      - zip -h
+
+about:
+  license: BSD-4-Clause
+  license_file: LICENSE
+  summary: simple program for unzipping files
+  homepage: https://infozip.sourceforge.net
+  repository: https://sourceforge.net/projects/infozip
+
+extra:
+  recipe-maintainers:
+    - msarahan
+    - jerowe
+    - bollwyvl
+
