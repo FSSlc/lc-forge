@@ -1,0 +1,52 @@
+{% set version = "3.1.1" %}
+
+package:
+  name: turbovnc
+  version: {{ version }}
+
+source:
+  - url: https://github.com/TurboVNC/turbovnc/releases/download/{{ version }}/turbovnc-{{ version }}.tar.gz
+    sha256: 3530a4ab7dfe36be7aa1bd9da6e9cf048be9f585b1940949d3c286ce53ec2b30
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - cmake
+    - make
+    - libdrm
+    - epoxy
+    - libtool
+    - freetype <3.0a0
+    - xkeyboard-config
+    - libjpeg-turbo
+    - libiconv
+    - openjdk
+    - xorg-xkbcomp
+
+  host:
+    - xorg-xkbcomp
+    - libdrm
+    - epoxy
+    - libtool
+    - freetype <3.0a0
+    - xkeyboard-config
+    - libjpeg-turbo
+    - libiconv
+    - openjdk
+
+  run:
+    - libiconv
+    - xorg-libx11
+    - libxkbfile
+    - libjpeg-turbo
+    - xkeyboard-config
+
+build:
+  detect_binary_files_with_prefix: True
+
+about:
+  home: https://turbovnc.org
+  summary: TurboVNC is a derivative of VNC (Virtual Network Computing) that is tuned to provide peak performance for 3D and video workloads
+  license: LGPL-2.1-or-later
+  license_file: LICENSE.txt
+  license_family: LGPL

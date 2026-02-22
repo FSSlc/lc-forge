@@ -1,0 +1,38 @@
+schema_version: 1
+
+context:
+  version: 1.4.6
+
+package:
+  name: xorg-xkbcomp
+  version: ${{ version }}
+
+source:
+  - url: https://gitlab.freedesktop.org/xorg/app/xkbcomp/-/archive/xkbcomp-${{ version }}/xkbcomp-xkbcomp-${{ version }}.tar.gz
+    sha256: 1812ae83559fabfffe37087b242aa4c6b3013038e098353ebcb59d0b70c68455
+
+build:
+  prefix_detection:
+    ignore_binary_files: true
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - autoconf
+    - automake
+    - make
+    - pkg-config
+    - bison
+    - xorg-libx11
+    - xorg-xorgproto
+    - xorg-util-macros
+    - libxkbfile
+  host:
+    - libxkbfile
+
+about:
+  summary: X Keyboard description compiler.
+  license: LicenseRef-xkbcomp
+  license_file: COPYING
+  homepage: https://gitlab.freedesktop.org/xorg/app/xkbcomp
+
