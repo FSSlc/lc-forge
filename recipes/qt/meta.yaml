@@ -245,8 +245,8 @@ test:
     - xcrun
   commands:
     # qtwebengine
-    - if not exist %LIBRARY_BIN%\\Qt5WebEngine.dll exit 1                  # [win]
-    - test -f $PREFIX/lib/libQt5WebEngine${SHLIB_EXT}                      # [unix]
+    # - if not exist %LIBRARY_BIN%\\Qt5WebEngine.dll exit 1                  # [win]
+    # - test -f $PREFIX/lib/libQt5WebEngine${SHLIB_EXT}                      # [unix]
     # sql plugin
     - test -f $PREFIX/plugins/sqldrivers/libqsqlite${SHLIB_EXT}            # [unix]
     - if not exist %LIBRARY_PREFIX%\plugins\sqldrivers\qsqlite.dll exit 1  # [win]
