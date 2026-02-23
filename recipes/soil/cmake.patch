@@ -1,0 +1,75 @@
+From 0032729bf77c433d894dfecb3762d645f57661b4 Mon Sep 17 00:00:00 2001
+From: SiddhantRanade <SiddhantRanade@users.noreply.github.com>
+Date: Sun, 9 Jun 2019 14:59:41 -0700
+Subject: [PATCH 1/2] Update CMakeLists.txt
+
+Header files are now installed.
+---
+ CMakeLists.txt | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c29d9bf..4957d6d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,10 +1,16 @@
+ cmake_minimum_required(VERSION 2.6)
++project(SOIL)
++
++if(NOT CMAKE_BUILD_TYPE)
++  set(CMAKE_BUILD_TYPE Release)
++endif()
+ 
+ include_directories(inc)
+ 
+-ADD_LIBRARY( soil STATIC
+-  src/image_helper.c
+-  src/stb_image_aug.c
+-  src/image_DXT.c
+-  src/SOIL.c
+-  )
++FILE(GLOB SOIL_c src/*.c)
++FILE(GLOB SOIL_h inc/SOIL/*.h)
++
++ADD_LIBRARY( soil STATIC ${SOIL_c} )
++
++install( TARGETS soil ARCHIVE DESTINATION "lib" )
++install( FILES ${SOIL_h} DESTINATION "include/SOIL" )
+
+From 38cddd70bccc5181c6472243f2f33d213a3d6485 Mon Sep 17 00:00:00 2001
+From: Siddhant Ranade <siddhant.ranade@gmail.com>
+Date: Tue, 29 Nov 2022 15:45:53 -0700
+Subject: [PATCH 2/2] - Updates CMake version. - Minor fix to allow for null in
+ extensions string.
+
+---
+ CMakeLists.txt | 2 +-
+ src/SOIL.c     | 5 +++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4957d6d..fa17849 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 2.6)
++cmake_minimum_required(VERSION 2.9)
+ project(SOIL)
+ 
+ if(NOT CMAKE_BUILD_TYPE)
+diff --git a/src/SOIL.c b/src/SOIL.c
+index 590c270..53c6ae1 100644
+--- a/src/SOIL.c
++++ b/src/SOIL.c
+@@ -1876,8 +1876,9 @@ int query_NPOT_capability( void )
+ 	if( has_NPOT_capability == SOIL_CAPABILITY_UNKNOWN )
+ 	{
+ 		/*	we haven't yet checked for the capability, do so	*/
+-		if(
+-			(NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
++		const char* glGetString_extentions_ptr = (char const*)glGetString(GL_EXTENSIONS);
++		if(glGetString_extentions_ptr != NULL &&
++			(NULL == strstr(glGetString_extentions_ptr,
+ 				"GL_ARB_texture_non_power_of_two" ) )
+ 			)
+ 		{

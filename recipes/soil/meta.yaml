@@ -1,0 +1,49 @@
+{% set name = "soil" %}
+{% set version = "1.16.0" %}
+{% set build = 1 %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/paralin/soil/archive/refs/heads/master.zip
+  sha256: c1916163da7d27c6caacce76b6909722f4ff847ed019765ee6787c502948a901
+  patches:
+    - cmake.patch
+
+build:
+  number: {{ build }}
+  skip: true  # [win]
+  script:
+    - cmake -B build -S . -DCMAKE_INSTALL_PREFIX=${PREFIX}
+    - cmake --build build --target install -j ${CPU_COUNT}
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - {{ stdlib("c") }}
+    - {{ cdt('mesa-libgl-devel') }}
+    - {{ cdt('xorg-x11-proto-devel') }}
+    - {{ cdt('libx11-devel') }}
+    - make
+    - cmake
+
+test:
+  commands:
+    - test -f ${PREFIX}/include/SOIL/SOIL.h  # [unix]
+
+about:
+  home: https://github.com/paralin/soil
+  license: MIT
+  license_file: LICENSE.txt
+  summary: Simple OpenGL Image Library with a CMake build style.
+  description: |
+    SOIL is a tiny C library used primarily for uploading textures into OpenGL. 
+    It is based on stb_image version 1.16, the public domain code from Sean Barrett (found here). 
+    It has been extended to load TGA and DDS files, and to perform common functions needed in loading OpenGL textures. 
+    SOIL can also be used to save and load images in a variety of formats.
+
+extra:
+  recipe-maintainers:
+    - fsslc
