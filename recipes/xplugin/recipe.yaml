@@ -1,0 +1,47 @@
+schema_version: 1
+
+context:
+  name: xplugin
+  version: "0.2.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  - url: https://github.com/QuantStack/xplugin/archive/refs/tags/v${{ version }}.tar.gz
+    sha256: 172b742faa1cde2ff68ccf0d05bbb75c1651c98339c7f12cbf292a52c0ff3b77
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - cmake >=3.1
+    - ninja
+    - doctest
+
+tests:
+  - script:
+      - if: unix
+        then: test -f $PREFIX/include/xplugin/xfactory.hpp
+      - if: unix
+        then: test -f $PREFIX/lib/cmake/xplugin/xplugin_add_xplugin.cmake
+      - if: win
+        then: if not exist %LIBRARY_PREFIX%\\include\\xplugin\\xfactory.hpp exit 1
+      - if: win
+        then: if not exist %LIBRARY_PREFIX%\\lib\\cmake\\xplugin\\xpluginConfig.cmake exit 1
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Generic plugin framework in C++
+  description: Generic plugin framework in C++
+  homepage: https://github.com/QuantStack/xplugin
+
+extra:
+  recipe-maintainers:
+    - fsslc
+
