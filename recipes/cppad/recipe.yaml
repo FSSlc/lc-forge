@@ -1,0 +1,63 @@
+schema_version: 1
+
+context:
+  name: cppad
+  version: "20260000.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/coin-or/CppAD/archive/${{ version }}.tar.gz
+  sha256: 41ec617bb1e4163da381aaa5083a152e033631e9b5e135ccdc3466aaa1dc9001
+
+build:
+  # No ABI policy documented, let's be conservative
+  number: 0
+
+requirements:
+  build:
+    - if: unix
+      then: gnuconfig
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+    - pkg-config
+    - cmake
+    - if: unix
+      then: make
+  run_exports:
+    - ${{ pin_subpackage(name, upper_bound='x.x') }}
+
+tests:
+  - script:
+      - if: unix
+        then: test -d ${PREFIX}/include/cppad
+      - if: unix
+        then: test -f ${PREFIX}/share/pkgconfig/cppad.pc
+      - if: linux
+        then: test -f ${PREFIX}/lib/libcppad_lib.so
+      - if: osx
+        then: test -f ${PREFIX}/lib/libcppad_lib.dylib
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\cppad exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\share\\pkgconfig\\cppad.pc exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\lib\\cppad_lib.lib exit 1
+
+about:
+  license: EPL-2.0 OR GPL-2.0-or-later
+  license_file: COPYING
+  summary: CppAD - A Package for Differentiation of C++ Algorithms
+  homepage: https://cppad.readthedocs.io
+  repository: https://github.com/coin-or/CppAD
+  documentation: https://cppad.readthedocs.io/
+
+extra:
+  recipe-maintainers:
+    - jorisv
+    - traversaro
+    - jcarpent
+
