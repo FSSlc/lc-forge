@@ -1,0 +1,64 @@
+schema_version: 1
+
+context:
+  name: pugixml
+  version: "1.15"
+  sha256: b39647064d9e28297a34278bfb897092bf33b7c487906ddfc094c9e8868bddcb
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/zeux/${{ name }}/archive/v${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - cmake
+    - make
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+  run_exports:
+    - ${{ pin_subpackage('pugixml', upper_bound='x.x') }}
+
+tests:
+  - script:
+      - if: unix
+        then: test ! -f "${PREFIX}/lib/libpugixml.a"
+      - if: unix
+        then: test -f "${PREFIX}/include/pugixml.hpp"
+      - if: unix
+        then: test -f "${PREFIX}/lib/libpugixml${SHLIB_EXT}"
+      - if: win
+        then: if not exist %LIBRARY_LIB%\pugixml.lib exit 1
+      - if: win
+        then: if not exist %LIBRARY_INC%\pugiconfig.hpp exit 1
+      - if: win
+        then: if not exist %LIBRARY_BIN%\pugixml%SHLIB_EXT% exit 1
+
+about:
+  license: MIT
+  license_file: README.md
+  summary: Light-weight, simple and fast XML parser for C++ with XPath support
+  description: |
+    pugixml is a C++ XML processing library, which consists of a DOM-like interface
+    with rich traversal/modification capabilities, an extremely fast XML parser which
+    constructs the DOM tree from an XML file/buffer, and an XPath 1.0 implementation
+    for complex data-driven tree queries. Full Unicode support is also available, with
+    Unicode interface variants and conversions between different Unicode encodings
+    (which happen automatically during parsing/saving)
+  homepage: http://pugixml.org/
+  repository: https://github.com/zeux/pugixml
+  documentation: http://pugixml.org/
+
+extra:
+  recipe-maintainers:
+    - scopatz
+    - SylvainCorlay
+    - ilya-lavrenov
+

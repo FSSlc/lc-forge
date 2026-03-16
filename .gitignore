@@ -1,6 +1,7 @@
 # local files
 pkgs
 output
+tmp
 
 # editors
 .vscode
