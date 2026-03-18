@@ -1,0 +1,57 @@
+{% set version = "7.13.5" %}
+
+package:
+  name: coverage
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/c/coverage/coverage-{{ version }}.tar.gz
+  sha256: c81f6515c4c40141f83f502b07bbfa5c240ba25bbe73da7b33f1e5b6120ff179
+
+build:
+  number: 0
+  noarch: python  # [use_noarch]
+  track_features:
+    - coverage_no_compile                 # [use_noarch]
+  entry_points:
+    - coverage = coverage.cmdline:main
+
+requirements:
+  build:
+    - python                                 # [build_platform != target_platform and not use_noarch]
+    - cross-python_{{ target_platform }}     # [build_platform != target_platform]
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+  host:
+    - python         # [not use_noarch]
+    - python {{ python_min }}   # [use_noarch]
+    - pip
+    - setuptools
+  run:
+    - python         # [not use_noarch]
+    - python >={{ python_min }}   # [use_noarch]
+    # extra dependency
+    - tomli
+
+test:
+  requires:
+    - pip
+    - python {{ python_min }}  # [use_noarch]
+  imports:
+    - coverage
+  commands:
+    - pip check
+    - coverage --help
+
+about:
+  home: https://coverage.readthedocs.io
+  license: Apache-2.0
+  license_file: LICENSE.txt
+  summary: Code coverage measurement for Python
+
+extra:
+  recipe-maintainers:
+    - thewchan
+    - ericmjl
+    - jakirkham
+    - ocefpaf
