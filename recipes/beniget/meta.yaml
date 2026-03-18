@@ -1,0 +1,46 @@
+{% set name = "beniget" %}
+{% set version = "0.5.0" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: e7af11fa8ec7de3d3eb3d98b1e722d15d44017d8b35d8aa11d54f6719b312f22
+
+build:
+  number: 0
+  script: '{{ PYTHON }} -m pip install . --no-deps --ignore-installed -vv '
+  noarch: python
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - setuptools
+  run:
+    - python >={{ python_min }}
+    - gast >=0.7.0
+
+test:
+  imports:
+    - beniget
+  requires:
+    - python {{ python_min }}
+    - pip
+  commands:
+    - pip check
+
+about:
+  home: https://github.com/serge-sans-paille/beniget
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file: LICENSE
+  summary: Extract semantic information about static Python code
+
+extra:
+  recipe-maintainers:
+    - CyrilleBonamy
+    - paugier
+    - serge-sans-paille

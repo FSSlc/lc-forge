@@ -1,0 +1,53 @@
+{% set name = "gast" %}
+{% set version = "0.6.0" %}
+{% set sha256 = "88fc5300d32c7ac6ca7b515310862f71e6fdf2c029bbec7c66c0f5dd47b6b1fb" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  fn: {{ name }}-{{ version }}.tar.gz
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: {{ sha256 }}
+
+build:
+  noarch: python
+  number: 0
+  script: {{ PYTHON }} -m pip install . --no-deps -vv
+
+requirements:
+  host:
+    - python {{ python_min }}.*
+    - pip
+    - setuptools
+  run:
+    - python >={{ python_min }}
+  run_constrained:
+    # required compatibility with gast 0.5.4 only landed in 0.12.2
+    - pythran >=0.12.2
+
+test:
+  requires:
+    - python {{ python_min }}.*
+  imports:
+    - gast
+
+about:
+  home: https://github.com/serge-sans-paille/gast
+  license: BSD-3-Clause
+  license_family: BSD
+  # https://github.com/serge-sans-paille/gast/pull/17
+  license_file: LICENSE
+  summary: A generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
+
+  description: |
+    GAST provides a compatibility layer between the AST of various Python 
+    versions, as produced by ast.parse from the standard ast module.
+  dev_url: https://github.com/serge-sans-paille/gast
+
+extra:
+  recipe-maintainers:
+    - CurtLH
+    - martinRenou
+    - conda-forge/pythran

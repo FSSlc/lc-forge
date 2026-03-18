@@ -1,0 +1,105 @@
+schema_version: 1
+
+context:
+  version: "0.18.1"
+
+package:
+  name: pythran
+  version: ${{ version }}
+
+source:
+  url: https://github.com/serge-sans-paille/pythran/archive/refs/tags/${{ version }}.tar.gz
+  sha256: cdbab54e8f28321b8f8f0ea8d12de1669c3294f67c13332c7f5bf92cf0a8833a
+
+build:
+  number: 0
+  noarch: python
+  script:
+    # on windows, pythran wrongly sets %PREFIX\include instead of %PREFIX%\Library\include;
+    # pythran-win32.cfg already exists and has [compiler].include_dirs; we replace it on the fly;
+    # conda will detect the written environment-path and replace it as appropriate for user installs;
+    # note that we need r'...' for this due to paths like D:\bld\... where python would interpret \b.
+    - if: win
+      then: "python -c \"with open('pythran\\pythran-win32.cfg', 'r+') as s: a=s.read(); s.seek(0); s.write(a.replace('include_dirs=', r'include_dirs=%PREFIX%/Library/include'))\""
+    # sanity check to ensure this is set correctly
+    - if: win
+      then: type pythran\pythran-win32.cfg
+    - python -m pip install . --no-deps -vv
+  python:
+    entry_points:
+      - pythran = pythran.run:run
+      - pythran-config = pythran.config:run
+
+requirements:
+  build:
+  host:
+    - python ${{ python_min }}.*
+    - pip
+    - setuptools
+  run:
+    - if: linux
+      then: gxx
+    - if: osx or win
+      then: clangxx
+    - python >=${{ python_min }}
+    - decorator
+    - gast 0.6.*
+    - ply >=3.4
+    - colorlog
+    - beniget 0.4.*
+    - numpy
+    - if: linux
+      then: __linux
+    - if: osx
+      then: __osx
+    - if: win
+      then: __win
+
+tests:
+  - python:
+      imports:
+        - if: not win
+          then: omp
+        - pythran
+        - pythran.analyses
+        - pythran.optimizations
+        - pythran.transformations
+        - pythran.types
+  - files:
+      recipe:
+        - dprod.py
+        - simple_numexpr.py
+    requirements:
+      run:
+        - python ${{ python_min }}.*
+        - setuptools <76
+    script:
+      - pythran -v dprod.py
+      - python -c "import dprod"
+      - if: not (ppc64le or (osx and arm64))
+        then: pythran -v simple_numexpr.py -DUSE_XSIMD -march=native
+      - if: osx and arm64
+        then: pythran -v simple_numexpr.py -DUSE_XSIMD
+      - if: ppc64le
+        then: pythran -v simple_numexpr.py
+      - python -c "import simple_numexpr"
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: a claimless python to c++ converter
+  description: |
+    Pythran is an ahead of time compiler for a subset of the Python language,
+    with a focus on scientific computing. It takes a Python module annotated
+    with a few interface description and turns it into a native Python module
+    with the same interface, but (hopefully) faster.
+  homepage: http://github.com/serge-sans-paille/pythran
+  repository: https://github.com/serge-sans-paille/pythran
+  documentation: https://pythran.readthedocs.io/
+
+extra:
+  recipe-maintainers:
+    - saraedum
+    - serge-sans-paille
+    - h-vetinari
+
