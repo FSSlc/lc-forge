@@ -24,13 +24,13 @@ outputs:
         file: build_base.sh
     requirements:
       host:
-        - python ${{ python_min }}
+        - python ${{ python_min }}.*
         - pip
         - packaging >=20
         - setuptools >=61
         - tomli
       run:
-        - python ${{ python_min }}
+        - python ${{ python_min }}.*
         - packaging >=20.0
         - setuptools >=45
         - tomli >=1.0.0
@@ -42,7 +42,7 @@ outputs:
             - setuptools_scm
       - requirements:
           run:
-            - python ${{ python_min }}
+            - python ${{ python_min }}.*
             - pip
         script:
           - pip check

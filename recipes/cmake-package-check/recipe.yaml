@@ -25,13 +25,13 @@ build:
 
 requirements:
   host:
-    - python ${{ python_min }}
+    - python ${{ python_min }}.*
     - wheel
     - setuptools >=45
     - setuptools-scm >=6.2
     - pip
   run:
-    - python ${{ python_min }}
+    - python ${{ python_min }}.*
     - jinja2
     - cmake
     - ninja
@@ -46,7 +46,7 @@ tests:
         - pip
         - ${{ compiler('c') }}
         - ${{ compiler('cxx') }}
-        - python ${{ python_min }}
+        - python ${{ python_min }}.*
     script:
       - pip check
       - cmake-package-check --help
