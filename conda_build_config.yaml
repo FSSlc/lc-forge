@@ -414,7 +414,7 @@ ntl:
   - '11.4.3'
 # we build for the oldest version possible of numpy for forward compatibility
 numpy:
-  - 1.21
+  - 1.23
 occt:
   - 7.6
 openblas:

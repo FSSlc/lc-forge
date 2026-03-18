@@ -1,0 +1,144 @@
+# use 'python_impl' in meta.yaml so it gets picked up by rendering
+# [python_impl == "pypy"]
+# https://github.com/numpy/numpy/issues/15243
+# Sometimes crashes on travis (needs too much memory); since 1.22.4 it fails for pypy
+# there are some tests that cannot really work in emulation, see e.g. numpy/numpy#20445
+# test_new_policy reruns part of test suite; including a CPU feature test that fails in emulation
+# flaky refcount-based test; already skipped upstream for win+py39
+schema_version: 1
+
+context:
+  version: "1.23.5"
+  label: "'\"'fast'\" if (CI == \"travis\") or (aarch64 and python_impl == \"pypy\") else \"'full'\"'"
+  num_proc: "'\"'-nauto', \" if (CI != \"travis\") else \"\"'"
+  param: '"verbose=1, label=" + label + ", tests=None"'
+  extra: "'\"extra_argv=['-k', 'not (\" + tests_to_skip + \")', \" + num_proc + \"'--timeout=3000', '--durations=50']\"'"
+
+package:
+  name: numpy
+  version: ${{ version }}
+
+source:
+  - url: https://github.com/numpy/numpy/releases/download/v${{ version }}/numpy-${{ version }}.tar.gz
+    sha256: 1b1766d6f397c18153d40015ddfc79ddb715cabadc04d2d228d4e5a8bc4ded1a
+  # the sources by upstream themselves (as opposed to automated by github) contain the
+  # svml submodule (which isn't in github tarball due to dear-github/dear-github#214);
+  # keep this for reference & debugging when necessary; for exact commit, see:
+  # https://github.com/numpy/numpy/tree/v{{ version }}/numpy/core/src/umath
+  # - git_url: https://github.com/numpy/SVML.git
+  #   git_rev: 1c5260a61e7dce6be48073dfa96291edb0a11d79
+  #   folder: numpy/core/src/umath/svml
+
+build:
+  number: 0
+  skip: match(python, "<3.8")
+  python:
+    entry_points:
+      - if: win
+        then: f2py = numpy.f2py.f2py2e:main
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+    - if: build_platform != target_platform
+      then: cython
+    - if: build_platform != target_platform
+      then: setuptools <60.0.0
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+  host:
+    - setuptools <60.0.0
+    - python
+    - pip
+    - cython
+    - libblas
+    - libcblas
+    - liblapack
+  run:
+    - python
+  run_exports:
+    - ${{ pin_subpackage("numpy") }}
+  run_constraints:
+    - numpy-base <0a0
+
+tests:
+  - python:
+      imports:
+        - numpy
+        - numpy.array_api
+        - numpy.array_api.linalg
+        - numpy.ctypeslib
+        - numpy.distutils
+        - numpy.doc
+        - numpy.doc.constants
+        - numpy.doc.ufuncs
+        - numpy.f2py
+        - numpy.fft
+        - numpy.lib
+        - numpy.lib.mixins
+        - numpy.lib.recfunctions
+        - numpy.lib.scimath
+        - numpy.linalg
+        - numpy.ma
+        - numpy.ma.extras
+        - numpy.ma.mrecords
+        - numpy.matlib
+        - numpy.polynomial
+        - numpy.random
+        - numpy.testing
+        - numpy.typing
+        - numpy.version
+        - numpy.core.multiarray
+        - numpy.core._multiarray_tests
+        - numpy.core.numeric
+        - numpy.core._operand_flag_tests
+        - numpy.core._struct_ufunc_tests
+        - numpy.core._rational_tests
+        - numpy.core.umath
+        - numpy.core._umath_tests
+        - numpy.linalg.lapack_lite
+        - numpy.random.mtrand
+  - requirements:
+      run:
+        - pytest
+        - pytest-timeout
+        - if: CI != "travis"
+          then: pytest-xdist
+        - if: match(python, "<=3.9") and python_impl != "pypy"
+          then: cffi
+        - cython
+        - hypothesis
+        - if: match(python, "==3.11")
+          then: importlib_metadata >=4.13
+        - pytz
+        - setuptools <60.0.0
+        - typing_extensions
+        - if: linux
+          then: ${{ compiler('c') }}
+        - if: linux
+          then: ${{ compiler('fortran') }}
+    script:
+      - f2py -h
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE.txt
+  summary: The fundamental package for scientific computing with Python.
+  homepage: http://numpy.org/
+  repository: https://github.com/numpy/numpy
+  documentation: https://numpy.org/doc/stable/
+
+extra:
+  recipe-maintainers:
+    - jakirkham
+    - msarahan
+    - pelson
+    - rgommers
+    - ocefpaf
+    - isuruf
+    - xhochy
+    - h-vetinari
+
