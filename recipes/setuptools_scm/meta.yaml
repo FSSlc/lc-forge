@@ -1,0 +1,63 @@
+{% set version = "9.2.2" %}
+
+package:
+  name: setuptools_scm
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/s/setuptools-scm/setuptools_scm-{{ version }}.tar.gz
+  sha256: 1c674ab4665686a0887d7e24c03ab25f24201c213e82ea689d2f3e169ef7ef57
+
+build:
+  number: 0
+  noarch: python
+
+outputs:
+  - name: setuptools-scm
+    script: build_base.sh
+    build:
+      noarch: python
+    requirements:
+      host:
+        - python {{ python_min }}
+        - pip
+        - packaging >=20
+        - setuptools >=61
+        - tomli
+      run:
+        - python {{ python_min }}
+        - packaging >=20.0
+        - setuptools >=45
+        - tomli >=1.0.0
+        - typing-extensions
+        - importlib-metadata
+    test:
+      imports:
+        - setuptools_scm
+      commands:
+        - pip check
+      requires:
+        - python {{ python_min }}
+        - pip
+
+  - name: setuptools_scm
+    build:
+      noarch: generic
+    requirements:
+      run:
+        - {{ pin_subpackage('setuptools-scm', max_pin="x.x.x") }}
+    test:
+      imports:
+        - setuptools_scm
+
+about:
+  home: https://github.com/pypa/setuptools_scm/
+  license: MIT
+  license_file: LICENSE
+  summary: The blessed package to manage your versions by scm tags
+
+extra:
+  recipe-maintainers:
+    - ocefpaf
+    - kwilcox
+    - astaric
