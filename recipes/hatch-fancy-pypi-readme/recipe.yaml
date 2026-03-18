@@ -1,0 +1,67 @@
+schema_version: 1
+
+context:
+  name: hatch-fancy-pypi-readme
+  version: 25.1.0
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/hatch_fancy_pypi_readme-${{ version }}.tar.gz
+  sha256: 9c58ed3dff90d51f43414ce37009ad1d5b0f08ffc9fc216998a06380f01c0045
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+  python:
+    entry_points:
+      - hatch-fancy-pypi-readme=hatch_fancy_pypi_readme.__main__:main
+
+requirements:
+  host:
+    - hatchling
+    - pip
+    - python ${{ python_min }}.*
+  run:
+    - hatchling
+    - python >=${{ python_min }}
+    - tomli
+
+tests:
+  - python:
+      imports:
+        - hatch_fancy_pypi_readme
+      pip_check: true
+      python_version: ${{ python_min }}.*
+  - files:
+      source:
+        - AUTHORS.md
+        - CHANGELOG.md
+        - LICENSE.txt
+        - pyproject.toml
+        - README.md
+        - src
+        - tests
+    requirements:
+      run:
+        - python-build
+        - pytest
+        - python ${{ python_min }}.*
+        - wheel
+    script:
+      - hatch-fancy-pypi-readme --help
+      - pytest -vvv --capture=tee-sys tests
+
+about:
+  summary: Fancy PyPI READMEs with Hatch
+  license: MIT
+  license_file:
+    - LICENSE.txt
+  homepage: https://github.com/hynek/hatch-fancy-pypi-readme
+
+extra:
+  recipe-maintainers:
+    - thewchan
