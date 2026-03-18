@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  name: hatch-vcs
+  version: "0.5.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/hatch_vcs-${{ version }}.tar.gz
+  sha256: 0395fa126940340215090c344a2bf4e2a77bcbe7daab16f41b37b98c95809ff9
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - hatchling >=1.1.0
+    - pip
+    - python ${{ python_min }}.*
+  run:
+    - hatchling >=1.1.0
+    - python >=${{ python_min }}
+    - setuptools-scm >=8.2.0
+
+tests:
+  - python:
+      imports:
+        - hatch_vcs
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+
+about:
+  summary: Hatch plugin for versioning with your preferred VCS
+  license: MIT
+  license_file: LICENSE.txt
+  homepage: https://pypi.org/project/hatch-vcs/
+  repository: https://github.com/ofek/hatch-vcs
+
+extra:
+  recipe-maintainers:
+    - nicoddemus
+

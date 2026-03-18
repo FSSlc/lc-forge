@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  name: distro
+  version: "1.9.0"
+  sha256: 2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
+  python:
+    entry_points:
+      - distro = distro.distro:main
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - pip
+    - setuptools
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - distro
+  - files:
+      source:
+        - tests
+    requirements:
+      run:
+        - pip
+        - pytest
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+      - distro --help
+      - pytest -vvv --capture=tee-sys tests
+
+about:
+  license: Apache-2.0
+  license_file: LICENSE
+  summary: Provides information about the OS distribution it runs on, such as a reliable machine-readable ID, or version information.
+  homepage: https://github.com/nir0s/distro
+  repository: https://github.com/nir0s/distro
+  documentation: http://distro.readthedocs.io/en/latest/
+
+extra:
+  recipe-maintainers:
+    - abloemert
+    - thewchan
+
