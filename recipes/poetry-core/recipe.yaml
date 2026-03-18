@@ -1,0 +1,48 @@
+schema_version: 1
+
+context:
+  name: poetry-core
+  version: "2.3.1"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/poetry_core-${{ version }}.tar.gz
+  sha256: 96f791d5d7d4e040f3983d76779425cf9532690e2756a24fd5ca0f86af19ef82
+  patches:
+    - 0001-vcs.patch
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - pip
+  run:
+    - python >=${{ python_min }},<4.0.0
+
+tests:
+  - python:
+      imports:
+        - poetry.core
+        - poetry.core._vendor
+      pip_check: true
+      python_version: ${{ python_min }}.*
+
+about:
+  summary: Poetry PEP 517 Build Backend
+  license: MIT
+  license_file: LICENSE
+  homepage: https://pypi.org/project/poetry-core/
+  repository: https://github.com/python-poetry/poetry-core
+  documentation: https://github.com/python-poetry/poetry-core/blob/main/README.md
+
+extra:
+  recipe-maintainers:
+    - ocefpaf
+    - xylar

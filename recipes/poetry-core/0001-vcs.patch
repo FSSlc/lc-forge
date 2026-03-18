@@ -1,0 +1,24 @@
+diff -ruN poetry_core-2.2.0/src/poetry/core/masonry/builders/builder.py poetry_core-2.2.0-patch/src/poetry/core/masonry/builders/builder.py
+--- poetry_core-2.2.0/src/poetry/core/masonry/builders/builder.py	1970-01-01 01:00:00.000000000 +0100
++++ poetry_core-2.2.0-patch/src/poetry/core/masonry/builders/builder.py	2025-09-16 11:15:05.910609531 +0200
+@@ -1,6 +1,7 @@
+ from __future__ import annotations
+ 
+ import logging
++import os
+ import sys
+ import textwrap
+ 
+@@ -98,7 +99,11 @@
+ 
+             # Checking VCS
+             vcs = get_vcs(self._path)
+-            vcs_ignored_files = set(vcs.get_ignored_files()) if vcs else set()
++            if vcs and "CONDA_BUILD" not in os.environ and \
++                    os.environ.get("POETRY_NO_VCS_IGNORED_FILES", "0") != "1":
++                vcs_ignored_files = set(vcs.get_ignored_files())
++            else:
++                vcs_ignored_files = set()
+ 
+             def add_all_files(path: Path, target: set[str]) -> None:
+                 all_files = (

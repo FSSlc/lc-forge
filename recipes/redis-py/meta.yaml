@@ -1,0 +1,52 @@
+{% set version = "7.3.0" %}
+
+package:
+  name: redis-py
+  version: {{ version }}
+
+source:
+  url: https://github.com/redis/redis-py/archive/v{{ version }}.tar.gz
+  sha256: 36ba3135eb2bcf6fdebccecb2614507a687ab9ec2fc507fdcd87c822616a28c1
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - hatchling
+  run:
+    - python >={{ python_min }}
+    - async-timeout >=4.0.3
+
+test:
+  commands:
+    - pip check
+  imports:
+    - redis
+  requires:
+    - pip
+    - python {{ python_min }}
+
+about:
+  home: https://github.com/redis/redis-py/
+  license: MIT
+  license_url: https://github.com/redis/redis-py/blob/master/LICENSE
+  license_family: MIT
+  license_file: LICENSE
+  summary: Python client for Redis key-value store
+  description: |
+    The Python interface to the Redis key-value store. Requires a running
+    Redis server.
+  doc_url: https://pypi.python.org/pypi/redis
+  doc_source_url: https://github.com/redis/redis-py/blob/master/README.md
+  dev_url: https://github.com/redis/redis-py/
+
+extra:
+  recipe-maintainers:
+    - rxm7706
+    - kwilcox
+    - daf
