@@ -1,0 +1,41 @@
+From fad62bc2b771ff892a203a1be82484f4115575c2 Mon Sep 17 00:00:00 2001
+From: Marcel Bargull <marcel.bargull@udo.edu>
+Date: Sat, 24 Feb 2024 16:36:35 +0100
+Subject: [PATCH] Use Requires.internal instead of Requires.private
+
+NOTE: pkg-config does not support Requires.internal, so this will break
+builds that use a static libgit2 and use pkg-config instead of pkgconf!
+
+"pkg-config --cflags" will output flags from Requires.private even if
+libgit2 is built as a shared library for which they are not needed for
+downstream uses.
+
+This switches to Requires.internal introduced in pkgconf to avoid this.
+
+See https://bugs.freedesktop.org/show_bug.cgi?id=105572 and
+https://github.com/pkgconf/pkgconf/commit/f03ec3ff90ee619a21826d23609adb5409dbe9a2
+for details.
+
+Signed-off-by: Marcel Bargull <marcel.bargull@udo.edu>
+---
+ cmake/PkgBuildConfig.cmake | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/cmake/PkgBuildConfig.cmake b/cmake/PkgBuildConfig.cmake
+index c8939e63a..b8313100b 100644
+--- a/cmake/PkgBuildConfig.cmake
++++ b/cmake/PkgBuildConfig.cmake
+@@ -57,11 +57,11 @@ function(pkg_build_config)
+ 		file(APPEND "${PKGCONFIG_FILE}" "Libs.private: ${PKGCONFIG_PRIVATE_LIBS}\n")
+ 	endif()
+ 
+-	# Prepare Requires.private
++	# Prepare Requires.internal
+ 	if(DEFINED PKGCONFIG_REQUIRES)
+ 		list(REMOVE_DUPLICATES PKGCONFIG_REQUIRES)
+ 		string(REPLACE ";" " " PKGCONFIG_REQUIRES "${PKGCONFIG_REQUIRES}")
+-		file(APPEND "${PKGCONFIG_FILE}" "Requires.private: ${PKGCONFIG_REQUIRES}\n")
++		file(APPEND "${PKGCONFIG_FILE}" "Requires.internal: ${PKGCONFIG_REQUIRES}\n")
+ 	endif()
+ 
+ 	# Prepare Cflags
