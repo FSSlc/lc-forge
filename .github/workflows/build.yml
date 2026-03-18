@@ -32,7 +32,19 @@ jobs:
           shell: /bin/bash
           workdir: ${{ github.workspace }}
           run: |
-            rattler-build build --continue-on-failure --experimental -m ./conda_build_config.yaml --skip-existing=all --target-platform=${{ matrix.target }} -c https://prefix.dev/scns --recipe-dir ./recipes
+            if [ -f only-meta.txt ]; then
+              while IFS= read -r pkgname; do
+                [ -z "$pkgname" ] && continue
+                conda build --croot ./output/ -m ./conda_build_config.yaml \
+                  --skip-existing -c https://prefix.dev/scns recipes/"$pkgname"
+              done < only-meta.txt
+            fi
+
+            rattler-build build --continue-on-failure --experimental \
+              -m ./conda_build_config.yaml --skip-existing=all \
+              --target-platform=${{ matrix.target }} -c https://prefix.dev/scns \
+              --recipe-dir ./recipes
+
             count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
             if (( count > 0 )); then
               for file in output/**/*.conda; do
