@@ -20,7 +20,7 @@ build:
 
 requirements:
   host:
-    - python {{ python_min }}
+    - python {{ python_min }}.*
     - wheel
     - setuptools >=45
     - setuptools-scm >=6.2
@@ -43,7 +43,7 @@ test:
     - pip
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
-    - python {{ python_min }}
+    - python {{ python_min }}.*
 
 about:
   home: https://github.com/ami-iit/cmake-package-check

@@ -19,13 +19,13 @@ outputs:
       noarch: python
     requirements:
       host:
-        - python {{ python_min }}
+        - python {{ python_min }}.*
         - pip
         - packaging >=20
         - setuptools >=61
         - tomli
       run:
-        - python {{ python_min }}
+        - python {{ python_min }}.*
         - packaging >=20.0
         - setuptools >=45
         - tomli >=1.0.0
@@ -37,7 +37,7 @@ outputs:
       commands:
         - pip check
       requires:
-        - python {{ python_min }}
+        - python {{ python_min }}.*
         - pip
 
   - name: setuptools_scm

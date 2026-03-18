@@ -24,7 +24,7 @@ requirements:
     - {{ stdlib("c") }}
   host:
     - python         # [not use_noarch]
-    - python {{ python_min }}   # [use_noarch]
+    - python {{ python_min }}.*   # [use_noarch]
     - pip
     - setuptools
   run:
@@ -36,7 +36,7 @@ requirements:
 test:
   requires:
     - pip
-    - python {{ python_min }}  # [use_noarch]
+    - python {{ python_min }}.*  # [use_noarch]
   imports:
     - coverage
   commands:

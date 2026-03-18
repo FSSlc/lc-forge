@@ -1,0 +1,47 @@
+{% set name = "exceptiongroup" %}
+{% set version = "1.3.1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/exceptiongroup-{{ version }}.tar.gz
+  sha256: 8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  number: 0
+
+requirements:
+  host:
+    - python {{ python_min }}.*
+    - pip
+    - flit-core
+    - flit-scm
+  run:
+    - python >={{ python_min }}
+    # for py <3.13 but let's stay noarch: python
+    - typing_extensions >=4.6.0
+
+test:
+  imports:
+    - exceptiongroup
+  commands:
+    - pip check
+  requires:
+    - pip
+    - python {{ python_min }}.*
+
+about:
+  home: https://pypi.org/project/exceptiongroup/
+  summary: Backport of PEP 654 (exception groups)
+  license: MIT and PSF-2.0
+  license_file: LICENSE
+  dev_url: https://github.com/agronholm/exceptiongroup
+  doc_url: https://docs.python.org/3/library/exceptions.html
+
+extra:
+  recipe-maintainers:
+    - xylar
