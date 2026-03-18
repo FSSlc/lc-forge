@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  name: cattrs
+  version: 26.1.0
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/cattrs-${{ version }}.tar.gz
+  sha256: fa239e0f0ec0715ba34852ce813986dfed1e12117e209b816ab87401271cdd40
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - hatchling
+    - hatch-vcs
+    - pip
+  run:
+    - python >=${{ python_min }}
+    - attrs >=25.4.0
+    - typing_extensions >=4.14.0
+    # only for py<3.11 but we want to stay noarch
+    - exceptiongroup >=1.1.1
+
+tests:
+  - python:
+      imports:
+        - cattr
+        - cattr.preconf
+      pip_check: true
+      python_version: ${{ python_min }}.*
+
+about:
+  summary: Composable complex class support for attrs and dataclasses.
+  license: MIT
+  license_file: LICENSE
+  description: |
+    cattrs is an open source Python library for structuring and unstructuring data.
+    cattrs works best with attrs classes and the usual Python collections, but other
+    kinds of classes are supported by manually registering converters.
+
+    PyPI: [https://pypi.org/project/cattrs](https://pypi.org/project/cattrs)
+
+  homepage: https://github.com/python-attrs/cattrs
+  repository: https://github.com/python-attrs/cattrs
+  documentation: https://cattrs.readthedocs.io/en/latest/
+
+extra:
+  recipe-maintainers:
+    - aldanor
+    - Tinche
+    - xylar
+    - sugatoray

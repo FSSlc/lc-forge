@@ -54,7 +54,7 @@ requirements:
       then: ${{ stdlib("c") }}
   host:
     - xorg-util-macros
-    - python ${{ python_min }}
+    - python ${{ python_min }}.*
 
 tests:
   - script:
