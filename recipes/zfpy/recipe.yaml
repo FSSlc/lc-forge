@@ -1,0 +1,145 @@
+# This package builds 2 outputs
+#    zfp     --- C headers
+#    zfpy    --- Python package
+#
+# The build procedure actually rebuilds zfp when zfpy is being built
+# during the install phase, conda will simply ignore all the files
+# that are being copied related to zfp since they already exist in the prefix
+schema_version: 1
+
+context:
+  version: "1.0.1"
+
+recipe:
+  name: zfp
+  version: ${{ version }}
+
+source:
+  url: https://github.com/LLNL/zfp/archive/${{ version }}.tar.gz
+  sha256: 4984db6a55bc919831966dd17ba5e47ca7ac58668f4fd278ebd98cd2200da66f
+  patches:
+    - fix_find_python_stuff.patch
+    # remove after >=1.0.1
+    - fix_setup_py_brackets.patch
+
+outputs:
+  - package:
+      name: zfp
+    build:
+      number: 5
+      script:
+        - if: unix
+          then: source ${RECIPE_DIR}/build_zfp.sh
+        - if: win
+          then: ${{ RECIPE_DIR }}\bld_zfp.bat
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - ${{ stdlib("c") }}
+        - ${{ compiler('cxx') }}
+        - cmake
+        - if: unix
+          then: make
+        - if: win
+          then: ninja
+        - if: linux
+          then: libgomp
+        - if: osx
+          then: llvm-openmp
+      run_exports:
+        - ${{ pin_subpackage('zfp') }}     
+    tests:
+      - script:
+          - if: unix
+            then: test -f $PREFIX/include/zfp.h
+          - if: unix
+            then: test -f ${PREFIX}/lib/cmake/zfp/zfp-config.cmake
+          - if: win
+            then: if not exist %LIBRARY_INC%\zfp.h exit 1
+          - if: linux
+            then: test -f $PREFIX/lib/libzfp.so.${{ version }}
+          - if: unix
+            then: test -f $PREFIX/lib/libzfp${SHLIB_EXT}
+          - if: win
+            then: if not exist %LIBRARY_BIN%\zfp.dll exit 1
+          - if: win
+            then: if not exist %LIBRARY_LIB%\zfp.lib exit 1
+          - if: win
+            then: if not exist %LIBRARY_PREFIX%\lib\cmake\zfp\zfp-config.cmake exit 1
+          - if: unix
+            then: which zfp
+          - if: win
+            then: where zfpcmd
+
+  - package:
+      name: zfpy
+    build:
+      script:
+        - if: unix
+          then: source ${RECIPE_DIR}/build_zfpy.sh
+        - if: win
+          then: ${{ RECIPE_DIR }}\bld_zfpy.bat
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - ${{ stdlib("c") }}
+        - ${{ compiler('cxx') }}
+        - cmake
+        - if: unix
+          then: make
+        - if: win
+          then: ninja
+        - if: build_platform != target_platform
+          then: python
+        - if: build_platform != target_platform
+          then: cross-python_${{ target_platform }}
+        - if: build_platform != target_platform
+          then: cython
+        - if: build_platform != target_platform
+          then: numpy
+        - if: build_platform != target_platform
+          then: setuptools
+      host:
+        - pip
+        - python
+        - numpy
+        - cython
+        - setuptools
+        - ${{ pin_subpackage('zfp', exact=True) }}
+      run:
+        - python
+        # I don't think run exports work with pin exact subpackage
+        - ${{ pin_subpackage('zfp', exact=True) }}
+    tests:
+      - python:
+          imports:
+            - zfpy
+      - requirements:
+          run:
+            - pip
+        script:
+          - pip check
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Library for compressed numerical arrays that support high throughput read and write random access
+  description: |
+    zfp is an open source C/C++ library for compressed numerical arrays
+    that support high throughput read and write random access. zfp also
+    supports streaming compression of integer and floating-point data,
+    e.g., for applications that read and write large data sets to and
+    from disk. zfp is primarily written in C and C++ but also includes
+    Python and Fortran bindings.
+  homepage: https://zfp.llnl.gov
+  repository: https://github.com/LLNL/zfp
+  documentation: https://zfp.readthedocs.io/
+
+extra:
+  feedstock-name: zfpy
+  recipe-maintainers:
+    - kmpaul
+    - ToreAad
+    - lindstro
+    - GarrettDMorrison
+    - hmaarrfk

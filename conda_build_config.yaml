@@ -103,6 +103,12 @@ pin_run_as_build:
   vlfeat:
     max_pin: x.x.x
 
+CI:
+  # - circleci
+  - github
+  # - gitlab
+  # - travis
+
 # Pinning packages: every package that export binary interface used by
 # other packages shall be pinned. Be sure to update this list if a new version
 # is bumped.
