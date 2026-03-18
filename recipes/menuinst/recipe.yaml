@@ -1,0 +1,96 @@
+schema_version: 1
+
+context:
+  version: "2.4.2"
+
+package:
+  name: menuinst
+  version: ${{ version }}
+
+source:
+  url: https://github.com/conda/menuinst/archive/${{ version }}.tar.gz
+  sha256: 66d5be6bd84b1f7629b5318c1364940f03c7a1058981c47d4268f107ac04ff56
+
+build:
+  number: 0
+  script:
+    env:
+      SETUPTOOLS_SCM_PRETEND_VERSION: ${{ version }}
+    content:
+      - if: win
+        then: del /q "${{ SRC_DIR }}\\menuinst\\data\\osx_launcher_*"
+      - if: win
+        then: del /q "${{ SRC_DIR }}\\menuinst\\data\\appkit_launcher_*"
+      - if: linux
+        then: rm -f "${{ SRC_DIR }}/menuinst/data/osx_launcher_*"
+      - if: linux
+        then: rm -f "${{ SRC_DIR }}/menuinst/data/appkit_launcher_*"
+      - ${{ PYTHON }} -m pip install . -vv
+      - if: win
+        then: copy "%SP_DIR%\\menuinst\\_legacy\cwp.py" "%PREFIX%\\"
+  python:
+    entry_points:
+      - menuinst = menuinst.cli:main
+  skip_compile_pyc:  # [win]
+    - if: win
+      then: cwp.py
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+    - if: win
+      then: ${{ compiler('c') }}
+    - if: win
+      then: ${{ stdlib("c") }}
+    - if: win
+      then: ${{ compiler('cxx') }}
+  host:
+    - python
+    - pip
+    - setuptools
+    - setuptools_scm
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - menuinst
+        - menuinst.api
+        - if: win
+          then: menuinst._legacy
+        - if: win
+          then: menuinst.platforms.win_utils.winshortcut
+  - script:
+      - menuinst --help
+      - if: osx
+        then: SP_DIR="$(python -c 'import site; print(site.getsitepackages()[0])')"
+      - if: osx
+        then: test -f "${SP_DIR}/menuinst/data/appkit_launcher_arm64"
+      - if: osx
+        then: test -f "${SP_DIR}/menuinst/data/appkit_launcher_x86_64"
+      - if: osx
+        then: test -f "${SP_DIR}/menuinst/data/osx_launcher_arm64"
+      - if: osx
+        then: test -f "${SP_DIR}/menuinst/data/osx_launcher_x86_64"
+
+about:
+  license: BSD-3-Clause AND MIT
+  license_file:
+    - LICENSE.txt
+    - menuinst/_vendor/apipkg/LICENSE
+  summary: cross platform install of menu items
+  homepage: https://github.com/conda/menuinst/
+  documentation: https://conda.github.io/menuinst/
+
+extra:
+  recipe-maintainers:
+    - goanpeca
+    - jakirkham
+    - carlodri
+    - isuruf
+    - jaimergp
+

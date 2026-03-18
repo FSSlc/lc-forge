@@ -1,0 +1,55 @@
+schema_version: 1
+
+context:
+  name: boltons
+  version: "25.0.0"
+  hash: 7c9e47f2ca1c1f704950e913bf518c6c599dc4a01bc5feffffce2c3bf3c878ee
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/mahmoud/boltons/archive/${{ version }}.tar.gz
+  sha256: ${{ hash }}
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . --no-deps -vv
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}.*
+    - flit-core >=3.2,<4
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - files:
+      source:
+        - boltons
+        - tests
+        - pyproject.toml
+    requirements:
+      run:
+        - pytest
+        - python ${{ python_min }}.*
+    script:
+      - pytest -W ignore::pytest.PytestRemovedIn9Warning --doctest-modules boltons tests
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: >
+    boltons should be builtins. Boltons is a set of over 160 BSD-licensed, pure-Python utilities in the same spirit as--and yet conspicuously missing from--the standard library.
+
+
+  homepage: https://github.com/mahmoud/boltons
+
+extra:
+  recipe-maintainers:
+    - kalefranz
+    - nicoddemus
+
