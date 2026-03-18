@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  name: pytest-subprocess
+  version: "1.5.3"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name | replace('-', '_') }}-${{ version }}.tar.gz
+  sha256: c00b1140fb0211b3153e09500d770db10770baccbe6e05ee9c140036d1d811d5
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - setuptools
+    - pip
+  run:
+    - python >=${{ python_min }}
+    - pytest >=4.0.0
+
+tests:
+  - python:
+      imports:
+        - pytest_subprocess
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+
+about:
+  summary: A plugin to fake subprocess for pytest
+  license: MIT
+  license_file: LICENSE
+  homepage: https://pypi.org/project/pytest-subprocess/
+  repository: https://github.com/aklajnert/pytest-subprocess
+
+extra:
+  recipe-maintainers:
+    - aklajnert
+    - henryiii
+
