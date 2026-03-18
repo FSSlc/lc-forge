@@ -24,6 +24,12 @@ requirements:
   run:
     - python ${{ python_min }}
 
+tests:
+  - python:
+      imports:
+        - setuptools
+      pip_check: false
+
 about:
   license: MIT
   license_file: LICENSE

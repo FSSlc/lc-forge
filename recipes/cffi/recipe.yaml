@@ -1,0 +1,84 @@
+schema_version: 1
+
+context:
+  version: "2.0.0"
+
+package:
+  name: cffi
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/c/cffi/cffi-${{ version }}.tar.gz
+  sha256: 44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529
+  patches:
+    - patches/0001-Link-to-dl-library.patch
+    - patches/0002-setup-linux.patch
+    - if: osx
+      then: patches/0003-apple-api.patch
+
+build:
+  number: 1
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - if: not win
+      then: patch
+    - if: win
+      then: m2-patch
+  host:
+    - python
+    - pip
+    - wheel
+    - setuptools >=66.1
+    - if: not win
+      then: libffi
+    - pycparser
+  run:
+    - python
+    - if: not win
+      then: libffi
+    - pycparser
+
+tests:
+  - python:
+      imports:
+        - cffi
+        - _cffi_backend
+  - requirements:
+      run:
+        - pip
+        - openssl *
+    script:
+      - pip check
+      - if: win
+        then: python -X faulthandler -c "from cffi import FFI; print(FFI().dlopen('ucrtbase'))"
+      - if: not win
+        then: python -X faulthandler -c "from cffi import FFI; print(FFI().dlopen(None))"
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: Foreign Function Interface for Python calling C code.
+  description: |
+    Cffi aims to allow users to call C code from Python without having to
+    learn a 3rd language. It provides a convenient and reliable way to call
+    compiled C code from Python using interface declarations written in C.
+  homepage: https://github.com/python-cffi/cffi
+  repository: https://github.com/python-cffi/cffi
+  documentation: https://cffi.readthedocs.io
+
+extra:
+  recipe-maintainers:
+    - goanpeca
+    - ocefpaf
+    - katietz
+    - h-vetinari
+    - zklaus
+

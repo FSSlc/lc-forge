@@ -3,7 +3,7 @@
 schema_version: 1
 
 context:
-  version: "1.19.1"
+  version: "1.18.2"
 
 package:
   name: pygit2
@@ -11,11 +11,11 @@ package:
 
 source:
   url: https://pypi.org/packages/source/p/pygit2/pygit2-${{ version }}.tar.gz
-  sha256: 3165f784aae56a309a27d8eeae7923d53da2e8f6094308c7f5b428deec925cf9
+  sha256: eca87e0662c965715b7f13491d5e858df2c0908341dee9bde2bc03268e460f55
 
 build:
   number: 0
-  skip: match(python, "<3.11")
+  skip: match(python, "<3.10")
 
 requirements:
   build:
