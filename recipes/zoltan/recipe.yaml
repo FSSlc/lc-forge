@@ -5,7 +5,7 @@ context:
   version: 3.901
   build: 2
   mpi: mpich
-  mpi_prefix: ${{ "mpi_" + mpi }}
+  mpi_prefix: mpi_mpich
 
 package:
   name: ${{ name|lower }}
@@ -19,7 +19,7 @@ source:
 
 build:
   number: ${{ build }}
-  string: ${{ mpi_prefix }}_h${{ PKG_HASH }}_${{ build }}
+  string: ${{ mpi_prefix }}_h${{ hash }}_${{ build }}
   skip: win
 
 requirements:
