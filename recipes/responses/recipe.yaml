@@ -1,0 +1,54 @@
+schema_version: 1
+
+context:
+  name: responses
+  version: "0.26.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: c7f6923e6343ef3682816ba421c006626777893cb0d5e1434f674b649bac9eb4
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - pip
+    - setuptools
+  run:
+    - pyyaml
+    - python >=${{ python_min }}
+    - requests >=2.30.0,<3.0
+    - types-pyyaml
+    - typing_extensions
+    - urllib3 >=1.25.10,<3.0
+
+tests:
+  - python:
+      imports:
+        - responses
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+
+about:
+  license: Apache-2.0
+  license_file: LICENSE
+  summary: A utility library for mocking out the `requests` Python library.
+  homepage: https://github.com/getsentry/responses
+
+extra:
+  recipe-maintainers:
+    - thewchan
+    - mariusvniekerk
+

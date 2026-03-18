@@ -1,0 +1,45 @@
+{% set version = "6.0.12.20250915" %}
+
+package:
+  name: types-pyyaml
+  version: {{ version }}
+
+source:
+  - url: https://pypi.org/packages/source/t/types-pyyaml/types_pyyaml-{{ version }}.tar.gz
+    sha256: 0f8b54a528c303f0e6f7165687dd33fafa81c807fcac23f632b63aa624ced1d3
+  - url: https://raw.githubusercontent.com/python/typeshed/main/LICENSE
+    sha256: 295f8538c94ae5c3043301cf7cff1c852dab6a786a8ddee471e061b40d5ecabe
+
+build:
+  number: 1
+  noarch: python
+  script:
+    - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation --disable-pip-version-check
+
+requirements:
+  host:
+    - pip
+    - python {{ python_min }}
+    - setuptools
+  run:
+    - python >={{ python_min }}
+
+test:
+  requires:
+    - pip
+    - python {{ python_min }}
+  commands:
+    - pip check
+    - test -f $SP_DIR/yaml-stubs/__init__.pyi
+
+about:
+  home: https://github.com/python/typeshed
+  dev_url: https://github.com/python/typeshed
+  summary: Typing stubs for PyYAML
+  license: Apache-2.0 AND MIT
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - fhoehle
+    - conda-forge/mypy
