@@ -31,9 +31,9 @@ build:
   python:
     entry_points:
       - menuinst = menuinst.cli:main
-  skip_compile_pyc:  # [win]
-    - if: win
-      then: cwp.py
+  # skip_compile_pyc:  # [win]
+  #   - if: win
+  #     then: cwp.py
 
 requirements:
   build:
