@@ -1,0 +1,45 @@
+schema_version: 1
+
+context:
+  name: async-timeout
+  version: 5.0.1
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name | replace('-', '_') }}-${{ version }}.tar.gz
+  sha256: d9321a7a3d5a6a5e187e824d2fa0793ce379a202935782d555d6e9d2735677d3
+
+build:
+  number: 2
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - setuptools >=45
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - async_timeout
+      python_version: ${{ python_min }}.*
+
+about:
+  license: Apache-2.0
+  license_file: LICENSE
+  summary: Timeout context manager for asyncio programs
+  homepage: http://github.com/aio-libs/async_timeout
+  repository: http://github.com/aio-libs/async_timeout
+
+extra:
+  recipe-maintainers:
+    - sodre
+    - carlodri
+    - ocefpaf
