@@ -1,0 +1,76 @@
+schema_version: 1
+
+context:
+  name: hypothesis
+  version: "6.151.9"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/hypothesis-${{ version }}.tar.gz
+  sha256: 2f284428dda6c3c48c580de0e18470ff9c7f5ef628a647ee8002f38c3f9097ca
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  python:
+    entry_points:
+      - hypothesis = hypothesis.extra.cli:main
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+  host:
+    - python ${{ python_min }}.*
+    - setuptools
+    - pip
+  run:
+    - python >=${{ python_min }}
+    - attrs >=22.2.0
+    - exceptiongroup >=1.0.0
+    - sortedcontainers >=2.1.0,<3.0.0
+    - setuptools
+    # Optional but nice to have
+    - click >=7.0
+
+tests:
+  - python:
+      imports:
+        - hypothesis
+        - hypothesis.extra
+        # - hypothesis.extra.pandas
+        - hypothesis.internal
+        - hypothesis.internal.conjecture
+        - hypothesis.internal.conjecture.shrinking
+        - hypothesis.strategies
+        - hypothesis.strategies._internal
+        - hypothesis.utils
+        - hypothesis.vendor
+  - requirements:
+      run:
+        # - django
+        # - pandas
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+      - hypothesis --help
+
+about:
+  license: MPL-2.0
+  license_file: LICENSE.txt
+  summary: A library for property based testing
+  homepage: https://github.com/HypothesisWorks/hypothesis-python
+
+extra:
+  recipe-maintainers:
+    - ericmjl
+    - jochym
+    - tadeu
+
