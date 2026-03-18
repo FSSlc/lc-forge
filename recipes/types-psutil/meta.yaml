@@ -1,0 +1,50 @@
+{% set name = "types-psutil" %}
+{% set version = "7.2.2.20260130" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name.replace('-', '_') }}-{{ version }}.tar.gz
+  sha256: 15b0ab69c52841cf9ce3c383e8480c620a4d13d6a8e22b16978ebddac5590950
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  number: 0
+
+requirements:
+  build:
+    - setuptools
+  host:
+    - python {{ python_min }}
+    - setuptools
+    - pip
+  run:
+    - python >={{ python_min }}
+
+test:
+  files:
+    - stubtest_allowlist.txt
+    - stubtest_allowlist_linux.txt
+    - stubtest_allowlist_darwin.txt
+    - stubtest_allowlist_win32.txt
+  commands:
+    - python -m mypy.stubtest psutil  --allowlist stubtest_allowlist.txt --allowlist stubtest_allowlist_linux.txt  # [linux]
+    - python -m mypy.stubtest psutil  --allowlist stubtest_allowlist.txt --allowlist stubtest_allowlist_darwin.txt  # [osx]
+    - python -m mypy.stubtest psutil  --allowlist stubtest_allowlist.txt --allowlist stubtest_allowlist_win32.txt  # [win32]
+  requires:
+    - mypy
+    - psutil =={{ version.split(".")[:-1]|join(".") }}
+    - python {{ python_min }}
+
+about:
+  home: https://github.com/python/typeshed
+  summary: Typing stubs for psutil
+  license: Apache-2.0 AND MIT
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - mr-c

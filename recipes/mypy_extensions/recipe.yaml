@@ -1,0 +1,60 @@
+schema_version: 1
+
+context:
+  name: mypy_extensions
+  version: "1.1.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: 52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+  host:
+    - python ${{ python_min }}.*
+    - setuptools
+    - flit-core >=3.11,<4
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - mypy_extensions
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: Experimental type system extensions for programs checked with the mypy typechecker.
+  description: |
+    The 'mypy_extensions' module defines experimental extensions to the
+    standard 'typing' module that are supported by the mypy typechecker.
+  homepage: http://www.mypy-lang.org/
+  repository: https://github.com/python/mypy/blob/master/extensions
+  documentation: https://mypy.readthedocs.io
+
+extra:
+  recipe-maintainers:
+    - nehaljwani
+    - ocefpaf
+
