@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  version: "59.8.0"
+
+package:
+  name: setuptools
+  version: ${{ version }}
+
+source:
+  url: https://pypi.io/packages/source/s/setuptools/setuptools-${{ version }}.tar.gz
+  sha256: 09980778aa734c3037a47997f28d6db5ab18bdf2af0e49f719bfc53967fd2e82
+  patches:
+    # distutils patches from python-feedstock
+    - if: match(python, "<=3.9")
+      then: patches/0012-Disable-new-dtags-in-unixccompiler.py.patch
+    - patches/0021-Add-d1trimfile-SRC_DIR-to-make-pdbs-more-relocatable.patch
+    - if: match(python, "<=3.9") and python_impl=="cpython"
+      then: patches/0010-Add-support-for-_CONDA_PYTHON_SYSCONFIGDATA_NAME-if-.patch
+
+build:
+  number: 0
+  skip: match(python, "<3.6")
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+  host:
+    - python
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - setuptools
+        - pkg_resources
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: Download, build, install, upgrade, and uninstall Python packages
+  description: |
+    Setuptools is a fully-featured, actively-maintained, and stable library
+    designed to facilitate packaging Python projects.
+  homepage: https://github.com/pypa/setuptools
+  repository: https://github.com/pypa/setuptools
+  documentation: http://pythonhosted.org/setuptools/
+
+extra:
+  recipe-maintainers:
+    - jakirkham
+    - msarahan
+    - ocefpaf
+    - nicoddemus
+    - isuruf
+    - rgommers
+

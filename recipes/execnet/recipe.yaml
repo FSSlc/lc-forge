@@ -1,0 +1,46 @@
+schema_version: 1
+
+context:
+  name: execnet
+  version: "2.1.2"
+  hash: 63d83bfdd9a23e35b9c6a3261412324f964c2ec8dcd8d3c6916ee9373e0befcd
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: ${{ hash }}
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . --no-deps -vv
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}.*
+    - hatchling >=1.26
+    - hatch-vcs
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - execnet
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: distributed Python deployment and communication
+  homepage: http://codespeak.net/execnet
+  repository: https://github.com/pytest-dev/execnet
+  documentation: http://codespeak.net/execnet
+
+extra:
+  recipe-maintainers:
+    - nicoddemus
+
