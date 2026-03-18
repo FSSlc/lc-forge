@@ -1,0 +1,53 @@
+schema_version: 1
+
+context:
+  name: jsonpatch
+  version: "1.33"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/jsonpatch-${{ version }}.tar.gz
+  sha256: 9fcd4009c41e6d12348b4a0ff2563ba56a2923a7dfee731d004e212e1ee5030c
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . --no-deps -vv
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - pypandoc
+    - pip
+  run:
+    - python >=${{ python_min }}
+    - jsonpointer >=1.9
+
+tests:
+  - python:
+      imports:
+        - jsonpatch
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Apply JSON-Patches (RFC 6902)
+  homepage: https://github.com/stefankoegl/python-json-patch
+  repository: https://github.com/stefankoegl/python-json-patch
+  documentation: https://python-json-patch.readthedocs.io/en/latest/
+
+extra:
+  recipe-maintainers:
+    - pavelzw
+    - anguslees
+    - pmlandwehr
+

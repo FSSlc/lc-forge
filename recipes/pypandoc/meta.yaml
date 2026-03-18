@@ -1,0 +1,50 @@
+{% set version = "1.17" %}
+
+package:
+  name: pypandoc
+  version: "{{ version }}"
+
+source:
+  url: https://pypi.org/packages/source/p/pypandoc/pypandoc-{{ version }}.tar.gz
+  sha256: 51179abfd6e582a25ed03477541b48836b5bba5a4c3b282a547630793934d799
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - hatchling
+  run:
+    - python >={{ python_min }}
+    - pandoc
+
+test:
+  imports:
+    - pypandoc
+  commands:
+    - python -c "import pypandoc; print(pypandoc.get_pandoc_version())"
+    - pip check
+  requires:
+    - pip
+    - python {{ python_min }}
+
+about:
+  home: https://github.com/JessicaTegner/pypandoc
+  dev_url: https://github.com/JessicaTegner/pypandoc
+  doc_url: https://github.com/JessicaTegner/pypandoc#readme
+  license: MIT
+  license_file: LICENSE
+  summary: Thin wrapper for pandoc
+  description: |
+    pypandoc is a thin wrapper for pandoc that provides a simple
+    Python interface for document conversion.
+
+extra:
+  recipe-maintainers:
+    - jankatins
+    - ocefpaf
+    - jessicategner
