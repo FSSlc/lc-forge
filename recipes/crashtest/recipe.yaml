@@ -1,0 +1,52 @@
+schema_version: 1
+
+context:
+  name: crashtest
+  version: "0.4.1"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/crashtest-${{ version }}.tar.gz
+  sha256: 80d7b1f316ebfbd429f648076d6275c877ba30ba48979de4191714a75266f0ce
+
+build:
+  number: 1
+  noarch: python
+  script:
+    - rm -f pyproject.toml
+    - ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}.*
+    - poetry-core >=1.0.0a5
+  run:
+    - python >=${{ python_min }},<4.0
+
+tests:
+  - python:
+      imports:
+        - crashtest
+        - crashtest.contracts
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+
+about:
+  summary: Manage Python errors with ease
+  license: MIT
+  license_file: LICENSE
+  homepage: https://pypi.org/project/crashtest/
+
+extra:
+  recipe-maintainers:
+    - ocefpaf
+    - xylar
+

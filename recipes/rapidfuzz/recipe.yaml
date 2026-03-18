@@ -1,0 +1,63 @@
+schema_version: 1
+
+context:
+  name: rapidfuzz
+  version: "3.14.3"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: 2491937177868bc4b1e469087601d53f925e8d270ccc21e07404b4b5814b7b5f
+
+build:
+  number: 1
+  script:
+    - ${{ PYTHON }} -m pip install . -vvv
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+    - cmake
+    - make
+  host:
+    - pip
+    - python
+    - scikit-build-core >=0.11
+    - wheel
+    - setuptools
+  run:
+    - python
+    - numpy
+
+tests:
+  - python:
+      imports:
+        - rapidfuzz
+  - requirements:
+      run:
+        - pip
+    script:
+      - pip check
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: rapid fuzzy string matching
+  homepage: https://github.com/maxbachmann/RapidFuzz
+  repository: https://github.com/maxbachmann/RapidFuzz
+  documentation: https://maxbachmann.github.io/RapidFuzz/
+
+extra:
+  recipe-maintainers:
+    - xylar
+    - maxbachmann
+
