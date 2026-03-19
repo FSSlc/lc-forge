@@ -1,0 +1,49 @@
+schema_version: 1
+
+context:
+  name: pytest-trio
+  version: "0.8.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: 8363db6336a79e6c53375a2123a41ddbeccc4aa93f93788651641789a56fb52e
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - pip
+    - setuptools
+  run:
+    - python >=${{ python_min }}
+    - pytest >=7.2.0
+    - trio >=0.25.1
+    - outcome >=1.1.0
+
+tests:
+  - python:
+      imports:
+        - tpytest_trio
+      pip_check: true
+
+about:
+  license: MIT
+  license_file: LICENSE.MIT
+  summary: This is a pytest plugin to help you test projects that use Trio, a friendly library for concurrency and async I/O in Python
+  homepage: https://github.com/python-trio/pytest-trio
+  repository: https://github.com/python-trio/pytest-trio
+  documentation: https://pytest-trio.readthedocs.io
+
+extra:
+  recipe-maintainers:
+    - krisevans
+    - dhirschfeld
+
