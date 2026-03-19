@@ -1,0 +1,53 @@
+schema_version: 1
+
+context:
+  name: py-cpuinfo
+  version: "9.0.0"
+  sha256: 3cdbbf3fac90dc6f118bfd64384f309edeadd902d7c8fb17f02ffa1fc3f49690
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+  file_name: ${{ name }}-${{ version }}.tar.gz
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . --no-deps -vv
+  python:
+    entry_points:
+      - cpuinfo = cpuinfo:main
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - setuptools
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - cpuinfo
+  - requirements:
+      run:
+        - python ${{ python_min }}.*
+    script:
+      - cpuinfo
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: A module for getting CPU info with pure Python
+  homepage: https://github.com/workhorsy/py-cpuinfo
+  repository: https://github.com/workhorsy/py-cpuinfo
+
+extra:
+  recipe-maintainers:
+    - mstimberg
+

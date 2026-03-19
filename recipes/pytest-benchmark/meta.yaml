@@ -1,0 +1,49 @@
+{% set name = "pytest-benchmark" %}
+{% set version = "5.2.3" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name | replace('-', '_') }}-{{ version }}.tar.gz
+  sha256: deb7317998a23c650fd4ff76e1230066a76cb45dcece0aca5607143c619e7779
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  entry_points:
+    - py.test-benchmark = pytest_benchmark.cli:main
+    - pytest-benchmark = pytest_benchmark.cli:main
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - setuptools
+  run:
+    - python >={{ python_min }}
+    - pytest >=8.1
+    - py-cpuinfo
+
+test:
+  requires:
+    - python {{ python_min }}
+  imports:
+    - pytest_benchmark
+  commands:
+    - py.test --traceconfig | grep pytest-benchmark-{{ version }}
+    - pytest-benchmark --help
+    - py.test-benchmark --help
+
+about:
+  home: https://github.com/ionelmc/pytest-benchmark
+  license: BSD-2-Clause
+  license_file: LICENSE
+  summary: A py.test fixture for benchmarking code
+
+extra:
+  recipe-maintainers:
+    - astrojuanlu
+    - esloch
