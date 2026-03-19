@@ -1,0 +1,54 @@
+schema_version: 1
+
+context:
+  name: cleo
+  version: "2.1.0"
+
+package:
+  name: cleo
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/cleo-${{ version }}.tar.gz
+  sha256: 0b2c880b5d13660a7ea651001fb4acb527696c01f15c9ee650f377aa543fd523
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - pip
+    - poetry-core >=1.1.0
+  run:
+    - python >=${{ python_min }}
+    - crashtest >=0.4.1,<0.5.0
+    - rapidfuzz >=3.0.0,<4.0.0
+
+tests:
+  - python:
+      imports:
+        - cleo
+  - requirements:
+      run:
+        - python ${{ python_min }}.*
+        - pip
+    script:
+      - pip check
+
+about:
+  summary: Cleo allows you to create beautiful and testable command-line interfaces.
+  license: MIT
+  license_file: LICENSE
+  description: Cleo allows you to create beautiful and testable command-line interfaces.
+  homepage: https://github.com/python-poetry/cleo
+  repository: https://github.com/sdispater/cleo
+
+extra:
+  recipe-maintainers:
+    - nick-youngblut
+    - ocefpaf
+    - xylar
+
