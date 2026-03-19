@@ -1,6 +1,6 @@
 cross_target_platform:
   - linux-64                            # [linux]
-  - linux-aarch64                       # [linux]
+  - linux-aarch64                       # [aarch64]
   # - linux-ppc64le                       # [linux]
   # - osx-64                              # [linux64 or osx]
   # - osx-arm64                           # [linux64 or osx]
@@ -8,7 +8,7 @@ cross_target_platform:
   # - win-arm64                           # [win]
 rust_arch:
   - x86_64-unknown-linux-gnu            # [linux]
-  - aarch64-unknown-linux-gnu           # [linux]
+  - aarch64-unknown-linux-gnu           # [aarch64]
   # - powerpc64le-unknown-linux-gnu       # [linux]
   # - x86_64-apple-darwin                 # [linux64 or osx]
   # - aarch64-apple-darwin                # [linux64 or osx]
@@ -24,7 +24,7 @@ rust_arch_env_build:
   # - AARCH64_PC_WINDOWS_MSVC             # [win and arm64]
 rust_arch_env:
   - X86_64_UNKNOWN_LINUX_GNU            # [linux]
-  - AARCH64_UNKNOWN_LINUX_GNU           # [linux]
+  - AARCH64_UNKNOWN_LINUX_GNU           # [aarch64]
   # - POWERPC64LE_UNKNOWN_LINUX_GNU       # [linux]
   # - X86_64_APPLE_DARWIN                 # [linux64 or osx]
   # - AARCH64_APPLE_DARWIN                # [linux64 or osx]
@@ -39,7 +39,7 @@ rust_default_cc_build:
   # - clang-cl                            # [win]
 rust_default_cc:
   - x86_64-scns-linux-gnu-cc           # [linux]
-  - aarch64-scns-linux-gnu-cc          # [linux]
+  - aarch64-scns-linux-gnu-cc          # [aarch64]
   # - powerpc64le-scns-linux-gnu-cc      # [linux]
   # - x86_64-apple-darwin13.4.0-clang     # [linux64 or osx]
   # - arm64-apple-darwin20.0.0-clang      # [linux64 or osx]
@@ -48,7 +48,7 @@ rust_default_cc:
 # This should be max(build_platform_ver, cross_target_platform_ver)
 MACOSX_SDK_VERSION:
   - 0                                   # [linux]
-  - 0                                   # [linux]
+  - 0                                   # [aarch64]
   # - 0                                   # [linux]
   # - 10.13                               # [linux64 or osx]
   # - 11.0                                # [linux64 or osx]
@@ -60,7 +60,7 @@ MACOSX_SDK_VERSION:
   # - 0                                   # [win]
 MACOSX_DEPLOYMENT_TARGET:
   - 0                                   # [linux]
-  - 0                                   # [linux]
+  - 0                                   # [aarch64]
   # - 0                                   # [linux]
   # - 10.13                               # [linux64 or osx]
   # - 11.0                                # [linux64 or osx]
@@ -75,7 +75,7 @@ MACOSX_DEPLOYMENT_TARGET:
 # This is also the version for the target, not the host (for cross-compilers)
 target_c_stdlib_version:
   - '2.17'                              # [linux]
-  - '2.17'                              # [linux]
+  - '2.17'                              # [aarch64]
   # - '2.17'                              # [linux]
   # - 10.13                               # [linux64 or osx]
   # - 11.0                                # [linux64 or osx]
@@ -88,7 +88,7 @@ target_c_stdlib_version:
 
 version:
   - 1.94.0  # [linux]
-  - 1.94.0  # [linux]
+  - 1.94.0  # [aarch64]
   # - 1.94.0  # [linux]
   # - 1.94.0  # [linux64 or osx]
   # - 1.94.0  # [linux64 or osx]

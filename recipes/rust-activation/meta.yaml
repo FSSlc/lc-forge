@@ -2,9 +2,9 @@
 {% set version = "1.73.0" %}
 {% endif %}
 
-{% if cross_target_platform is undefined %}
-{% set cross_target_platform = "foo" %}
-{% endif %}
+# {% if cross_target_platform is undefined %}
+# {% set cross_target_platform = "foo" %}
+# {% endif %}
 
 package:
   name: rust-activation
