@@ -1,0 +1,43 @@
+schema_version: 1
+
+context:
+  name: python-installer
+  pypi_name: installer
+  version: "0.7.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ pypi_name[0] }}/${{ pypi_name }}/${{ pypi_name }}-${{ version }}.tar.gz
+  sha256: a26d3e3116289bb08216e0d0f7d925fcef0b0194eedfa0c944bcaaa106c4b631
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}.*
+    - flit-core >=3.2.0,<4
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - installer
+
+about:
+  summary: A library for installing Python wheels.
+  license: MIT
+  license_file: LICENSE
+  homepage: https://github.com/pradyunsg/installer
+
+extra:
+  recipe-maintainers:
+    - xhochy
+
