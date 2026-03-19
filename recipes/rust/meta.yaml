@@ -99,9 +99,8 @@ outputs:
       run_constrained:
         # Having different versions of rust-std and rust is confusing.
         - {{ pin_subpackage("rust", min_pin="x.x.x", max_pin="x.x.x") }}
-    script: 
-      - install-rust-std.sh  # [unix]
-      - install-rust-std.bat  # [win]
+    script: install-rust-std.sh  # [unix]
+    script: install-rust-std.bat  # [win]
     test:
       commands:
         - test -d $PREFIX/lib/rustlib   # [unix]
@@ -109,9 +108,8 @@ outputs:
         - echo {{ rust_arch }}
 
   - name: rust
-    script: 
-      - install-rust.sh  # [unix]
-      - install-rust.bat  # [win]
+    script: install-rust.sh  # [unix]
+    script: install-rust.bat  # [win]
     build:
       # the distributed binaries are already relocatable
       binary_relocation: false
@@ -158,9 +156,8 @@ outputs:
         - if exist %LIBRARY_PREFIX%\share\doc\rust\json exit 1  # [win]
 
   - name: rust-src
-    script: 
-      - install-rust-src.sh  # [unix]
-      - install-rust-src.bat  # [win]
+    script: install-rust-src.sh  # [unix]
+    script: install-rust-src.bat  # [win]
     build:
       skip: {{ rust_arch != "x86_64-unknown-linux-gnu" and rust_arch != "x86_64-pc-windows-msvc" }}
       noarch: generic
@@ -189,9 +186,8 @@ outputs:
 
 
   - name: rust-std-{{ rust_std_extra }}
-    script: 
-      - install-rust-std-extra.sh  # [unix]
-      - install-rust-std-extra.bat  # [win]
+    script: install-rust-std-extra.sh  # [unix]
+    script: install-rust-std-extra.bat  # [win]
     build:
       skip: {{ rust_arch != "x86_64-unknown-linux-gnu" and rust_arch != "x86_64-pc-windows-msvc" }}
       noarch: generic
@@ -219,9 +215,8 @@ outputs:
         - echo {{ rust_std_extra }}
 
   - name: rust-docs
-    script: 
-      - install-rust-docs.sh  # [unix]
-      - install-rust-docs.bat  # [win]
+    script: install-rust-docs.sh  # [unix]
+    script: install-rust-docs.bat  # [win]
     build:
       skip: {{ rust_arch != "x86_64-unknown-linux-gnu" and rust_arch != "x86_64-pc-windows-msvc" }}
       noarch: generic
