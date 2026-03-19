@@ -32,6 +32,10 @@ jobs:
           shell: /bin/bash
           workdir: ${{ github.workspace }}
           run: |
+            conda build --skip-existing  -m ./conda_build_config.yaml \
+              -m recipes/rust-activation/conda_build_config-${{ matrix.target }}.yaml \
+              -c https://prefix.dev/scns recipes/rust-activation
+
             if [ -f only-meta.txt ]; then
               while IFS= read -r pkgname; do
                 [ -z "$pkgname" ] && continue

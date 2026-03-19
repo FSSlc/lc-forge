@@ -1,0 +1,35 @@
+cross_target_platform:
+  - linux-aarch64                       # [aarch64]
+rust_arch:
+  - aarch64-unknown-linux-gnu           # [aarch64]
+rust_arch_env_build:
+  - AARCH64_UNKNOWN_LINUX_GNU           # [aarch64]
+rust_arch_env:
+  - AARCH64_UNKNOWN_LINUX_GNU           # [aarch64]
+rust_default_cc_build:
+  - aarch64-scns-linux-gnu-cc          # [aarch64]
+rust_default_cc:
+  - aarch64-scns-linux-gnu-cc          # [aarch64]
+# This should be max(build_platform_ver, cross_target_platform_ver)
+MACOSX_SDK_VERSION:
+  - 0                                   # [aarch64]
+MACOSX_DEPLOYMENT_TARGET:
+  - 0                                   # [aarch64]
+
+# Don't call it c_stdlib_version as otherwise, we will get conflicts with cdt_name zipping
+# This is also the version for the target, not the host (for cross-compilers)
+target_c_stdlib_version:
+  - '2.17'                              # [aarch64]
+
+version:
+  - 1.94.0  # [aarch64]
+
+zip_keys:
+  - - cross_target_platform
+    - rust_arch
+    - rust_arch_env
+    - rust_default_cc
+    - MACOSX_SDK_VERSION
+    - MACOSX_DEPLOYMENT_TARGET
+    - target_c_stdlib_version
+    - version
