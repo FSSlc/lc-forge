@@ -103,6 +103,4 @@ zip_keys:
     - MACOSX_SDK_VERSION
     - MACOSX_DEPLOYMENT_TARGET
     - target_c_stdlib_version
-    - channel_sources
-    - channel_targets
     - version
