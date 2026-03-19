@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: 7.0.0
+
+package:
+  name: pytest-cov
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/p/pytest-cov/pytest_cov-${{ version }}.tar.gz
+  sha256: 33c97eda2e049a0c5298e91f519302a1334c26ac65c1a483d6206fd458361af1
+
+build:
+  number: 1
+  noarch: python
+  script:
+    - ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation --disable-pip-version-check
+
+requirements:
+  host:
+    - hatch-fancy-pypi-readme
+    - hatchling
+    - pip
+    - python ${{ python_min }}.*
+  run:
+    - coverage >=7.10.6
+    - pluggy >=1.2
+    - pytest >=7
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports: pytest_cov
+      pip_check: true
+      python_version:
+        - ${{ python_min }}.*
+        # - 3.13.*
+  - requirements:
+      run:
+        - python ${{ python_min }}.*
+    script:
+      - |
+        echo "def test_ok(): pass" > test_ok.py
+      - pytest --traceconfig | python -c "import sys; assert 'pytest-cov-${{ version }}' in sys.stdin.read()"
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: Pytest plugin for measuring coverage
+  homepage: https://github.com/pytest-dev/pytest-cov
+  repository: https://github.com/pytest-dev/pytest-cov
+
+extra:
+  recipe-maintainers:
+    - dopplershift
+    - nicoddemus
