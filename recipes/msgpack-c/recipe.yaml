@@ -1,0 +1,109 @@
+context:
+  name: msgpack-c
+  version: "6.1.0"
+  build_number: 6
+
+recipe:
+  name: msgpack-c-split
+  version: ${{ version }}
+
+source:
+  url: https://github.com/msgpack/msgpack-c/archive/c-${{ version }}.tar.gz
+  sha256: c23c4070dbe01f46044bf70c5349f29453d655935b6dc710714c008bca0825a7
+
+build:
+  number: ${{ build_number }}
+
+outputs:
+  - package:
+      name: libmsgpack-c
+      version: ${{ version }}
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - ${{ compiler('cxx') }}
+        - ${{ stdlib("c") }}
+        - cmake
+        - ninja
+        - ${{ "make" if unix }}
+        - ${{ "python =3.13" if win }}
+      host:
+        - gmock
+      run_exports:
+        # 2022/12/01
+        # No information, but the project "feels" stable to me (hmaarrfk)
+        # and we haven't had a pinning before version 3.3.0 and it hasn't been
+        # a problem. However with the 4.X migration looming, I want to pin
+        # to major numbers now
+        - ${{ pin_subpackage('libmsgpack-c', upper_bound='x') }}
+      run_constraints:
+        # Make sure msgpack-c is from the exact same build set.
+        - msgpack-c ==${{ version }} *_${{ build_number }}
+    tests:
+      - package_contents:
+          include:
+            - msgpack.h
+          lib:
+            - msgpack-c
+          files:
+            not_exists:
+              - lib/libmsgpack-c.a
+              - lib/libmsgpack-c_static.lib
+
+  - package:
+      name: libmsgpack-c-static
+      version: ${{ version }}
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - ${{ compiler('cxx') }}
+        - ${{ stdlib("c") }}
+        - cmake
+        - ninja
+        - ${{ "make" if unix }}
+        - ${{ "python =3.13" if win }}
+      host:
+        - gmock
+    tests:
+      - package_contents:
+          include:
+            - msgpack.h
+          files:
+            not_exists:
+              - lib/libmsgpack-c.so
+              - lib/libmsgpack-c.dy
+              - lib/libmsgpack-c.lib
+              - bin/libmsgpack-c.dll
+
+  - package:
+      name: msgpack-c
+      version: ${{ version }}
+    build:
+      script:
+          - echo "Empty build section"
+    requirements:
+      run_exports:
+        - ${{ pin_subpackage('libmsgpack-c', upper_bound='x') }}
+      host:
+        - ${{ pin_subpackage('libmsgpack-c', exact=True) }}
+      run:
+        - ${{ pin_subpackage('libmsgpack-c', exact=True) }}
+    tests:
+      - script:
+          - echo "Empty test section"
+
+about:
+  homepage: https://github.com/msgpack/msgpack-c
+  license: BSL-1.0
+  license_file: LICENSE_1_0.txt
+  summary: MessagePack implementation for C and C++.
+  documentation: https://github.com/msgpack/msgpack-c/blob/master/README.md
+  repository: https://github.com/msgpack/msgpack-c
+
+extra:
+  recipe-maintainers:
+    - jjerphan
+    - hmaarrfk
+    - bluescarni
+    - ndevenish
+    - traversaro

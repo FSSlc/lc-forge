@@ -1,0 +1,53 @@
+schema_version: 1
+
+context:
+  version: "2.4.0"
+
+package:
+  name: tmate
+  version: ${{ version }}
+
+source:
+  url: https://github.com/tmate-io/tmate/archive/${{ version }}.tar.gz
+  sha256: 62b61eb12ab394012c861f6b48ba0bc04ac8765abca13bdde5a4d9105cb16138
+  patches:
+    # https://github.com/tmate-io/tmate/pull/281
+    - 281-fix-msgpack-c.patch
+
+build:
+  number: 11
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - autoconf
+    - automake
+    - libtool
+    - m4
+    - pkg-config
+    - make
+  host:
+    - libevent
+    - ncurses
+    - msgpack-c
+    - libssh
+
+tests:
+  - script:
+      - tmate -V
+      - $(tmate info || true) 2> >(grep "no server running on")
+
+about:
+  license: ISC
+  license_file: COPYING
+  summary: Instant Terminal Sharing.
+  homepage: https://tmate.io/
+  repository: https://github.com/tmate-io/tmate
+
+extra:
+  recipe-maintainers:
+    - hmaarrfk
+    - matthiasdiener
+

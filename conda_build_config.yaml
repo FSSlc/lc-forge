@@ -349,7 +349,7 @@ libsecret:
 libspatialindex:
   - 1.9.3
 libssh:
-  - 0.10
+  - 0.12
 libssh2:
   - 1
 libsvm:
