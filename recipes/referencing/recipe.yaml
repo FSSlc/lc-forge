@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "0.37.0"
+
+package:
+  name: referencing
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/r/referencing/referencing-${{ version }}.tar.gz
+  sha256: 44aefc3142c5b842538163acb373e24cce6632bd54bdb01b21ad5863489f50d8
+
+build:
+  number: 0
+  noarch: python
+  script:
+    - ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation --disable-pip-version-check
+
+requirements:
+  host:
+    - hatch-vcs
+    - hatchling
+    - pip
+    - python ${{ python_min }}.*
+  run:
+    - attrs >=22.2.0
+    - python >=${{ python_min }}
+    - rpds-py >=0.7.0
+    - typing_extensions >=4.4.0
+
+tests:
+  - python:
+      python_version: ${{ python_min }}.*
+      pip_check: true
+      imports:
+        - referencing
+  - files:
+      source:
+        - suite/
+    requirements:
+      run:
+        - jsonschema
+        - pytest-cov
+        - pytest-subtests
+        - python ${{ python_min }}.*
+    script:
+      - export REFERENCING_SUITE=./suite || set REFERENCING_SUITE=./suite
+      - pytest -vv --tb=long --color=yes --pyargs referencing --cov=referencing --cov-branch --cov-report=term-missing:skip-covered --no-cov-on-fail --cov-fail-under=99
+
+about:
+  summary: JSON Referencing + Python
+  license: MIT
+  license_file: COPYING
+  homepage: https://github.com/python-jsonschema/referencing
+  documentation: https://referencing.readthedocs.io
+
+extra:
+  recipe-maintainers:
+    - bollwyvl
