@@ -28,16 +28,6 @@ requirements:
     - python >=${{ python_min }}
     - attrs >=19.2.0
 
-tests:
-  - files:
-      source:
-        - tests
-    requirements:
-      run:
-        - python ${{ python_min }}.*
-    script:
-      - pytest tests
-
 about:
   license: MIT
   license_file: LICENSE
