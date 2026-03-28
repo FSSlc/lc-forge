@@ -1,0 +1,92 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+
+schema_version: 1
+
+context:
+  name: maturin
+  version: "1.12.6"
+
+package:
+  name: "${{ name }}"
+  version: "${{ version }}"
+
+source:
+  url: https://pypi.org/packages/source/m/maturin/maturin-${{ version }}.tar.gz
+  sha256: "d37be3a811a7f2ee28a0fa0964187efa50e90f21da0c6135c27787fa0b6a89db"
+
+build:
+  number: 0
+  python:
+    version_independent: true
+
+  script:
+    env:
+      MATURIN_SETUP_ARGS: "--no-default-features --features=full,native-tls,password-storage"
+      CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+      OPENSSL_NO_VENDOR: "1"
+    content:
+      - cargo-bundle-licenses --format yaml --output THIRDPARTY.yml
+      - ${{ "export OPENSSL_DIR=$PREFIX" if unix }}
+      - "${{ PYTHON }} -m pip install -v --use-pep517 --no-build-isolation ."
+
+  dynamic_linking:
+    missing_dso_allowlist:
+      - if: osx
+        then:
+          - /usr/lib/libresolv.9.dylib
+
+requirements:
+  build:
+    - cargo-bundle-licenses
+    - "${{ compiler('c') }}"
+    - "${{ stdlib('c') }}"
+    - "${{ compiler('rust') }}"
+    - if: build_platform != target_platform
+      then:
+        - python
+        - cross-python_${{ target_platform }}
+  host:
+    - python
+    - pip
+    - setuptools
+    - setuptools-rust >=1.4.0
+    - wheel
+    - tomli >=1.1.0
+    - if: unix
+      then:
+        - openssl
+        - pkg-config
+  run:
+    # do we really need python here?
+    - python
+    - tomli >=1.1.0
+
+  ignore_run_exports:
+    from_package:
+      # avoid run_requirements on cpython abi
+      - cross-python_${{ target_platform }}
+
+tests:
+  - python:
+      python_version: "${{ python_min }}.*"
+      imports:
+        - maturin
+  - script:
+      - maturin --help
+
+about:
+  homepage: https://github.com/PyO3/maturin
+  repository: https://github.com/PyO3/maturin
+  license: MIT
+  license_family: MIT
+  license_file:
+    - license-mit
+    - THIRDPARTY.yml
+  summary: >-
+    Build and publish crates with pyo3, rust-cpython and cffi bindings as well as rust binaries as python packages
+
+extra:
+  recipe-maintainers:
+    - messense
+    - apcamargo
+    - synapticarbors

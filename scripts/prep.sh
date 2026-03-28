@@ -12,7 +12,7 @@ if [ -z "$pkgname" ]; then
 fi
 
 git clone https://github.com/conda-forge/${pkgname}-feedstock.git
-cp -r ${pkgname}-feedstock/recipe ./recipes/${pkgname}
+cp -r ${pkgname}-feedstock/recipe ./todo/${pkgname}
 if [ -f recipes/${pkgname}/meta.yaml ]; then
   crm convert recipes/${pkgname}/meta.yaml > recipes/${pkgname}/recipe.yaml
 fi
