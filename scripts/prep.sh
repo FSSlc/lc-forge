@@ -13,7 +13,7 @@ fi
 
 git clone https://github.com/conda-forge/${pkgname}-feedstock.git
 cp -r ${pkgname}-feedstock/recipe ./todo/${pkgname}
-if [ -f recipes/${pkgname}/meta.yaml ]; then
-  crm convert recipes/${pkgname}/meta.yaml > recipes/${pkgname}/recipe.yaml
+if [ -f ./todo/${pkgname}/meta.yaml ]; then
+  crm convert ./todo/${pkgname}/meta.yaml > ./todo/${pkgname}/recipe.yaml
 fi
 mv ${pkgname}-feedstock ../refers
