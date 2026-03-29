@@ -1,0 +1,47 @@
+schema_version: 1
+
+context:
+  version: "2.3.0"
+
+package:
+  name: tmate-ssh-server
+  version: ${{ version }}
+
+source:
+  url: https://github.com/tmate-io/tmate-ssh-server/archive/refs/tags/${{ version}}.tar.gz
+  sha256: 7118f5454f93133a6d830713f3a3e0bdd921e67a3338e63406d4d066595d6d59
+  patches:
+    # https://github.com/tmate-io/tmate/pull/281
+    - 281-fix-msgpack-c.patch
+
+build:
+  number: 1
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - autoconf
+    - automake
+    - libtool
+    - m4
+    - pkg-config
+    - make
+  host:
+    - libevent
+    - ncurses
+    - msgpack-c
+    - libssh
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: tmate-ssh-server is the server side part of tmate.io.
+  homepage: https://tmate.io/
+  repository: https://github.com/tmate-io/tmate-ssh-server
+
+extra:
+  recipe-maintainers:
+    - fsslc
+
