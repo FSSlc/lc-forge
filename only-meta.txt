@@ -1,3 +1,2 @@
-rust
 brotli
-wheel
+hdf5

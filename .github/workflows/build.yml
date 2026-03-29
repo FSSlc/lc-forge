@@ -25,33 +25,29 @@ jobs:
         with:
           fetch-depth: 2
 
-      # - uses: kohlerdominik/docker-run-action@v2.0.0
-      #   with:
-      #     image: ghcr.io/fsslc/pixi:latest
-      #     volumes: ${{ github.workspace }}:${{ github.workspace }}
-      #     shell: /bin/bash
-      #     workdir: ${{ github.workspace }}
-      #     run: |
-      #       conda build --skip-existing  -m ./conda_build_config.yaml \
-      #         -m recipes/rust-activation/conda_build_config-${{ matrix.target }}.yaml \
-      #         -c https://prefix.dev/scns recipes/rust-activation
+      - uses: kohlerdominik/docker-run-action@v2.0.0
+        with:
+          image: ghcr.io/fsslc/pixi:latest
+          volumes: ${{ github.workspace }}:${{ github.workspace }}
+          shell: /bin/bash
+          workdir: ${{ github.workspace }}
+          run: |
+            if [ -f only-meta.txt ]; then
+              while IFS= read -r pkgname; do
+                [ -z "$pkgname" ] && continue
+                conda build --croot ./output/ -m ./conda_build_config.yaml \
+                  --skip-existing -c https://prefix.dev/scns recipes/"$pkgname"
+              done < only-meta.txt
+            fi
 
-      #       if [ -f only-meta.txt ]; then
-      #         while IFS= read -r pkgname; do
-      #           [ -z "$pkgname" ] && continue
-      #           conda build --croot ./output/ -m ./conda_build_config.yaml \
-      #             --skip-existing -c https://prefix.dev/scns recipes/"$pkgname"
-      #         done < only-meta.txt
-      #       fi
-
-      #       count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
-      #       if (( count > 0 )); then
-      #         for file in output/**/*.conda; do
-      #           rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
-      #         done
-      #       else
-      #         echo "nothing to do"
-      #       fi
+            count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
+            if (( count > 0 )); then
+              for file in output/**/*.conda; do
+                rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
+              done
+            else
+              echo "nothing to do"
+            fi
 
       - uses: kohlerdominik/docker-run-action@v2.0.0
         with:
