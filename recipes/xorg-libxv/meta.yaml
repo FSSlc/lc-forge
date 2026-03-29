@@ -1,0 +1,62 @@
+{% set xorg_name = "libXv" %}
+{% set xorg_category = "lib" %}
+{% set name = "xorg-libxv" %}
+{% set version = "1.0.12" %}
+{% set sha256 = "ce706619a970a580a0e35e9b5c98bdd2af243ac6494c65f44608a89a86100126" %}
+{% set am_version = "1.15" %} # keep synchronized with build.sh
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://www.x.org/releases/individual/{{ xorg_category }}/{{ xorg_name }}-{{ version }}.tar.gz
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  run_exports:
+    - {{ pin_subpackage(name|lower) }}
+
+requirements:
+  build:
+    - m2-autoconf                  # [win]
+    - m2-automake{{ am_version }}  # [win]
+    - m2-libtool                   # [win]
+    - pkg-config                   # [unix]
+    - m2-pkg-config                # [win]
+    - gnuconfig                    # [unix]
+    - m2-base                      # [win]
+    - make                         # [unix]
+    - m2-make                      # [win]
+    - {{ stdlib("c") }}            # [unix]
+    - {{ compiler("c") }}          # [unix]
+    - {{ stdlib("m2w64_c") }}      # [win]
+    - {{ compiler("m2w64_c") }}    # [win]
+    - autoconf                     # [unix]
+    - automake                     # [unix]
+    - gettext                      # [unix]
+    - libtool                      # [unix]
+  host:
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-xorgproto
+    - xorg-util-macros
+
+test:
+  commands:
+    - test -f $PREFIX/lib/libXv.dylib  # [osx]
+    - test -f $PREFIX/lib/libXv.so  # [linux]
+    - if not exist %PREFIX%/Library/lib/libXv.dll.a exit /b 1  # [win]
+    - if not exist %PREFIX%/Library/bin/msys-Xv-*.dll exit /b 1  # [win]
+
+about:
+  home: https://www.x.org/
+  license: MIT
+  license_family: MIT
+  license_file: COPYING
+  summary: Xlib-based library for the X Video (Xv) extension to the X Window System
+
+extra:
+  recipe-maintainers:
+    - ehfd

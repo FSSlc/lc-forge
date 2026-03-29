@@ -1,0 +1,86 @@
+schema_version: 1
+
+context:
+  xorg_name: libXv
+  xorg_category: lib
+  name: xorg-libxv
+  version: "1.0.12"
+  sha256: ce706619a970a580a0e35e9b5c98bdd2af243ac6494c65f44608a89a86100126
+  am_version: "1.15"  # keep synchronized with build.sh
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://www.x.org/releases/individual/${{ xorg_category }}/${{ xorg_name }}-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - if: win
+      then: m2-autoconf
+    - if: win
+      then: m2-automake${{ am_version }}
+    - if: win
+      then: m2-libtool
+    - if: unix
+      then: pkg-config
+    - if: win
+      then: m2-pkg-config
+    - if: unix
+      then: gnuconfig
+    - if: win
+      then: m2-base
+    - if: unix
+      then: make
+    - if: win
+      then: m2-make
+    - if: unix
+      then: ${{ stdlib("c") }}
+    - if: unix
+      then: ${{ compiler("c") }}
+    - if: win
+      then: ${{ stdlib("m2w64_c") }}
+    - if: win
+      then: ${{ compiler("m2w64_c") }}
+    - if: unix
+      then: autoconf
+    - if: unix
+      then: automake
+    - if: unix
+      then: gettext
+    - if: unix
+      then: libtool
+  host:
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-xorgproto
+    - xorg-util-macros
+  run_exports:
+    - ${{ pin_subpackage(name|lower) }}
+
+tests:
+  - script:
+      - if: osx
+        then: test -f $PREFIX/lib/libXv.dylib
+      - if: linux
+        then: test -f $PREFIX/lib/libXv.so
+      - if: win
+        then: if not exist %PREFIX%/Library/lib/libXv.dll.a exit /b 1
+      - if: win
+        then: if not exist %PREFIX%/Library/bin/msys-Xv-*.dll exit /b 1
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: Xlib-based library for the X Video (Xv) extension to the X Window System
+  homepage: https://www.x.org/
+
+extra:
+  recipe-maintainers:
+    - ehfd
+
