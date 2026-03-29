@@ -1,0 +1,92 @@
+context:
+  version: "4.4.1"
+  abi_version: "5"
+
+recipe:
+  name: swig-split
+  version: ${{ version }}
+
+source:
+  url: https://prdownloads.sourceforge.net/swig/swig-${{ version }}.tar.gz
+  sha256: 40162a706c56f7592d08fd52ef5511cb7ac191f3593cf07306a0a554c6281fcf
+
+build:
+  number: 0
+
+outputs:
+  - package:
+      name: swig-abi
+      version: ${{ abi_version }}
+    build:
+      noarch: generic
+    requirements:
+      run_constraints:
+        - swig-abi ==${{ abi_version }}
+      run_exports:
+        - swig-abi ==${{ abi_version }}
+    tests:
+      - script:
+          - python check_swig_runtime_version.py ${{ abi_version }}
+        requirements:
+          run:
+            - python ==${{ python_min }}
+        files:
+          recipe:
+            - check_swig_runtime_version.py
+          source:
+            - Lib/swigrun.swg
+
+  - package:
+      name: swig
+      version: ${{ version }}
+    build:
+      script:
+        - if: not win
+          then: ${RECIPE_DIR}/build_swig.sh
+          else: "%RECIPE_DIR%\\bld_swig.bat"
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - ${{ stdlib("c") }}
+        - ${{ compiler('cxx') }}
+        - if: unix
+          then:
+            - make
+            - gnuconfig
+          else:
+            - cmake
+            - winflexbison
+      host:
+        - pcre2
+      run_constraints:
+        - swig-abi ==${{ abi_version }}
+    tests:
+      - script:
+          - swig -help
+          - swig -swiglib
+
+about:
+  homepage: http://www.swig.org/
+  license: GPL-3.0-or-later
+  license_family: GPL
+  license_file: LICENSE
+  summary: C/C++ parser code generator
+  description: |
+    SWIG is an interface compiler that connects programs written in C and C++
+    with scripting languages such as Perl, Python, Ruby, and Tcl. It works by
+    taking the declarations found in C/C++ header files and using them to
+    generate the wrapper code that scripting languages need to access the
+    underlying C/C++ code. In addition, SWIG provides a variety of
+    customization features that let you tailor the wrapping process to suit
+    your application.
+  repository: https://github.com/swig/swig
+  documentation: https://www.swig.org/doc.html
+
+extra:
+  feedstock-name: swig
+  recipe-maintainers:
+    - jakirkham
+    - jschueller
+    - msarahan
+    - ocefpaf
+    - beckermr
