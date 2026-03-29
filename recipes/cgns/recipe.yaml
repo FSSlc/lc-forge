@@ -1,0 +1,55 @@
+schema_version: 1
+
+context:
+  name: cgns
+  version: "4.5.1"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/${{ name|upper }}/${{ name|upper }}/archive/v${{ version }}.tar.gz
+  sha256: ae63b0098764803dd42b7b2a6487cbfb3c0ae7b22eb01a2570dbce49316ad279
+  patches:
+    - no-gui-apps.patch
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('fortran') }}
+    - cmake
+    - if: unix
+      then: make
+  host:
+    - zlib
+    - hdf5
+  run_exports:
+    - ${{ pin_subpackage('cgns', upper_bound='x.x') }}
+
+tests:
+  - script:
+      - cgnscheck
+      - cgns_info
+
+about:
+  license: Zlib
+  license_file: LICENSE
+  summary: CFD General Notation System (CGNS)
+  description: |
+    The CFD General Notation System (CGNS) provides a standard for
+    recording and recovering computer data associated with the
+    numerical solution of fluid dynamics equations.
+  homepage: http://cgns.org
+  repository: https://github.com/CGNS/CGNS
+  documentation: http://cgns.github.io/index.html
+
+extra:
+  recipe-maintainers:
+    - mdpiper
+    - MicK7
+
