@@ -1,0 +1,46 @@
+schema_version: 1
+
+context:
+  version: 0.14.0
+  build_number: '0'
+
+package:
+  name: llnl-shroud
+  version: ${{ version }}
+
+source:
+- url: https://pypi.org/packages/source/l/llnl-shroud/llnl_shroud-${{ version }}.tar.gz
+  sha256: d4b952e7ead8373df9e9f9dabd3476e459601260c748168b83f034c1a29144d5
+
+build:
+  number: ${{ build_number }}
+  script: ${{ PYTHON }} -m pip install .
+  python:
+    entry_points:
+      - shroud = shroud.main:main
+  noarch: python
+
+requirements:
+  host:
+    - python >=2.7
+    - setuptools >=61.0
+    - wheel
+    - pip
+  run:
+    - python >=2.7
+    # - pyyaml <=5.4.1,>=4.2b1 # python_version < "3.0"
+    - pyyaml >=6.0 # python_version >= "3.0"
+
+tests:
+- python:
+    imports:
+      - shroud
+    pip_check: true
+
+about:
+  homepage: http://github.gov/llnl/shroud
+  summary: Generate Fortran and Python wrappers for C and C++ Libraries
+  description: "Shroud: generate Fortran and Python wrappers for C and C++ libraries."
+  license: BSD-3-Clause
+  license_file: LICENSE
+  documentation: http://shroud.readthedocs.io/en/develop

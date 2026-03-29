@@ -41,6 +41,9 @@ if [ "$force" -eq 1 ]; then
         ghcr.io/fsslc/pixi:${img_tag}    
 else
     if docker ps -a --format '{{.Names}}' | grep -xq 'pixi'; then
+        if docker ps -a --format '{{.Status}}' | grep -cq 'Exited'; then
+            docker start pixi
+        fi
         docker exec -ti pixi bash
     else
         docker run -ti --name pixi -v "$REPO_ROOT":"$REPO_ROOT" -w "$REPO_ROOT" \
