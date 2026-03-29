@@ -1,0 +1,65 @@
+schema_version: 1
+
+context:
+  name: gts
+  version: "0.7.6"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  - url: http://downloads.sourceforge.net/gts/gts-${{ version }}.tar.gz
+    sha256: 059c3e13e3e3b796d775ec9f96abdce8f2b3b5144df8514eda0cc12e13e8b81e
+    patches:
+      - config.in.win32.patch
+      - if: build_platform != target_platform
+        then: 0001-Disable-USE_PREDICATES_INIT.patch
+      - 0002-Fix-underlinking-issue-with-lm.patch
+  - path: CMakeLists.txt
+
+build:
+  number: 4
+
+requirements:
+  build:
+    - if: unix
+      then: gnuconfig
+    - ${{ compiler('cxx') }}
+    - ${{ compiler('c') }}
+    - if: win
+      then: cmake
+    - if: win
+      then: ninja
+    - if: not win
+      then: make
+    - if: not win
+      then: pkg-config
+  host:
+    - glib
+  run_exports:
+    - ${{ pin_subpackage(name, upper_bound='x.x') }}
+
+tests:
+  - script:
+      - if: linux
+        then: test -f ${PREFIX}/lib/libgts.so
+      - if: osx
+        then: test -f ${PREFIX}/lib/libgts.dylib
+      - if: win
+        then: if not exist %LIBRARY_PREFIX%\\bin\\gts.dll exit 1
+
+about:
+  license: LGPL-2.0-or-later
+  license_file: COPYING
+  summary: |
+    GNU Triangulated Surface Library
+
+
+  homepage: http://gts.sourceforge.net/
+
+extra:
+  recipe-maintainers:
+    - seanyen
+    - traversaro
+
