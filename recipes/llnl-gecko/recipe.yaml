@@ -1,0 +1,43 @@
+context:
+  version: "1.0.0"
+  name: gecko
+  full_name: llnl-gecko
+
+package:
+  name: ${{ full_name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/llnl/gecko/releases/download/${{ version }}/gecko-${{ version }}.tar.gz
+  sha256: d99d1ee65ba611a9de985f0e22b0595eae7f557a2ce8ef0e00a3f5b1ae9103ce
+
+build:
+  number: 0
+  skip: [win]
+  script:
+    - cmake -B build -S .
+      -DBUILD_SHARED_LIBS=ON
+      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_INSTALL_PREFIX=${PREFIX}
+      -DBUILD_ALL=ON
+    - ctest -V
+    - cmake --build build --target install -j ${CPU_COUNT}
+
+requirements:
+  build:
+    - ${{ stdlib('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake
+    - make
+
+about:
+  homepage: https://github.com/llnl/gecko
+  repository: https://github.com/llnl/gecko
+  license: BSD-3-Clause 
+  license_file:
+    - LICENSE
+  summary: C++ library for graph ordering.
+
+extra:
+  recipe-maintainers:
+    - fsslc
