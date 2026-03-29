@@ -1,2 +1,3 @@
 brotli
 hdf5
+xz
