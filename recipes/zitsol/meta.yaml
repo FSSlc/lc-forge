@@ -1,0 +1,36 @@
+{% set name = "zitsol" %}
+{% set version = "1.0.post1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://www-users.cse.umn.edu/~saad/software/ITSOL/ZITSOL_1.tar.gz
+  sha256: 0ce5e3cef5ec55966db843a0d716a47566303961ba638b915a1b599d7a7800bd
+  patches:
+    - complex.diff
+    - cmake.diff
+
+build:
+  number: 2
+  script:
+    - cmake -B build -S .
+      -DBUILD_SHARED_LIBS=ON
+      -DCMAKE_BUILD_TYPE=Release 
+      -DCMAKE_INSTALL_PREFIX=${PREFIX}
+    - cmake --build build --target install -j ${CPU_COUNT}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('fortran') }}
+    - cmake
+    - make
+
+about:
+  home: https://www-users.cse.umn.edu/~saad/software/ITSOL/
+  summary: ITSOL is a library of iterative solvers for general sparse linear systems of equations. ZITSOL is the complex version of ITSOL.
+  license: LGPL-2.1-or-later
+  license_file: LGPL
+  license_family: LGPL

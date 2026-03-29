@@ -1,0 +1,22 @@
+diff -uNr a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	1970-01-01 00:00:00.000000000 +0000
++++ b/CMakeLists.txt	2026-03-29 02:33:48.206240751 +0000
+@@ -0,0 +1,18 @@
++cmake_minimum_required(VERSION 3.16)
++project(ZITSOL_1 C)
++enable_language(Fortran)
++
++file(GLOB SRCS *.c)
++file(GLOB SRCS2 LIB/*.c)
++
++add_library(zitsol  ${SRCS} ${SRCS2} LIB/ztools.f)
++set_property(TARGET zitsol PROPERTY C_STANDARD 99)
++
++target_include_directories(zitsol PUBLIC LIB)
++
++include(GNUInstallDirs)
++file(GLOB LIB_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/LIB/*.h")
++install(FILES ios.h ${LIB_HEADERS}
++        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
++
++install(TARGETS zitsol)

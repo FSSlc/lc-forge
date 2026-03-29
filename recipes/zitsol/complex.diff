@@ -1,0 +1,63 @@
+diff --color -uNr a/LIB/zheads.h b/LIB/zheads.h
+--- a/LIB/zheads.h	2008-09-17 06:35:17
++++ b/LIB/zheads.h	2018-08-28 09:01:33
+@@ -1,4 +1,7 @@
+ #include <complex.h>
++#ifndef complex
++# define complex _Complex
++#endif
+ /* 
+ | Header file for Complex Solvers package
+ | Last Modified: Jun. 11, 2007 DOK
+diff --color -uNr a/LIB/zprotos.h b/LIB/zprotos.h
+--- a/LIB/zprotos.h	2008-09-17 06:35:18
++++ b/LIB/zprotos.h	2018-08-28 09:03:31
+@@ -2,9 +2,12 @@
+  * all prototypes are grouped in this file 
+  *---------------------------------------------------------------------------*/
+ #include <complex.h>
++#ifndef complex
++# define complex _Complex
++#endif
+ #include "zdefs.h"
+ 
+-void errexit(char *f_str, ...);
++void zerrexit(char *f_str, ...);
+ 
+ /* zsets */
+ void *Malloc(int nbytes, char *msg );
+diff --color -uNr a/LIB/zsets.c b/LIB/zsets.c
+--- a/LIB/zsets.c	2008-09-17 06:35:17
++++ b/LIB/zsets.c	2018-08-28 09:03:22
+@@ -6,7 +6,7 @@
+ #include <complex.h>
+ #include "./zheads.h"
+ 
+-void errexit( char *f_str, ... ){
++void zerrexit( char *f_str, ... ){
+   va_list argp;
+   char out1[256], out2[256];
+ 
+diff --color -uNr a/TESTS_COO/mainILUKcoo.c b/TESTS_COO/mainILUKcoo.c
+--- a/TESTS_COO/mainILUKcoo.c	2008-09-17 06:35:18
++++ b/TESTS_COO/mainILUKcoo.c	2018-08-28 09:03:49
+@@ -214,7 +214,7 @@
+   return 0;
+   
+ ERROR_HANDLE:
+-  errexit( "main.c\n" );
++  zerrexit( "main.c\n" );
+   return(1) ;
+ }
+ 
+diff --color -uNr a/TESTS_HB/mainILUKhb.c b/TESTS_HB/mainILUKhb.c
+--- a/TESTS_HB/mainILUKhb.c	2008-09-17 06:35:19
++++ b/TESTS_HB/mainILUKhb.c	2018-08-28 09:04:27
+@@ -211,6 +211,6 @@
+   return 0;
+   
+ ERROR_HANDLE:
+-  errexit( "main.c\n" );
++  zerrexit( "main.c\n" );
+   return(1) ;
+ }
