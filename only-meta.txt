@@ -1,3 +1,4 @@
 brotli
 hdf5
 xz
+gettext
