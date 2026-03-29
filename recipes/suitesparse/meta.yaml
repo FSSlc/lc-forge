@@ -23,7 +23,9 @@ requirements:
     - cmake
     - make
   host:
-    - openblas
+    - libblas
+    - libcblas
+    - liblapack
     - tbb-devel
     - metis
     - mpfr
