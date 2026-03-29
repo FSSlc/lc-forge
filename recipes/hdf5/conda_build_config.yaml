@@ -9,7 +9,7 @@ hdf5_version:
   - 1.10.9
 
 hdf5_sha:
-  - f45607da38c08df012f3f0b55e7a0acf733517db45f6331c7c3fe9eb3b526d22
+  - f5b77f59b705a755a5a223372d0222c7bc408fe8db6fa8d9d7ecf8bce291b8dd
 
 zip_keys:
   - - hdf5_version
