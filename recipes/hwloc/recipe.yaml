@@ -13,7 +13,6 @@ package:
 source:
   url: https://download.open-mpi.org/release/hwloc/v${{ major_version }}/hwloc-${{ version }}.tar.gz
   sha256: ${{ sha256 }}
-  file_name: ${{ name }}-${{ version }}.tar.gz
 
 build:
   number: 0

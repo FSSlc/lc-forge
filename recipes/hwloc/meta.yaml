@@ -8,7 +8,6 @@ package:
 
 source:
   fn: {{ name }}-{{ version }}.tar.gz
-  # url: ../../pkgs/{{ name }}-{{ version }}.tar.gz
   url: https://www.open-mpi.org/software/hwloc/v{{ '.'.join(version.split('.')[:2]) }}/downloads/{{ pname }}-{{ version }}.tar.gz
   sha256: {{ sha256 }}
 
