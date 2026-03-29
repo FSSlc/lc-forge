@@ -1,0 +1,16 @@
+mpi:
+  - nompi
+  - mpich  # [unix]
+
+pin_run_as_build:
+  mpich: x.x
+
+hdf5_version:
+  - 1.10.9
+
+hdf5_sha:
+  - f45607da38c08df012f3f0b55e7a0acf733517db45f6331c7c3fe9eb3b526d22
+
+zip_keys:
+  - - hdf5_version
+    - hdf5_sha

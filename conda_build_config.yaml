@@ -249,7 +249,7 @@ grpc_cpp:
 harfbuzz:
   - '5'
 hdf5:
-  - 1.12.1
+  - '1.10'
 icu:
   - '70'
 imath:
