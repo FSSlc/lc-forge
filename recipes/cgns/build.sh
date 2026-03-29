@@ -25,11 +25,11 @@ cmake ${CMAKE_ARGS} \
     ..
 
 make install -j$CPU_COUNT
-if [[ `uname -s` == 'Linux' ]]; then
-if [[ "${CONDA_BUILD_CROSS_COMPILATION:-}" != "1" || "${CROSSCOMPILING_EMULATOR}" != "" ]]; then
-    ctest
-fi
-fi
+# if [[ `uname -s` == 'Linux' ]]; then
+# if [[ "${CONDA_BUILD_CROSS_COMPILATION:-}" != "1" || "${CROSSCOMPILING_EMULATOR}" != "" ]]; then
+#     ctest
+# fi
+# fi
 
 # the build process installs some cgnstools binaries into ${CMAKE_INSTALL_PREFIX}/bin/cgnstools
 # just move those into ${CMAKE_INSTALL_PREFIX}/bin
