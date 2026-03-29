@@ -520,9 +520,9 @@ suitesparse:
 superlu_dist:
   - 7.1.1
 tbb:
-  - '2021'
+  - '2022'
 tbb_devel:
-  - '2021'
+  - '2022'
 thrift_cpp:
   - 0.16.0
 tinyxml2:
