@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# 存储脚本所在目录的父目录（仓库根目录）并切换到该目录
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
@@ -38,12 +37,13 @@ docker pull ghcr.io/fsslc/pixi:${img_tag}
 
 if [ "$force" -eq 1 ]; then
     docker rm -f pixi 2>/dev/null || true
+    docker run -ti --name pixi -v "$REPO_ROOT":"$REPO_ROOT" -w "$REPO_ROOT" \
+        ghcr.io/fsslc/pixi:${img_tag}    
 else
     if docker ps -a --format '{{.Names}}' | grep -xq 'pixi'; then
-        echo "pixi 容器已经存在，请使用 -f|--force 来强制删除后启动。" >&2
-        exit 1
+        docker exec -ti pixi bash
+    else
+        docker run -ti --name pixi -v "$REPO_ROOT":"$REPO_ROOT" -w "$REPO_ROOT" \
+            ghcr.io/fsslc/pixi:${img_tag}
     fi
 fi
-
-docker run -ti --name pixi -v "$REPO_ROOT":"$REPO_ROOT" -w "$REPO_ROOT" \
-    ghcr.io/fsslc/pixi:${img_tag}

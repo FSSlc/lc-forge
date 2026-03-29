@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# 存储脚本所在目录的父目录（仓库根目录）并切换到该目录
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
