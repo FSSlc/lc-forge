@@ -1,0 +1,60 @@
+schema_version: 1
+
+context:
+  name: hwloc
+  version: "2.8.0"
+  major_version: "2.8"
+  sha256: 20b2bd4df436827d8e50f7afeafb6f967259f2fb374ce7330244f8d0ed2dde6f
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://download.open-mpi.org/release/hwloc/v${{ major_version }}/hwloc-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+  file_name: ${{ name }}-${{ version }}.tar.gz
+
+build:
+  number: 0
+  skip: win and vc<14
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - if: unix
+      then: pkg-config
+    - if: unix
+      then: make
+    - if: unix
+      then: automake
+    - if: unix
+      then: libtool
+    - if: unix
+      then: autoconf
+    - if: win
+      then: autotools_clang_conda
+  host:
+    - libxml2
+    - if: win
+      then: pthreads-win32
+  run:
+    - libxml2
+    - if: win
+      then: pthreads-win32
+
+tests:
+  - script:
+      - hwloc-ls
+
+about:
+  license: BSD-3-Clause
+  license_file: COPYING
+  summary: Portable Hardware Locality (hwloc)
+  homepage: https://www.open-mpi.org/projects/hwloc/
+
+extra:
+  recipe-maintainers:
+    - inducer
+    - isuruf
+
