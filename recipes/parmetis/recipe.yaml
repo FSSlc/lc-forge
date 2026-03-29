@@ -40,7 +40,7 @@ tests:
         then: test -f "${PREFIX}/lib/libparmetis.so"
 
 about:
-  license: Non-free for commercial use
+  license: LicenseRef-parmetis
   license_file: LICENSE.txt
   summary: ParMETIS - Parallel Graph Partitioning and Fill-reducing Matrix Ordering
   description: |
