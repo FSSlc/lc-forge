@@ -8,7 +8,7 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/DrTimothyAldenDavis/SuiteSparse/archive/v{{ version }}.tar.gz
+  url: https://github.com/DrTimothyAldenDavis/SuiteSparse/archive/v${{ version }}.tar.gz
   sha256: acb4d1045f48a237e70294b950153e48dce5b5f9ca8190e86c2b8c54ce00a7ee
 
 build:
@@ -71,7 +71,6 @@ tests:
       - test -f ${PREFIX}/lib/libumfpack.a
 
 about:
-  license: LGPL-2.1-or-later (AMD, BTF, etc.), BSD-3-clause (UFget), GPL-2.0-or-later (UMFPACK, RBIO, SPQR, GPUQRENGINE), Apache-2.0 (Metis)
   license_file: LICENSE.txt
   summary: A suite of sparse matrix algorithms
   homepage: http://faculty.cse.tamu.edu/davis/suitesparse.html
