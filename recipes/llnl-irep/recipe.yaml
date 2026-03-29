@@ -1,0 +1,42 @@
+context:
+  name: irep
+  full_name: llnl-irep
+  version: "1.0.0"
+
+package:
+  name: ${{ full_name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/llnl/irep/releases/download/v${{ version }}/irep-${{ version }}.tar.gz
+  sha256: b84203ac92de824dbdc672de45cfdb9609373791c4ee84a5201fa6e4ccecc1a4
+
+build:
+  number: 0
+  skip: [win]
+  script:
+    - cmake -B build -S .
+      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_INSTALL_PREFIX=${PREFIX}
+    - cmake --build build --target install -j ${CPU_COUNT}
+
+requirements:
+  build:
+    - ${{ stdlib('c') }}
+    - ${{ compiler('c') }}
+    - ${{ compiler('fortran') }}
+    - cmake
+    - make
+    - lua
+
+about:
+  homepage: https://github.com/llnl/irep
+  repository: https://github.com/llnl/irep
+  license: MIT
+  license_file:
+    - LICENSE
+  summary:  A tool for filling C/C++ or Fortran data structures from Lua input tables Topics.
+
+extra:
+  recipe-maintainers:
+    - fsslc
