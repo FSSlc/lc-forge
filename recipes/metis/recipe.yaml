@@ -1,48 +1,54 @@
-# While Metis is a pure C library, it is built with cmake, which assumes C++
-# by defaults and attempts to locate the C++ compiler. Hence the recipe has a
-# build dependency on {{ compiler('cxx') }}. The `ignore_run_exports` entry is
-# added so that the package does not depend on the C++ runtime due to the
-# dependency to the C++ compiler.
-#
-# Another fix to this would be to have metis' cmake specify `project(METIS C)`
-# instead of `project(METIS)`.
 schema_version: 1
 
 context:
   name: metis
-  version: "5.1.0"
+  version: "5.2.1"
+  gklib_tree_ish: 8bd6bad750b2b0d90800c632cf18e8ee93ad72d7
 
 package:
   name: ${{ name|lower }}
   version: ${{ version }}
 
 source:
-  url: https://karypis.github.io/glaros/files/sw/metis/metis-${{ version }}.tar.gz
-  sha256: 76faebe03f6c963127dbb73c13eab58c9a3faeae48779f049066a21c087c5db2
-  patches:
-    - vc14.patch
+  - url: https://github.com/KarypisLab/METIS/archive/v${{ version }}.tar.gz
+    sha256: 1a4665b2cd07edc2f734e30d7460afb19c1217c2547c2ac7bf6e1848d50aff7a
+    patches:
+      - if: win
+        then: patches/0004-uncomment-width-variables.patch
+      # See https://github.com/KarypisLab/METIS/issues/54:
+      - patches/getprocvmpeak.diff
+      # https://github.com/KarypisLab/METIS/pull/52
+      - patches/pr52.patch
+      # missing Windows conditionals
+      - patches/rusage-win32.patch
+      - patches/msvc-no-libm.patch
+      # remove -march=native, never appropriate on conda-forge,
+      # unavailable on ppc64le
+      - patches/no-march-native.patch
+      # fix libmetis installation paths
+      - patches/fix-libmetis-install-paths.patch
+  - url: https://github.com/KarypisLab/GKlib/archive/${{ gklib_tree_ish }}.tar.gz
+    sha256: e1d59de12336731e6dde8465f05de7b907fae5d72c921cffcde217a89eaab654
+    target_directory: GKlib
+    patches:
+      - patches/gklib-remove-march-and-werror-flags.patch
+      - patches/gklib-xopen-source.patch
+      - patches/gklib-remove-test-with-embedded-assembler.patch
+      - patches/gklib-includes.patch
 
 build:
-  number: 1007
+  number: 1
   dynamic_linking:
     binary_relocation: true
 
 requirements:
   build:
-    - cmake
+    - cmake <4.0
     - make
     - ${{ compiler('c') }}
-    - ${{ compiler('cxx') }}
-  host:
-  run:
+    - ${{ stdlib("c") }}
   run_exports:
     - ${{ pin_subpackage('metis', upper_bound='x.x.x') }}
-  ignore_run_exports:
-    by_name:
-      - if: linux
-        then: libstdcxx-ng
-      - if: osx
-        then: libcxx
 
 tests:
   - files:
@@ -90,7 +96,9 @@ tests:
 
 about:
   license: Apache-2.0
-  license_file: LICENSE.txt
+  license_file:
+    - LICENSE
+    - GKlib/LICENSE.txt
   summary: METIS - Serial Graph Partitioning and Fill-reducing Matrix Ordering
   description: |
     METIS is a set of serial programs for partitioning graphs, partitioning
@@ -99,6 +107,7 @@ about:
     recursive-bisection, multilevel k-way, and multi-constraint partitioning
     schemes developed in our lab.
   homepage: http://glaros.dtc.umn.edu/gkhome/metis/metis/overview
+  repository: https://github.com/KarypisLab/METIS.git
   documentation: http://glaros.dtc.umn.edu/gkhome/metis/metis/faq
 
 extra:
@@ -106,4 +115,6 @@ extra:
     - basnijholt
     - SylvainCorlay
     - mikemhenry
+    - matthiasdiener
+    - zklaus
 

@@ -384,6 +384,7 @@ lzo:
   - 2
 metis:
   - 5.1
+  - 5.2
 mimalloc:
   - 2.0.6
 mkl:
