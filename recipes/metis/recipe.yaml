@@ -19,7 +19,7 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/KarypisLab/METIS/archive/v${{ version }}.tar.gz
+  url: https://karypis.github.io/glaros/files/sw/metis/metis-${{ version }}.tar.gz
   sha256: ${{ sha256 }}
   file_name: ${{ name }}-${{ version }}.tar.gz
   patches:

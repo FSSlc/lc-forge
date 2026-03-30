@@ -13,7 +13,6 @@ package:
 source:
   url: https://karypis.github.io/glaros/files/sw/parmetis/parmetis-${{ version }}.tar.gz
   sha256: ${{ sha256 }}
-  file_name: ${{ name }}-${{ version }}.tar.gz
 
 build:
   number: ${{ build }}
