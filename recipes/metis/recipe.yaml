@@ -11,8 +11,6 @@ schema_version: 1
 context:
   name: metis
   version: "5.1.0"
-  sha256: 76faebe03f6c963127dbb73c13eab58c9a3faeae48779f049066a21c087c5db2
-  build: 0
 
 package:
   name: ${{ name|lower }}
@@ -20,12 +18,12 @@ package:
 
 source:
   url: https://karypis.github.io/glaros/files/sw/metis/metis-${{ version }}.tar.gz
-  sha256: ${{ sha256 }}
+  sha256: 76faebe03f6c963127dbb73c13eab58c9a3faeae48779f049066a21c087c5db2
   patches:
     - vc14.patch
 
 build:
-  number: ${{ build }}
+  number: 1007
   dynamic_linking:
     binary_relocation: true
 
@@ -35,8 +33,10 @@ requirements:
     - make
     - ${{ compiler('c') }}
     - ${{ compiler('cxx') }}
+  host:
+  run:
   run_exports:
-    - ${{ pin_subpackage('metis', upper_bound='x.x') }}
+    - ${{ pin_subpackage('metis', upper_bound='x.x.x') }}
   ignore_run_exports:
     by_name:
       - if: linux
@@ -105,4 +105,5 @@ extra:
   recipe-maintainers:
     - basnijholt
     - SylvainCorlay
+    - mikemhenry
 

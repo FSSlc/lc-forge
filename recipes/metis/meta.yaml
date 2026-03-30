@@ -1,7 +1,5 @@
 {% set name = "metis" %}
 {% set version = "5.1.0" %}
-{% set sha256 = "76faebe03f6c963127dbb73c13eab58c9a3faeae48779f049066a21c087c5db2" %}
-{% set build = 0 %}
 
 package:
   name: {{ name|lower }}
@@ -10,7 +8,7 @@ package:
 source:
   fn: {{ name }}-{{ version }}.tar.gz
   url: https://karypis.github.io/glaros/files/sw/metis/metis-{{ version }}.tar.gz
-  sha256: {{ sha256 }}
+  sha256: 76faebe03f6c963127dbb73c13eab58c9a3faeae48779f049066a21c087c5db2
   patches:
     - vc14.patch
 
@@ -24,13 +22,13 @@ source:
 # instead of `project(METIS)`.
 
 build:
-  number: {{ build }}
+  number: 1007
   binary_relocation: true
   ignore_run_exports:        # Cf comment above
     - libstdcxx-ng           # [linux]
     - libcxx                 # [osx]
   run_exports:
-    - {{ pin_subpackage('metis', max_pin='x.x') }}
+    - {{ pin_subpackage('metis', max_pin='x.x.x') }}
 
 requirements:
   build:
@@ -38,6 +36,8 @@ requirements:
     - make
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}  # Cf comment above
+  host:
+  run:
 
 test:
   commands:
@@ -80,3 +80,4 @@ extra:
   recipe-maintainers:
     - basnijholt
     - SylvainCorlay
+    - mikemhenry
