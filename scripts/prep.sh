@@ -15,4 +15,8 @@ cp -r ${pkgname}-feedstock/recipe ./todo/${pkgname}
 if [ -f ./todo/${pkgname}/meta.yaml ]; then
   crm convert ./todo/${pkgname}/meta.yaml > ./todo/${pkgname}/recipe.yaml
 fi
+
+if [ -d ../refers/${pkgname}-feedstock ]; then
+  rm -rf ../refers/${pkgname}-feedstock
+fi
 mv ${pkgname}-feedstock ../refers

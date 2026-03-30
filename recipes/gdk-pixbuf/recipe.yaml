@@ -1,0 +1,96 @@
+schema_version: 1
+
+context:
+  name: gdk-pixbuf
+  version: "2.44.5"
+  major_version: "2.44"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: http://ftp.gnome.org/pub/gnome/sources/${{ name }}/${{ major_version }}/${{ name }}-${{ version }}.tar.xz
+  sha256: 69b93e09139b80c0ee661503d60deb5a5874a31772b5184b9cd5462a4100ab68
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - pkg-config
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - meson
+    - ninja
+    - gobject-introspection
+    - gettext-tools
+    - if: build_platform != target_platform
+      then: glib
+    - if: build_platform != target_platform
+      then: libjpeg-turbo
+    - if: build_platform != target_platform
+      then: libtiff
+    # This is workaround for "pkgconf libtiff-4" failure.
+    # See also: https://github.com/conda-forge/libtiff-feedstock/issues/113
+    - if: build_platform != target_platform
+      then: liblzma-devel
+    - if: build_platform != target_platform
+      then: libpng
+    - if: build_platform != target_platform
+      then: zlib
+  host:
+    - glib
+    - if: not linux
+      then: libintl-devel
+    - libjpeg-turbo
+    - libtiff
+    # This is workaround for "pkgconf libtiff-4" failure.
+    # See also: https://github.com/conda-forge/libtiff-feedstock/issues/113
+    - liblzma-devel
+    - libpng
+    - zlib
+  run_exports:
+    - ${{ pin_subpackage('gdk-pixbuf', upper_bound='x') }}
+  ignore_run_exports:
+    from_package:
+      - zlib
+
+tests:
+  - requirements:
+      run:
+        - pkg-config
+    script:
+      - gdk-pixbuf-csource --version
+      - gdk-pixbuf-query-loaders
+      - gdk-pixbuf-pixdata --help
+      - if: unix
+        then: test -f $PREFIX/lib/lib${{ lib }}${SHLIB_EXT}
+      - if: unix
+        then: test -f `pkg-config --variable=libdir --dont-define-prefix ${{ pc }}`/lib${{ lib }}${SHLIB_EXT}
+      - if: win
+        then: if not exist %PREFIX%\\Library\\bin\\${{ lib }}-0.dll exit 1
+      - if: win
+        then: for /f "usebackq tokens=*" %%a in (`pkg-config --variable=exec_prefix --dont-define-prefix ${{ pc }}`) do if not exist "%%a/bin/${{ lib }}-0.dll" exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\lib\\gdk_pixbuf-2.0.lib exit 1
+      - if: win
+        then: for /f "usebackq tokens=*" %%a in (`pkg-config --variable=libdir --dont-define-prefix ${{ pc }}`) do if not exist "%%a/${{ lib }}.lib" exit 1
+      - if: unix
+        then: test -f $PREFIX/lib/girepository-1.0/GdkPixbuf-2.0.typelib
+      - if: win
+        then: if not exist %PREFIX%\\Library\\lib\\girepository-1.0\\GdkPixbuf-2.0.typelib exit 1
+
+about:
+  license: LGPL-2.1-or-later
+  license_file: COPYING
+  summary: GdkPixbuf is a library for image loading and manipulation.
+  homepage: https://developer.gnome.org/gdk-pixbuf/
+
+extra:
+  recipe-maintainers:
+    - notestaff
+    - pkgw
+    - tschoonj
+    - xhochy
+
