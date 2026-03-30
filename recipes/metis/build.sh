@@ -1,6 +1,6 @@
 #!/bin/bash
 
-make config prefix=$PREFIX
+make config shared=1 prefix=$PREFIX
 
 make -j $CPU_COUNT
 make install
