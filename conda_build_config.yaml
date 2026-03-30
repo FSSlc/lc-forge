@@ -518,6 +518,7 @@ starlink_ast:
   - '9.2.7'
 suitesparse:
   - 5
+  - 7
 superlu_dist:
   - 7.1.1
 tbb:
