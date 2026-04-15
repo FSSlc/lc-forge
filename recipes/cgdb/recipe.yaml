@@ -1,0 +1,46 @@
+context:
+  name: cgdb
+  version: "0.8.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://cgdb.me/files/${{ name }}-${{ version }}.tar.gz
+  sha256: 0d38b524d377257b106bad6d856d8ae3304140e1ee24085343e6ddf1b65811f1
+
+build:
+  number: 0
+  skip: [win]
+  script:
+    - CXXFLAGS="-std=c++11" ./configure --prefix="${PREFIX}"
+    - make -j$CPU_COUNT
+    - make -j$CPU_COUNT install
+
+requirements:
+  build:
+    - make
+    - flex
+    - bison
+    - texinfo
+    - libtool
+    - autoconf
+    - automake
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+  host:
+    - ncurses
+    - readline
+
+about:
+  homepage: https://cgdb.github.io/
+  repository: https://github.com/cgdb/cgdb
+  license: GPL-2.0-only
+  license_file:
+    - COPYING
+  summary: cgdb is a lightweight curses (terminal-based) interface to the GNU Debugger (GDB).
+
+extra:
+  recipe-maintainers:
+    - fsslc
