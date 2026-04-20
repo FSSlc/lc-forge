@@ -1,0 +1,60 @@
+schema_version: 1
+
+context:
+  name: gi-docgen
+  version: "2026.1"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name | replace('-', '_') }}-${{ version }}.tar.gz
+  sha256: 65ac3c4f2b4255d1c616fb8eae55139b6ca10071545ca2272759ffd2ccf2c7b5
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  python:
+    entry_points:
+      - gi-docgen=gidocgen.gidocmain:main
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}.*
+    - setuptools
+  run:
+    - jinja2
+    - markdown
+    - markupsafe
+    - packaging
+    - pygments
+    - python >=${{ python_min }}
+    - tomli
+    - typogrify
+
+tests:
+  - python:
+      imports:
+        - gidocgen
+      pip_check: true
+      python_version: ${{ python_min }}.*
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - gi-docgen --help
+
+about:
+  summary: Documentation tool for GObject-based libraries
+  license: GPL-3.0-or-later
+  license_file: LICENSES/
+  homepage: https://gitlab.gnome.org/GNOME/gi-docgen
+
+extra:
+  recipe-maintainers:
+    - pkgw
+
