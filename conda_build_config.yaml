@@ -130,6 +130,10 @@ blas_impl:
 # keep in sync with libabseil{,_static}
 abseil_cpp:
   - '20220623.0'
+libabseil:
+  - '20220623.0'
+libabseil_static:
+  - '20220623.0'  
 alsa_lib:
   - 1.2.8
 antic:
@@ -277,10 +281,6 @@ kealib:
   - 1.4
 krb5:
   - '1.19'
-libabseil:
-  - '20220623.0'
-libabseil_static:
-  - '20220623.0'
 libarchive:
   - 3.6
 libavif:
@@ -384,8 +384,7 @@ lz4_c:
 lzo:
   - 2
 metis:
-  - 5.1
-  - 5.2
+  - 5
 mimalloc:
   - 2.0.6
 mkl:

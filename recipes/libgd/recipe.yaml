@@ -1,0 +1,98 @@
+# direct source -- needs to have autoconf, etc run.
+# but this seems to work better than using straight ./configure with the released code
+# the release tarball: but does not include getlib.sh
+#  url: https://github.com/libgd/libgd/releases/download/gd-{{ version }}/libgd-{{ version }}.tar.gz
+#  sha256: 32590e361a1ea6c93915d2448ab0041792c11bae7b18ee812514fe08b2c6a342
+schema_version: 1
+
+context:
+  version: "2.3.3"
+
+package:
+  name: libgd
+  version: ${{ version }}
+
+source:
+  url: https://github.com/libgd/libgd/archive/gd-${{ version }}.tar.gz
+  sha256: 24429f9d0dbe0f865aaa4b1a63558242396ba9134e6cfd32ca5e486a84483350
+  patches:
+    # see: https://github.com/libgd/libgd/issues/367
+    - patches/linux-fontconfig-basic.patch
+
+build:
+  number: 12
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - if: not win
+      then: automake
+    - if: not win
+      then: libtool
+    - gettext
+    - pkg-config
+    - if: unix
+      then: make
+    - if: win
+      then: cmake
+    - if: win
+      then: m2-sed
+  host:
+    - expat
+    - fontconfig
+    - freetype
+    - icu
+    - libjpeg-turbo
+    - if: osx
+      then: libiconv
+    - libpng
+    - libtiff
+    - libwebp
+    - if: win
+      then: xorg-libxpm
+    - if: win
+      then: xorg-xorgproto
+    - zlib
+  run_exports:
+    - ${{ pin_subpackage('libgd', upper_bound='x.x') }}
+
+tests:
+  - requirements:
+      run:
+        - pkg-config
+        - zlib
+        - expat
+    script:
+      - if: not win
+        then: test ! -f $PREFIX/lib/libgd.a
+      - if: not win
+        then: test -f $PREFIX/lib/libgd${SHLIB_EXT}
+      - if: not win
+        then: test -f $PREFIX/include/gd.h
+      - if: not win
+        then: test -f $PREFIX/lib/pkgconfig/gdlib.pc
+      - if: win
+        then: if not exist %LIBRARY_LIB%\libgd.lib exit 1
+      - if: win
+        then: if not exist %LIBRARY_BIN%\libgd.dll exit 1
+      - if: win
+        then: if not exist %LIBRARY_INC%\gd.h exit 1
+      - if: win
+        then: if exist %LIBRARY_INC%\config.h exit 1
+      - if: win
+        then: if not exist %LIBRARY_LIB%\pkgconfig\gdlib.pc exit 1
+      - pkg-config gdlib --cflags
+
+about:
+  summary: Library for the dynamic creation of images
+  license: GD
+  license_file: COPYING
+  homepage: http://libgd.github.io/
+
+extra:
+  recipe-maintainers:
+    - croth1
+    - ChrisBarker-NOAA
+    - ocefpaf
+

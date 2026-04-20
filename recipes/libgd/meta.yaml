@@ -1,0 +1,80 @@
+{% set version = "2.3.3" %}
+
+package:
+  name: libgd
+  version: {{ version }}
+
+# direct source -- needs to have autoconf, etc run.
+# but this seems to work better than using straight ./configure with the released code
+# the release tarball: but does not include getlib.sh
+#  url: https://github.com/libgd/libgd/releases/download/gd-{{ version }}/libgd-{{ version }}.tar.gz
+#  sha256: 32590e361a1ea6c93915d2448ab0041792c11bae7b18ee812514fe08b2c6a342
+source:
+  url: https://github.com/libgd/libgd/archive/gd-{{ version }}.tar.gz
+  sha256: 24429f9d0dbe0f865aaa4b1a63558242396ba9134e6cfd32ca5e486a84483350
+  patches:
+    # see: https://github.com/libgd/libgd/issues/367
+    - patches/linux-fontconfig-basic.patch
+
+build:
+  number: 12
+  run_exports:
+    # https://abi-laboratory.pro/?view=timeline&l=libgd
+    - {{ pin_subpackage('libgd', max_pin='x.x') }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib('c') }}
+    - automake  # [not-win]
+    - libtool  # [not-win]
+    - gettext
+    - pkg-config
+    - make  # [unix]
+    - cmake  # [win]
+    - m2-sed  # [win]
+  host:
+    - expat
+    - fontconfig
+    - freetype
+    - icu
+    - libjpeg-turbo
+    - libiconv  # [osx]
+    - libpng
+    - libtiff
+    - libwebp
+    - xorg-libxpm  # [win]
+    - xorg-xorgproto  # [win]
+    - zlib
+
+test:
+  requires:
+    - pkg-config
+    - zlib
+    - expat
+  commands:
+    - test ! -f $PREFIX/lib/libgd.a                         # [not win]
+    - test -f $PREFIX/lib/libgd${SHLIB_EXT}                 # [not win]
+    - test -f $PREFIX/include/gd.h                          # [not win]
+    - test -f $PREFIX/lib/pkgconfig/gdlib.pc                # [not win]
+
+    - if not exist %LIBRARY_LIB%\libgd.lib exit 1           # [win]
+    - if not exist %LIBRARY_BIN%\libgd.dll exit 1           # [win]
+    - if not exist %LIBRARY_INC%\gd.h exit 1                # [win]
+    - if exist %LIBRARY_INC%\config.h exit 1                # [win]
+    - if not exist %LIBRARY_LIB%\pkgconfig\gdlib.pc exit 1  # [win]
+
+    - pkg-config gdlib --cflags
+
+about:
+  home: http://libgd.github.io/
+  summary: Library for the dynamic creation of images
+  license: GD
+  license_family: BSD
+  license_file: COPYING
+
+extra:
+  recipe-maintainers:
+    - croth1
+    - ChrisBarker-NOAA
+    - ocefpaf
