@@ -1,0 +1,86 @@
+schema_version: 1
+
+context:
+  version: "0.10.21"
+
+package:
+  name: cargo-c
+  version: ${{ version }}
+
+source:
+  url: https://github.com/lu-zero/cargo-c/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 819b62a61e5271924dffd122b7c713e446e5d65f3e630bbe9b90d4d46513d8fa
+
+build:
+  number: 0
+  skip: ppc64le
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('rust') }}
+    - cargo-bundle-licenses
+    - pkg-config
+    - if: not win
+      then: libcurl
+    - if: not win
+      then: openssl
+    - if: not win
+      then: zlib
+  host:
+    - if: not win
+      then: libcurl
+    - if: not win
+      then: openssl
+    - if: not win
+      then: zlib
+    - libgit2
+  run:
+    - if: not win
+      then: pkg-config
+
+tests:
+  - script:
+      - if: unix
+        then: test -f ${PREFIX}/bin/cargo-cinstall
+      - if: unix
+        then: test -f ${PREFIX}/bin/cargo-cbuild
+      - if: unix
+        then: test -f ${PREFIX}/bin/cargo-ctest
+      - if: unix
+        then: test -f ${PREFIX}/bin/cargo-capi
+      - if: win
+        then: test -f %LIBRARY_BIN%\cargo-cinstall.exe
+      - if: win
+        then: test -f %LIBRARY_BIN%\cargo-cbuild.exe
+      - if: win
+        then: test -f %LIBRARY_BIN%\cargo-ctest.exe
+      - if: win
+        then: test -f %LIBRARY_BIN%\cargo-capi.exe
+      - if: build_platform == target_platform
+        then: cargo-cinstall --version
+      - if: build_platform == target_platform
+        then: cargo-cbuild --version
+      - if: build_platform == target_platform
+        then: cargo-ctest --version
+      - if: build_platform == target_platform
+        then: cargo-capi --version
+
+about:
+  summary: build and install C-compatible libraries
+  description: >
+    cargo applet to build and install C-ABI compatible dynamic and static libraries.
+
+    It produces and installs a correct pkg-config file, a static library and a dynamic library, and a C header to be used by any C (and C-compatible) software.
+  license: MIT
+  license_file:
+    - LICENSE
+    - THIRDPARTY.yml
+  homepage: https://github.com/lu-zero/cargo-c
+
+extra:
+  recipe-maintainers:
+    - hmaarrfk
+    - carterbox
+
