@@ -1,0 +1,44 @@
+context:
+  version: "2.5.0"
+
+package:
+  name: c-periphery
+  version: ${{ version }}
+
+source:
+  url: https://github.com/vsergeev/c-periphery/archive/refs/tags/${{ version }}.tar.gz
+  sha256: 065d304d289a691bf2f685f3d80ff9dc26ba69bb2d463b2f279397908f5ec9ae
+
+build:
+  number: 0
+  skip: [win]
+  script:
+    - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$PREFIX
+    - cmake --build build --target install -j$CPU_COUNT
+    - cmake --install build --prefix $PREFIX
+
+requirements:
+  build:
+    - make
+    - cmake
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+
+tests:
+  - script:
+      - if: linux
+        then: test -f ${PREFIX}/include/periphery/gpio.h
+      - if: linux
+        then: test -f ${PREFIX}/lib/libperiphery.so
+
+about:
+  homepage: https://github.com/vsergeev/c-periphery
+  repository: https://github.com/vsergeev/c-periphery
+  license: MIT
+  license_file:
+    - LICENSE
+  summary: A C library for peripheral I/O (GPIO, LED, PWM, SPI, I2C, MMIO, Serial) in Linux.
+
+extra:
+  recipe-maintainers:
+    - fsslc
