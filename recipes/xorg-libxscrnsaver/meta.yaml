@@ -1,0 +1,63 @@
+{% set xorg_ident = "XScrnSaver" %}
+{% set xorg_name = "lib" ~ xorg_ident %}
+{% set xorg_category = "lib" %}
+{% set name = "xorg-" ~ xorg_name %}
+{% set version = "1.2.4" %}
+{% set sha256 = "75cd2859f38e207a090cac980d76bc71e9da99d48d09703584e00585abc920fe" %}
+{% set am_version = "1.16" %} # keep synchronized with build.sh
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://www.x.org/releases/individual/{{ xorg_category }}/{{ xorg_name }}-{{ version }}.tar.xz
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  run_exports:
+    - {{ pin_subpackage(name|lower) }}
+
+requirements:
+  build:
+    - m2-autoconf                  # [win]
+    - m2-automake{{ am_version }}  # [win]
+    - m2-libtool                   # [win]
+    - pkg-config                   # [unix]
+    - m2-pkg-config                # [win]
+    - gnuconfig                    # [unix]
+    - m2-base                      # [win]
+    - make                         # [unix]
+    - m2-make                      # [win]
+    - gnuconfig  # [unix]
+    - {{ compiler("c") }}          # [unix]
+    - {{ stdlib("c") }}            # [unix]
+    - {{ compiler("m2w64_c") }}    # [win]
+    - {{ stdlib("m2w64_c") }}      # [win]
+  host:
+    - xorg-xorgproto
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-util-macros
+
+test:
+  commands:
+    {% set lib_idents = [ "Xss" ] %}
+    {% for lib_ident in lib_idents %}
+    - test -f $PREFIX/lib/lib{{ lib_ident }}.dylib  # [osx]
+    - test -f $PREFIX/lib/lib{{ lib_ident }}.so  # [linux]
+    - if not exist %PREFIX%/Library/lib/lib{{ lib_ident }}.dll.a exit /b 1  # [win]
+    - if not exist %PREFIX%/Library/bin/msys-{{ lib_ident }}-*.dll exit /b 1  # [win]
+    {% endfor %}
+
+about:
+  home: https://www.x.org/
+  license: MIT
+  license_family: MIT
+  license_file: COPYING
+  summary: 'The X.org X11 Xlib-based X11 Screen Saver extension client library'
+
+extra:
+  recipe-maintainers:
+    - zklaus
