@@ -1,0 +1,42 @@
+context:
+  version: "5.3.0"
+
+package:
+  name: libdivide
+  version: ${{ version }}
+
+source:
+  url: https://github.com/ridiculousfish/libdivide/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: de3933bf2fd21300d99fcc6460a8a4a1343ae90b965d6893f044c350bac68c6e
+
+build:
+  number: 0
+  skip: [win]
+  script:
+    - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$PREFIX
+    - cmake --build build --target install -j$CPU_COUNT
+    - cmake --install build --prefix $PREFIX
+    - ctest --test-dir build --output-on-failure
+
+requirements:
+  build:
+    - make
+    - cmake
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+
+tests:
+  - script:
+      - test -f ${PREFIX}/include/libdivide.h
+
+about:
+  homepage: https://github.com/ridiculousfish/libdivide
+  repository: https://github.com/ridiculousfish/libdivide
+  license: BSL-1.0
+  license_file:
+    - LICENSE.txt
+  summary: libdivide.h is a header-only C/C++ library for optimizing integer division.
+
+extra:
+  recipe-maintainers:
+    - fsslc
