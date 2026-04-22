@@ -1,0 +1,68 @@
+From 4f41ef398785612ec993b3e4d002ba1c7fc3fde3 Mon Sep 17 00:00:00 2001
+From: Nehal J Wani <nehaljw.kkd1@gmail.com>
+Date: Fri, 30 Dec 2022 20:47:22 +0000
+Subject: [PATCH 3/5] Use WebP CMake targets instead of PkgConfig
+
+The pkgconfig module ends up with 'webp' instead of '/path/to/libwebp.lib'
+xref: https://gitlab.kitware.com/cmake/cmake/-/commit/955d6245
+---
+ CMakeLists.txt             | 10 ++--------
+ plugin/webp/CMakeLists.txt |  8 +++-----
+ 2 files changed, 5 insertions(+), 13 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0ff370c5c..594077694 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -239,6 +239,8 @@ endif()
+ 
+ find_package(GTS)
+ find_package(PANGOCAIRO)
++find_package(Threads REQUIRED)
++find_package(WEBP)
+ 
+ if(NOT WITH_SMYRNA STREQUAL "OFF")
+   find_package(Freetype)
+@@ -345,14 +347,6 @@ if(PkgConfig_FOUND)
+     message(STATUS "skipping librsvg discovery because -DWITH_RSVG=OFF")
+     set(RSVG_FOUND 0)
+   endif()
+-  if(AUTO_WEBP)
+-    pkg_check_modules(WEBP libwebp)
+-  elseif(WITH_WEBP)
+-    pkg_check_modules(WEBP REQUIRED libwebp)
+-  else()
+-    message(STATUS "skipping libwebp discovery because -DWITH_WEBP=OFF")
+-    set(WEBP_FOUND 0)
+-  endif()
+   if(AUTO_X)
+     pkg_check_modules(X11 x11)
+     pkg_check_modules(XRENDER xrender)
+diff --git a/plugin/webp/CMakeLists.txt b/plugin/webp/CMakeLists.txt
+index e1b58e915..e2e3c8098 100644
+--- a/plugin/webp/CMakeLists.txt
++++ b/plugin/webp/CMakeLists.txt
+@@ -1,3 +1,5 @@
++find_package(WEBP)
++
+ if(WEBP_FOUND)
+ 
+   add_library(gvplugin_webp
+@@ -15,13 +17,9 @@ if(WEBP_FOUND)
+     ../../lib/pathplan
+   )
+ 
+-  target_include_directories(gvplugin_webp SYSTEM PRIVATE
+-    ${WEBP_INCLUDE_DIRS}
+-  )
+-
+   target_link_libraries(gvplugin_webp PRIVATE
+     gvc
+-    ${WEBP_LINK_LIBRARIES}
++    WebP::webp
+   )
+ 
+   if(CAIRO_FOUND)
+-- 
+2.50.0
+
