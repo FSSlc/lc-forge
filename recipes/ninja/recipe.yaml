@@ -1,0 +1,44 @@
+schema_version: 1
+
+context:
+  version: "1.13.2"
+
+package:
+  name: ninja
+  version: ${{ version }}
+
+source:
+  url: https://github.com/ninja-build/ninja/archive/v${{ version }}.tar.gz
+  sha256: 974d6b2f4eeefa25625d34da3cb36bdcebe7fbce40f4c16ac0835fd1c0cbae17
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler("cxx") }}
+    - ${{ stdlib("c") }}
+    - cmake
+    - if: unix
+      then:
+        - make
+
+tests:
+  - package_contents:
+      bin:
+        - ninja
+  - script:
+      - ninja --version
+
+about:
+  license: Apache-2.0
+  license_file: COPYING
+  summary: A small build system with a focus on speed
+  homepage: https://ninja-build.org/
+
+extra:
+  recipe-maintainers:
+    - frol
+    - xhochy
+    - henryiii
+    - baszalmstra

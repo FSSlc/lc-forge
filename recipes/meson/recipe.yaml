@@ -1,0 +1,57 @@
+context:
+  version: "1.11.1"
+
+package:
+  name: meson
+  version: ${{ version }}
+
+source:
+  url: https://github.com/mesonbuild/meson/releases/download/${{ version }}/meson-${{ version }}.tar.gz
+  sha256: 6788ae299979643f8d841bcaf64352558436cae45a0355148a3aeeccf7913866
+  patches:
+    # See conda-forge/glib-feedstock#40 for documentation regarding the RPATH patch
+    - patches/0001-Only-fix-RPATH-if-install_rpath-is-not-empty.patch
+
+build:
+  number: 0
+  script: ${{ PYTHON }} -m pip install . -vv
+  noarch: python
+  python:
+    entry_points:
+      - meson = mesonbuild.mesonmain:main
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - setuptools
+    - pip
+  run:
+    - python >=${{ python_min }}
+    - ninja >=1.8.2
+
+tests:
+  - script:
+      - meson -h
+      - meson -v
+      - meson --internal delsuffix . nomatchqqq  # test reexecution (GitHub issue #11)
+    requirements:
+      run:
+        - python ${{ python_min }}.*
+
+about:
+  homepage: https://mesonbuild.com
+  license: Apache-2.0
+  license_file: LICENSE
+  summary: The Meson Build System
+  documentation: https://mesonbuild.com
+  repository: https://github.com/mesonbuild/meson
+
+extra:
+  recipe-maintainers:
+    - dirmeier
+    - pkgw
+    - SoapZA
+    - wolfv
+    - tschoonj
+    - rgommers
+    - h-vetinari
