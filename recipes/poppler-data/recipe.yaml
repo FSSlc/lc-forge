@@ -1,0 +1,47 @@
+schema_version: 1
+
+context:
+  name: poppler-data
+  version: "0.4.12"
+  sha256: c835b640a40ce357e1b83666aabd95edffa24ddddd49b8daff63adb851cdab74
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://poppler.freedesktop.org/${{ name }}-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  noarch: generic
+  script:
+    - make install prefix=$PREFIX
+
+requirements:
+  build:
+    - make
+  run:
+
+tests:
+  - script:
+      - test -f $PREFIX/share/poppler/cidToUnicode/Adobe-CNS1
+
+about:
+  # The license specification here is relatively complex -- see the files that
+  # come with the source. The `COPYING.adobe` license is just BSD 3-clause with
+  # the name of Adobe inserted.
+  license: BSD-3-Clause AND (GPL-2.0-only OR GPL-3.0-only)
+  license_file:
+    - COPYING
+    - COPYING.adobe
+    - COPYING.gpl2
+    - licenses/COPYING.gpl3  # not currently included in source tarball
+  summary: Encoding data for the Poppler PDF manipulation library.
+  homepage: https://poppler.freedesktop.org/
+
+extra:
+  recipe-maintainers:
+    - pkgw
+
