@@ -1,0 +1,49 @@
+{% set name = "nano" %}
+{% set version = "9.0" %}
+{% set major_minor = version.rpartition('.')[0] %}
+{% set sha256 = "9f384374b496110a25b73ad5a5febb384783c6e3188b37063f677ac908013fde" %}
+
+package:
+  name: {{ name|lower }}
+  version: "{{ version }}"
+
+source:
+  url: https://www.nano-editor.org/dist/v{{ major_minor }}/nano-{{ version }}.tar.xz
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  skip: true  # [win]
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+    - make
+    - pkg-config
+    - gnuconfig   # [unix]
+  host:
+    - ncurses
+
+test:
+  commands:
+    - nano -h  # [build_platform == target_platform]
+    - test -f $PREFIX/bin/nano
+
+about:
+  home: https://www.nano-editor.org/
+  license: GPL-3.0-or-later
+  license_family: GPL
+  license_file: COPYING
+  summary: Nano's ANOther editor, an enhanced free Pico clone
+  description: |
+    nano  is  a small and friendly editor.  It copies the look and feel of Pico, but is free software, and
+    implements several features that Pico lacks, such as: opening multiple files, scrolling per line,
+    undo/redo,  syntax coloring, line numbering, and soft-wrapping overlong lines.
+  doc_url: https://www.nano-editor.org/docs.php
+  dev_url: https://git.savannah.gnu.org/cgit/nano.git/log/
+
+extra:
+  recipe-maintainers:
+    - scopatz
+    - matthiasdiener
