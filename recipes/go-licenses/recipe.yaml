@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "2.0.1"
+
+package:
+  name: go-licenses
+  version: ${{ version }}
+
+source:
+  url: https://github.com/google/go-licenses/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 04a875604c0cc62217fea3d283c243a2e4298142cdfeafb088b9e486daabded3
+
+build:
+  number: 0
+  script:
+    file: build-go-licenses
+
+requirements:
+  build:
+    - ${{ compiler('go') }}
+  host: []
+  run:
+    - go
+
+tests:
+  - requirements:
+      run:
+        - git
+        - go
+    script:
+      - git clone --depth=1 "https://github.com/google/go-licenses"
+      - cd go-licenses
+      - if: win
+        then: go-licenses csv . | findstr "Apache-2.0 BSD-.-Clause MIT"
+        else: go-licenses csv . | grep 'Apache-2\.0\|BSD-.-Clause\|MIT\|Unlicense'
+about:
+  license: Apache-2.0
+  license_file:
+    - LICENSE
+    - license-files/
+  summary: A tool to collect licenses from the dependency tree of a Go package in order to comply with redistribution terms.
+  homepage: https://github.com/google/go-licenses
+
+extra:
+  recipe-maintainers:
+    - dhirschfeld
+    - mbargull
+    - bollwyvl
