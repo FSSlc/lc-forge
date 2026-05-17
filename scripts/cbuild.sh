@@ -25,6 +25,8 @@ if [ -z "$recipe_dir" ]; then
   usage
 fi
 
+mkdir -p $REPO_ROOT/output
+
 cmd="conda build --croot $REPO_ROOT/output \
   -m conda_build_config.yaml -c https://prefix.dev/scns \
   $recipe_dir"
