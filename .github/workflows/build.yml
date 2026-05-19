@@ -36,7 +36,7 @@ jobs:
               while IFS= read -r pkgname; do
                 [ -z "$pkgname" ] && continue
                 conda build --croot ./output/ -m ./conda_build_config.yaml \
-                  --skip-existing -c https://prefix.dev/scns recipes/"$pkgname"
+                  --skip-existing -c https://prefix.dev/scns todo/"$pkgname"
               done < only-meta.txt
             fi
 
@@ -59,7 +59,7 @@ jobs:
             rattler-build build --continue-on-failure --experimental \
               -m ./conda_build_config.yaml --skip-existing=all \
               --target-platform=${{ matrix.target }} -c https://prefix.dev/scns \
-              --recipe-dir ./recipes
+              --recipe-dir ./todo
 
             count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
             if (( count > 0 )); then

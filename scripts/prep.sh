@@ -16,6 +16,7 @@ if [ -f ./todo/${pkgname}/meta.yaml ]; then
   crm convert ./todo/${pkgname}/meta.yaml > ./todo/${pkgname}/recipe.yaml
 fi
 
+mkdir -p ../refers
 if [ -d ../refers/${pkgname}-feedstock ]; then
   rm -rf ../refers/${pkgname}-feedstock
 fi
