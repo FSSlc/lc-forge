@@ -1,0 +1,47 @@
+schema_version: 1
+
+context:
+  name: dos2unix
+  version: "7.5.5"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://waterlan.home.xs4all.nl/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: 75f692b8484c8c24579a2ffd87df16b9c9428ed95497e3393a21d1ba0697ac33
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - ${{ compiler ('c') }}
+    - ${{ stdlib("c") }}
+    - make
+    - gettext-tools
+    - if: win
+      then: python
+  host:
+    - gettext
+    - if: osx
+      then: libintl-devel
+
+tests:
+  - script:
+      - dos2unix -h
+      - unix2dos -h
+
+about:
+  license: BSD-2-Clause
+  license_file: COPYING.txt
+  summary: Convert text files with DOS or Mac line breaks to Unix line breaks and vice versa.
+  homepage: https://waterlan.home.xs4all.nl/dos2unix.html
+
+extra:
+  recipe-maintainers:
+    - oblute
+    - rluria14
+    - willend
+
