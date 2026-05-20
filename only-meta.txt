@@ -1,2 +1,3 @@
 llvmdev
+openmp
 clangdev
