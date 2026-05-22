@@ -1,1 +1,1 @@
-openmp
+clangdev
