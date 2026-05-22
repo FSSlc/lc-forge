@@ -30,7 +30,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$img_tag" ]; then
-    img_tag="slim"
+    img_tag="latest"
 fi
 
 docker pull ghcr.io/fsslc/pixi:${img_tag}

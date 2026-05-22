@@ -1,0 +1,59 @@
+schema_version: 1
+
+context:
+  version: "8.3"
+
+package:
+  name: readline
+  version: ${{ version }}
+
+source:
+  url:
+    - https://ftp.gnu.org/gnu/readline/readline-${{ version }}.tar.gz
+    - https://ftpmirror.gnu.org/readline/readline-${{ version }}.tar.gz
+  sha256: fe5383204467828cd495ee8d1d3c037a7eba1389c22bc6a041f627976f9061cc
+
+build:
+  number: 0
+  skip: win
+
+requirements:
+  build:
+    - pkg-config
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - make
+    - libtool
+  host:
+    - ncurses
+  run:
+    - ncurses
+  run_exports:
+    - ${{ pin_subpackage('readline') }}
+
+tests:
+  - script:
+    - test ! -f ${PREFIX}/lib/libreadline.a
+    - if: not win
+      then: test -f ${PREFIX}/lib/libreadline${SHLIB_EXT}
+    - test ! -f ${PREFIX}/lib/libhistory.a
+    - if: not win
+      then: test -f ${PREFIX}/lib/libhistory${SHLIB_EXT}
+
+about:
+  license: GPL-3.0-only
+  license_file: COPYING
+  summary: library for editing command lines as they are typed in
+  homepage: https://cnswww.cns.cwru.edu/php/chet/readline/rltop.html
+
+extra:
+  recipe-maintainers:
+    - croth1
+    - jakirkham
+    - pelson
+    - msarahan
+    - asmeurer
+    - msarahan
+    - mingwandroid
+    - ocefpaf
+
