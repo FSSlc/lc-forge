@@ -12,7 +12,7 @@ context:
   # Bumping build_number for a rebuild no longer forces a path change,
   # and conversely a scratch PR can re-exercise the upstream path
   # without churning the package's build counter.
-  bootstrap_via_upstream: false
+  bootstrap_via_upstream: true
   name: zig
   version: "0.16.0"
 
@@ -282,7 +282,7 @@ outputs:
         - cmake >=3.5
         - ninja
         - perl 5.32.*
-        - python 3.12.*
+        - python 3.10.*
         - if: not unix
           then:
             - ${{ m2 }}gawk
@@ -492,7 +492,7 @@ outputs:
     requirements:
       build:
         - ${{ m2 }}bash
-        - python 3.12.*
+        - python 3.10.*
         # Need zig to compile .exe shims on non-Unix (cross-compiler shim).
         # NB: lower bound is the previous conda-forge release (>=0.15.2),
         # not ${{ version }}. A strict ==0.16.0 pin during the first 0.16
@@ -605,7 +605,7 @@ outputs:
           cross_target_platform_: ${{ cross_target_platform_ }}
     requirements:
       build:
-        - python 3.12.*
+        - python 3.10.*
       host:
         # Host dep ensures targets exist during build for symlink validation
         - ${{ pin_subpackage("zig_" ~ cross_target_platform_, exact=True) }}
