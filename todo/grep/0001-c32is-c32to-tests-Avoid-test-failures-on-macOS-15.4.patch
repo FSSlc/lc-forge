@@ -1,0 +1,455 @@
+From 1c2008a6496eff574f17260ed12185efddf4a0d7 Mon Sep 17 00:00:00 2001
+From: Bruno Haible <bruno@clisp.org>
+Date: Mon, 14 Apr 2025 22:53:12 +0200
+Subject: [PATCH] c32is*, c32to* tests: Avoid test failures on macOS 15.4.
+
+* tests/test-c32isalnum.c (main): On macOS, disable test cases that fail
+on macOS 15.4.
+* tests/test-c32isalpha.c (main): Likewise.
+* tests/test-c32isgraph.c (main): Likewise.
+* tests/test-c32islower.c (main): Likewise.
+* tests/test-c32isprint.c (main): Likewise.
+* tests/test-c32ispunct.c (main): Likewise.
+* tests/test-c32isspace.c (main): Likewise.
+* tests/test-c32isupper.c (main): Likewise.
+* tests/test-c32tolower.c (main): Likewise.
+* tests/test-c32toupper.c (main): Likewise.
+---
+ gnulib-tests/test-c32isalnum.c |  2 +-
+ gnulib-tests/test-c32isalpha.c |  2 +-
+ gnulib-tests/test-c32isgraph.c |  4 ++--
+ gnulib-tests/test-c32islower.c |  8 ++++----
+ gnulib-tests/test-c32isprint.c |  8 ++++----
+ gnulib-tests/test-c32ispunct.c | 20 ++++++++++----------
+ gnulib-tests/test-c32isspace.c |  4 ++--
+ gnulib-tests/test-c32isupper.c |  6 +++---
+ gnulib-tests/test-c32tolower.c |  6 +++---
+ gnulib-tests/test-c32toupper.c |  6 +++---
+ gnulib-tests/test-fnmatch.c    | 26 +++++++++++++-------------
+ 11 files changed, 46 insertions(+), 46 deletions(-)
+
+diff --git a/gnulib-tests/test-c32isalnum.c b/gnulib-tests/test-c32isalnum.c
+index 46eb957..20e4d30 100644
+--- a/gnulib-tests/test-c32isalnum.c
++++ b/gnulib-tests/test-c32isalnum.c
+@@ -222,7 +222,7 @@ main (int argc, char *argv[])
+           /* U+00D7 MULTIPLICATION SIGN */
+           is = for_character ("\241\301", 2);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00D8 LATIN CAPITAL LETTER O WITH STROKE */
+           is = for_character ("\201\060\211\061", 4);
+           ASSERT (is != 0);
+diff --git a/gnulib-tests/test-c32isalpha.c b/gnulib-tests/test-c32isalpha.c
+index 8024c7a..c9d2c19 100644
+--- a/gnulib-tests/test-c32isalpha.c
++++ b/gnulib-tests/test-c32isalpha.c
+@@ -220,7 +220,7 @@ main (int argc, char *argv[])
+           /* U+00D7 MULTIPLICATION SIGN */
+           is = for_character ("\241\301", 2);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00D8 LATIN CAPITAL LETTER O WITH STROKE */
+           is = for_character ("\201\060\211\061", 4);
+           ASSERT (is != 0);
+diff --git a/gnulib-tests/test-c32isgraph.c b/gnulib-tests/test-c32isgraph.c
+index 38d89f5..9a11ca1 100644
+--- a/gnulib-tests/test-c32isgraph.c
++++ b/gnulib-tests/test-c32isgraph.c
+@@ -124,7 +124,7 @@ main (int argc, char *argv[])
+           is = for_character ("\240", 1);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+00B8 CEDILLA */
+           is = for_character ("\270", 1);
+           ASSERT (is != 0);
+@@ -209,7 +209,7 @@ main (int argc, char *argv[])
+           is = for_character ("\201\060\204\062", 4);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00B8 CEDILLA */
+           is = for_character ("\201\060\206\060", 4);
+           ASSERT (is != 0);
+diff --git a/gnulib-tests/test-c32islower.c b/gnulib-tests/test-c32islower.c
+index 4057b49..a66199f 100644
+--- a/gnulib-tests/test-c32islower.c
++++ b/gnulib-tests/test-c32islower.c
+@@ -285,7 +285,7 @@ main (int argc, char *argv[])
+           /* U+00C9 LATIN CAPITAL LETTER E WITH ACUTE */
+           is = for_character ("\201\060\207\067", 4);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00DF LATIN SMALL LETTER SHARP S */
+           is = for_character ("\201\060\211\070", 4);
+           ASSERT (is != 0);
+@@ -295,7 +295,7 @@ main (int argc, char *argv[])
+           is = for_character ("\250\246", 2);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00FF LATIN SMALL LETTER Y WITH DIAERESIS */
+           is = for_character ("\201\060\213\067", 4);
+           ASSERT (is != 0);
+@@ -303,7 +303,7 @@ main (int argc, char *argv[])
+           /* U+0141 LATIN CAPITAL LETTER L WITH STROKE */
+           is = for_character ("\201\060\221\071", 4);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+0142 LATIN SMALL LETTER L WITH STROKE */
+           is = for_character ("\201\060\222\060", 4);
+           ASSERT (is != 0);
+@@ -311,7 +311,7 @@ main (int argc, char *argv[])
+           /* U+0429 CYRILLIC CAPITAL LETTER SHCHA */
+           is = for_character ("\247\273", 2);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+0449 CYRILLIC SMALL LETTER SHCHA */
+           is = for_character ("\247\353", 2);
+           ASSERT (is != 0);
+diff --git a/gnulib-tests/test-c32isprint.c b/gnulib-tests/test-c32isprint.c
+index 07d212f..2879543 100644
+--- a/gnulib-tests/test-c32isprint.c
++++ b/gnulib-tests/test-c32isprint.c
+@@ -118,12 +118,12 @@ main (int argc, char *argv[])
+           /* U+007F <control> */
+           is = for_character ("\177", 1);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sgi || (defined _WIN32 && !defined __CYGWIN__))
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sgi || (defined _WIN32 && !defined __CYGWIN__))
+           /* U+00A0 NO-BREAK SPACE */
+           is = for_character ("\240", 1);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+00B8 CEDILLA */
+           is = for_character ("\270", 1);
+           ASSERT (is != 0);
+@@ -207,7 +207,7 @@ main (int argc, char *argv[])
+           /* U+007F <control> */
+           is = for_character ("\177", 1);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00A0 NO-BREAK SPACE */
+           is = for_character ("\201\060\204\062", 4);
+           ASSERT (is != 0);
+@@ -223,7 +223,7 @@ main (int argc, char *argv[])
+           is = for_character ("\201\066\247\061", 4);
+           ASSERT (is == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+3000 IDEOGRAPHIC SPACE */
+           is = for_character ("\241\241", 2);
+           ASSERT (is != 0);
+diff --git a/gnulib-tests/test-c32ispunct.c b/gnulib-tests/test-c32ispunct.c
+index c762593..535d0c4 100644
+--- a/gnulib-tests/test-c32ispunct.c
++++ b/gnulib-tests/test-c32ispunct.c
+@@ -150,12 +150,12 @@ main (int argc, char *argv[])
+       case '1':
+         /* Locale encoding is ISO-8859-1 or ISO-8859-15.  */
+         {
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+00BF INVERTED QUESTION MARK */
+           is = for_character ("\277", 1);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00D7 MULTIPLICATION SIGN */
+           is = for_character ("\327", 1);
+           ASSERT (is != 0);
+@@ -177,7 +177,7 @@ main (int argc, char *argv[])
+           is = for_character ("\217\242\304", 3);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+00D7 MULTIPLICATION SIGN */
+           is = for_character ("\241\337", 2);
+           ASSERT (is != 0);
+@@ -216,7 +216,7 @@ main (int argc, char *argv[])
+           /* U+00BF INVERTED QUESTION MARK */
+           is = for_character ("\302\277", 2);
+           ASSERT (is != 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00D7 MULTIPLICATION SIGN */
+           is = for_character ("\303\227", 2);
+           ASSERT (is != 0);
+@@ -233,7 +233,7 @@ main (int argc, char *argv[])
+           /* U+05F3 HEBREW PUNCTUATION GERESH */
+           is = for_character ("\327\263", 2);
+           ASSERT (is != 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun || (defined _WIN32 && !defined __CYGWIN__))
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun || (defined _WIN32 && !defined __CYGWIN__))
+           /* U+2192 RIGHTWARDS ARROW */
+           is = for_character ("\342\206\222", 3);
+           ASSERT (is != 0);
+@@ -250,7 +250,7 @@ main (int argc, char *argv[])
+           /* U+10330 GOTHIC LETTER AHSA */
+           is = for_character ("\360\220\214\260", 4);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+1D100 MUSICAL SYMBOL SINGLE BARLINE */
+           is = for_character ("\360\235\204\200", 4);
+           ASSERT (is != 0);
+@@ -272,12 +272,12 @@ main (int argc, char *argv[])
+         return 77;
+         #endif
+         {
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00BF INVERTED QUESTION MARK */
+           is = for_character ("\201\060\206\067", 4);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00D7 MULTIPLICATION SIGN */
+           is = for_character ("\241\301", 2);
+           ASSERT (is != 0);
+@@ -291,12 +291,12 @@ main (int argc, char *argv[])
+           /* U+0141 LATIN CAPITAL LETTER L WITH STROKE */
+           is = for_character ("\201\060\221\071", 4);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+05F3 HEBREW PUNCTUATION GERESH */
+           is = for_character ("\201\060\374\067", 4);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+2192 RIGHTWARDS ARROW */
+           is = for_character ("\241\372", 2);
+           ASSERT (is != 0);
+diff --git a/gnulib-tests/test-c32isspace.c b/gnulib-tests/test-c32isspace.c
+index ec0d11f..6381e42 100644
+--- a/gnulib-tests/test-c32isspace.c
++++ b/gnulib-tests/test-c32isspace.c
+@@ -175,12 +175,12 @@ main (int argc, char *argv[])
+           /* U+00B7 MIDDLE DOT */
+           is = for_character ("\241\244", 2);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+2002 EN SPACE */
+           is = for_character ("\201\066\243\070", 4);
+           ASSERT (is != 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+3000 IDEOGRAPHIC SPACE */
+           is = for_character ("\241\241", 2);
+           ASSERT (is != 0);
+diff --git a/gnulib-tests/test-c32isupper.c b/gnulib-tests/test-c32isupper.c
+index df7f9d4..460328e 100644
+--- a/gnulib-tests/test-c32isupper.c
++++ b/gnulib-tests/test-c32isupper.c
+@@ -272,7 +272,7 @@ main (int argc, char *argv[])
+           /* U+00B5 MICRO SIGN */
+           is = for_character ("\201\060\205\070", 4);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00C9 LATIN CAPITAL LETTER E WITH ACUTE */
+           is = for_character ("\201\060\207\067", 4);
+           ASSERT (is != 0);
+@@ -286,7 +286,7 @@ main (int argc, char *argv[])
+           /* U+00FF LATIN SMALL LETTER Y WITH DIAERESIS */
+           is = for_character ("\201\060\213\067", 4);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+0141 LATIN CAPITAL LETTER L WITH STROKE */
+           is = for_character ("\201\060\221\071", 4);
+           ASSERT (is != 0);
+@@ -294,7 +294,7 @@ main (int argc, char *argv[])
+           /* U+0142 LATIN SMALL LETTER L WITH STROKE */
+           is = for_character ("\201\060\222\060", 4);
+           ASSERT (is == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+0429 CYRILLIC CAPITAL LETTER SHCHA */
+           is = for_character ("\247\273", 2);
+           ASSERT (is != 0);
+diff --git a/gnulib-tests/test-c32tolower.c b/gnulib-tests/test-c32tolower.c
+index b754613..f118021 100644
+--- a/gnulib-tests/test-c32tolower.c
++++ b/gnulib-tests/test-c32tolower.c
+@@ -349,7 +349,7 @@ main (int argc, char *argv[])
+           mb = for_character ("\201\060\205\070", 4);
+           ASSERT (mb.nbytes == 4);
+           ASSERT (memcmp (mb.buf, "\201\060\205\070", 4) == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00C9 LATIN CAPITAL LETTER E WITH ACUTE */
+           mb = for_character ("\201\060\207\067", 4);
+           ASSERT (mb.nbytes == 2);
+@@ -367,7 +367,7 @@ main (int argc, char *argv[])
+           mb = for_character ("\201\060\213\067", 4);
+           ASSERT (mb.nbytes == 4);
+           ASSERT (memcmp (mb.buf, "\201\060\213\067", 4) == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+0141 LATIN CAPITAL LETTER L WITH STROKE */
+           mb = for_character ("\201\060\221\071", 4);
+           ASSERT (mb.nbytes == 4);
+@@ -377,7 +377,7 @@ main (int argc, char *argv[])
+           mb = for_character ("\201\060\222\060", 4);
+           ASSERT (mb.nbytes == 4);
+           ASSERT (memcmp (mb.buf, "\201\060\222\060", 4) == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+0429 CYRILLIC CAPITAL LETTER SHCHA */
+           mb = for_character ("\247\273", 2);
+           ASSERT (mb.nbytes == 2);
+diff --git a/gnulib-tests/test-c32toupper.c b/gnulib-tests/test-c32toupper.c
+index b0be38b..c868c23 100644
+--- a/gnulib-tests/test-c32toupper.c
++++ b/gnulib-tests/test-c32toupper.c
+@@ -371,7 +371,7 @@ main (int argc, char *argv[])
+           mb = for_character ("\201\060\211\070", 4);
+           ASSERT (mb.nbytes == 4);
+           ASSERT (memcmp (mb.buf, "\201\060\211\070", 4) == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+00E9 LATIN SMALL LETTER E WITH ACUTE */
+           mb = for_character ("\250\246", 2);
+           ASSERT (mb.nbytes == 4);
+@@ -385,7 +385,7 @@ main (int argc, char *argv[])
+           mb = for_character ("\201\060\221\071", 4);
+           ASSERT (mb.nbytes == 4);
+           ASSERT (memcmp (mb.buf, "\201\060\221\071", 4) == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+           /* U+0142 LATIN SMALL LETTER L WITH STROKE */
+           mb = for_character ("\201\060\222\060", 4);
+           ASSERT (mb.nbytes == 4);
+@@ -395,7 +395,7 @@ main (int argc, char *argv[])
+           mb = for_character ("\247\273", 2);
+           ASSERT (mb.nbytes == 2);
+           ASSERT (memcmp (mb.buf, "\247\273", 2) == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+           /* U+0449 CYRILLIC SMALL LETTER SHCHA */
+           mb = for_character ("\247\353", 2);
+           ASSERT (mb.nbytes == 2);
+diff --git a/gnulib-tests/test-fnmatch.c b/gnulib-tests/test-fnmatch.c
+index 5cb217a..b3052c6 100644
+--- a/gnulib-tests/test-fnmatch.c
++++ b/gnulib-tests/test-fnmatch.c
+@@ -626,17 +626,17 @@ main (int argc, char *argv[])
+         ASSERT (fnmatch ("x[[:alnum:]]y", "x\330y", 0) == 0);
+         /* U+00D8 LATIN CAPITAL LETTER O WITH STROKE */
+         ASSERT (fnmatch ("x[[:alpha:]]y", "x\330y", 0) == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+         /* U+00B8 CEDILLA */
+         ASSERT (fnmatch ("x[[:graph:]]y", "x\270y", 0) == 0);
+         #endif
+         /* U+00FF LATIN SMALL LETTER Y WITH DIAERESIS */
+         ASSERT (fnmatch ("x[[:lower:]]y", "x\377y", 0) == 0);
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+         /* U+00B8 CEDILLA */
+         ASSERT (fnmatch ("x[[:print:]]y", "x\270y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+         /* U+00BF INVERTED QUESTION MARK */
+         ASSERT (fnmatch ("x[[:punct:]]y", "x\277y", 0) == 0);
+         #endif
+@@ -794,7 +794,7 @@ main (int argc, char *argv[])
+         /* U+00B8 CEDILLA */
+         ASSERT (fnmatch ("x[[:print:]]y", "x\217\242\261y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+         /* U+00D7 MULTIPLICATION SIGN */
+         ASSERT (fnmatch ("x[[:punct:]]y", "x\241\337y", 0) == 0);
+         #endif
+@@ -802,7 +802,7 @@ main (int argc, char *argv[])
+         /* U+3000 IDEOGRAPHIC SPACE */
+         ASSERT (fnmatch ("x[[:space:]]y", "x\241\241y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__)
+         /* U+0429 CYRILLIC CAPITAL LETTER SHCHA */
+         ASSERT (fnmatch ("x[[:upper:]]y", "x\247\273y", 0) == 0);
+         #endif
+@@ -863,15 +863,15 @@ main (int argc, char *argv[])
+         ASSERT (fnmatch ("x?y", "x\250\271y", 0) == 0); /* "xüy" */
+         ASSERT (fnmatch ("x?y", "x\201\060\211\070y", 0) == 0); /* "xßy" */
+         ASSERT (fnmatch ("x?y", "x\224\071\375\067y", 0) == 0); /* "x😋y" */
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+         /* U+0141 LATIN CAPITAL LETTER L WITH STROKE */
+         ASSERT (fnmatch ("x[[:alnum:]]y", "x\201\060\221\071y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+         /* U+0141 LATIN CAPITAL LETTER L WITH STROKE */
+         ASSERT (fnmatch ("x[[:alpha:]]y", "x\201\060\221\071y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+         /* U+00B8 CEDILLA */
+         ASSERT (fnmatch ("x[[:graph:]]y", "x\201\060\206\060y", 0) == 0);
+         #endif
+@@ -879,7 +879,7 @@ main (int argc, char *argv[])
+         /* U+20000 <CJK Ideograph> */
+         ASSERT (fnmatch ("x[[:graph:]]y", "x\225\062\202\066y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+         /* U+00FF LATIN SMALL LETTER Y WITH DIAERESIS */
+         ASSERT (fnmatch ("x[[:lower:]]y", "x\201\060\213\067y", 0) == 0);
+         #endif
+@@ -887,7 +887,7 @@ main (int argc, char *argv[])
+         /* U+10441 DESERET SMALL LETTER EF */
+         ASSERT (fnmatch ("x[[:lower:]]y", "x\220\060\355\071y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __NetBSD__ || defined __sun)
+         /* U+00B8 CEDILLA */
+         ASSERT (fnmatch ("x[[:print:]]y", "x\201\060\206\060y", 0) == 0);
+         #endif
+@@ -895,7 +895,7 @@ main (int argc, char *argv[])
+         /* U+20000 <CJK Ideograph> */
+         ASSERT (fnmatch ("x[[:print:]]y", "x\225\062\202\066y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__ || defined __illumos__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+         /* U+00D7 MULTIPLICATION SIGN */
+         ASSERT (fnmatch ("x[[:punct:]]y", "x\241\301y", 0) == 0);
+         #endif
+@@ -903,11 +903,11 @@ main (int argc, char *argv[])
+         /* U+1D100 MUSICAL SYMBOL SINGLE BARLINE */
+         ASSERT (fnmatch ("x[[:punct:]]y", "x\224\062\273\064y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+         /* U+3000 IDEOGRAPHIC SPACE */
+         ASSERT (fnmatch ("x[[:space:]]y", "x\241\241y", 0) == 0);
+         #endif
+-        #if !(defined __FreeBSD__ || defined __DragonFly__)
++        #if !((defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __DragonFly__ || defined __sun)
+         /* U+0429 CYRILLIC CAPITAL LETTER SHCHA */
+         ASSERT (fnmatch ("x[[:upper:]]y", "x\247\273y", 0) == 0);
+         #endif

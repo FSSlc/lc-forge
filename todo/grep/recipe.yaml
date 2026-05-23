@@ -1,0 +1,56 @@
+schema_version: 1
+
+context:
+  name: grep
+  version: 3.12
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://mirrors.kernel.org/gnu/${{ name }}/${{ name }}-${{ version }}.tar.xz
+  sha256: 2649b27c0e90e632eadcd757be06c6e9a4f48d941de51e7c0f83ff76408a07b9
+  patches:
+    - 0001-c32is-c32to-tests-Avoid-test-failures-on-macOS-15.4.patch
+
+build:
+  number: 1
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - make
+    - gettext-tools
+  host:
+    - pcre2
+    - if: osx
+      then: libintl-devel
+
+tests:
+  - script:
+      - test -x ${PREFIX}/bin/grep
+      - if [ $(which grep) != ${PREFIX}/bin/grep ]; then exit 1; fi
+      - grep --version
+      - echo hello world | grep hello
+
+about:
+  license: GPL-3.0-or-later
+  license_file: COPYING
+  summary: |
+    Grep searches one or more input files for lines containing a match to a
+    specified pattern
+  description: |
+    Given one or more patterns, grep searches input files for matches to the
+    patterns. When it finds a match in a line, it copies the line to standard
+    output (by default), or produces whatever other sort of output you have
+    requested with options.
+  homepage: https://www.gnu.org/software/grep/
+  documentation: https://www.gnu.org/software/grep/manual/
+
+extra:
+  recipe-maintainers:
+    - calebzulawski
+    - xhochy

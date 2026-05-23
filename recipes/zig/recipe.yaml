@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  build_number: 2
+  build_number: 3
   # Bootstrap-source toggle, intentionally decoupled from build_number so
   # the two paths can be iterated on independently:
   #   true  → use upstream's pre-built ziglang.org binary as the stage-0
@@ -12,7 +12,7 @@ context:
   # Bumping build_number for a rebuild no longer forces a path change,
   # and conversely a scratch PR can re-exercise the upstream path
   # without churning the package's build counter.
-  bootstrap_via_upstream: true
+  bootstrap_via_upstream: false
   name: zig
   version: "0.16.0"
 
