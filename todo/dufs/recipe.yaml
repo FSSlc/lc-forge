@@ -1,0 +1,55 @@
+schema_version: 1
+
+context:
+  version: "0.46.0"
+
+package:
+  name: dufs
+  version: ${{ version }}
+
+source:
+  url: https://github.com/sigoden/dufs/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: e5bb926107736802bfd3be6937482dd3daf396a5c481fed714de542055286ebc
+
+build:
+  number: 0
+  script:
+    # build statically linked binary with Rust
+    - cargo install --path . --root $PREFIX --verbose --locked
+    # collect third-party licenses
+    - cargo-bundle-licenses --format yaml --output THIRDPARTY.yml
+    # strip debug symbols
+    - $STRIP $PREFIX/bin/dufs
+    # remove extra build files
+    - rm -f "${PREFIX}/.crates.toml"
+    - rm -f "${PREFIX}/.crates2.json"
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('rust') }}
+    - cargo-bundle-licenses
+
+tests:
+  - script:
+      - dufs --version
+      - dufs --help
+
+about:
+  homepage: https://github.com/sigoden/dufs
+  repository: https://github.com/sigoden/dufs
+  license: MIT OR Apache-2.0
+  license_file:
+    - LICENSE-MIT
+    - LICENSE-APACHE
+    - THIRDPARTY.yml
+  summary: A distinctive utility file server
+  description: |
+    Dufs is a distinctive utility file server. It supports static file serving,
+    WebDAV, authentication, TLS (via rustls), directory listing, file upload,
+    search, and more. Built purely in Rust.
+
+extra:
+  recipe-maintainers:
+    - sigoden
