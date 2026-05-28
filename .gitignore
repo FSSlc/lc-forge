@@ -6,3 +6,10 @@ tmp
 # editors
 .vscode
 .idea
+
+# local or tmp files
+tmp
+handle
+
+.c-agent
+.codex
