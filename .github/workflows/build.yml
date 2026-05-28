@@ -4,13 +4,78 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'todo/**'
   workflow_dispatch:
   pull_request:
     branches:
       - main
+    paths:
+      - 'todo/**'
 
 jobs:
+  changes:
+    name: Detect todo changes
+    runs-on: ubuntu-22.04
+    outputs:
+      has-only-meta: ${{ steps.todo.outputs.has-only-meta }}
+      should-build: ${{ steps.todo.outputs.should-build }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: todo
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          has_only_meta=false
+          if [[ -f only-meta.txt ]] && grep -q '[^[:space:]]' only-meta.txt; then
+            has_only_meta=true
+          fi
+          echo "has-only-meta=$has_only_meta" >> "$GITHUB_OUTPUT"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should-build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+          else
+            base="${{ github.event.before }}"
+            head="${{ github.sha }}"
+          fi
+
+          if [[ "$base" =~ ^0+$ ]]; then
+            base="${head}^"
+          fi
+
+          should_build=false
+          while IFS=$'\t' read -r status path new_path; do
+            [[ -z "${status:-}" ]] && continue
+
+            case "$status" in
+              A|M|T)
+                [[ "$path" == todo/* ]] && should_build=true
+                ;;
+              C*|R*)
+                [[ "${new_path:-}" == todo/* ]] && should_build=true
+                ;;
+            esac
+
+            if [[ "$should_build" == true ]]; then
+              break
+            fi
+          done < <(git diff --name-status --find-renames "$base" "$head")
+
+          echo "should-build=$should_build" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: changes
+    if: needs.changes.outputs.should-build == 'true'
     strategy:
       matrix:
         include:
@@ -26,19 +91,20 @@ jobs:
           fetch-depth: 2
 
       - uses: kohlerdominik/docker-run-action@v2.1.0
+        if: needs.changes.outputs.has-only-meta == 'true'
         with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
           shell: /bin/bash
           workdir: ${{ github.workspace }}
           run: |
-            if [ -f only-meta.txt ]; then
-              while IFS= read -r pkgname; do
-                [ -z "$pkgname" ] && continue
-                conda build --croot ./output/ -m ./conda_build_config.yaml \
-                  --skip-existing -c https://prefix.dev/scns todo/"$pkgname"
-              done < only-meta.txt
-            fi
+            while IFS= read -r pkgname; do
+              pkgname="${pkgname#"${pkgname%%[![:space:]]*}"}"
+              pkgname="${pkgname%"${pkgname##*[![:space:]]}"}"
+              [[ -z "$pkgname" ]] && continue
+              conda build --croot ./output/ -m ./conda_build_config.yaml \
+                --skip-existing -c https://prefix.dev/scns todo/"$pkgname"
+            done < only-meta.txt
 
             count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
             if (( count > 0 )); then
