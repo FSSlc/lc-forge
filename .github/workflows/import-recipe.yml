@@ -1,0 +1,175 @@
+name: Import recipe from conda-forge
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipe:
+        description: 'Recipe name, for example abc for conda-forge/abc-feedstock'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Prepare recipe
+    runs-on: ubuntu-22.04
+    outputs:
+      recipe: ${{ steps.normalize.outputs.recipe }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: normalize
+        shell: bash
+        env:
+          RECIPE_INPUT: ${{ inputs.recipe }}
+        run: |
+          set -Eeuo pipefail
+
+          recipe="$RECIPE_INPUT"
+          recipe="${recipe#"${recipe%%[![:space:]]*}"}"
+          recipe="${recipe%"${recipe##*[![:space:]]}"}"
+
+          if [[ ! "$recipe" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+            echo "Invalid recipe name: $recipe" >&2
+            exit 1
+          fi
+
+          echo "recipe=$recipe" >> "$GITHUB_OUTPUT"
+
+      - name: Check feedstock exists
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          recipe="${{ steps.normalize.outputs.recipe }}"
+          repo_url="https://github.com/conda-forge/${recipe}-feedstock.git"
+
+          if ! git ls-remote --exit-code "$repo_url" HEAD >/dev/null; then
+            echo "conda-forge feedstock not found: $repo_url" >&2
+            exit 1
+          fi
+
+      - uses: kohlerdominik/docker-run-action@v2.1.0
+        with:
+          image: ghcr.io/fsslc/pixi:latest
+          volumes: ${{ github.workspace }}:${{ github.workspace }}
+          shell: /bin/bash
+          workdir: ${{ github.workspace }}
+          run: |
+            set -Eeuo pipefail
+            ./scripts/prep.sh "${{ steps.normalize.outputs.recipe }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prepared-recipe
+          path: todo/${{ steps.normalize.outputs.recipe }}
+          if-no-files-found: error
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: linux-64, os: ubuntu-22.04 }
+          - { target: linux-aarch64, os: ubuntu-22.04-arm }
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: prepared-recipe
+          path: todo/${{ needs.prepare.outputs.recipe }}
+
+      - name: Build recipe in container
+        id: build
+        uses: kohlerdominik/docker-run-action@v2.1.0
+        continue-on-error: true
+        with:
+          image: ghcr.io/fsslc/pixi:latest
+          volumes: ${{ github.workspace }}:${{ github.workspace }}
+          shell: /bin/bash
+          workdir: ${{ github.workspace }}
+          run: |
+            set -Eeuo pipefail
+            mkdir -p logs
+
+            rattler-build build --continue-on-failure --experimental \
+              -m ./conda_build_config.yaml --skip-existing=all \
+              --target-platform=${{ matrix.target }} -c https://prefix.dev/scns \
+              --recipe-dir "./todo/${{ needs.prepare.outputs.recipe }}" \
+              2>&1 | tee "logs/build-${{ matrix.target }}.log"
+
+            count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
+            if (( count == 0 )); then
+              echo "No .conda files were generated for ${{ matrix.target }}" >&2
+              exit 1
+            fi
+
+      - name: Summarize failure
+        if: steps.build.outcome == 'failure'
+        shell: bash
+        run: |
+          log="logs/build-${{ matrix.target }}.log"
+          {
+            echo "## Build failed: ${{ needs.prepare.outputs.recipe }} (${{ matrix.target }})"
+            echo
+            echo '```text'
+            if [[ -f "$log" ]]; then
+              tail -n 200 "$log"
+            else
+              echo "No build log was captured."
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log-${{ matrix.target }}
+          path: logs/build-${{ matrix.target }}.log
+          if-no-files-found: ignore
+
+      - name: Fail after summary
+        if: steps.build.outcome == 'failure'
+        shell: bash
+        run: exit 1
+
+  commit:
+    name: Commit prepared recipe
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: prepared-recipe
+          path: todo/${{ needs.prepare.outputs.recipe }}
+
+      - name: Commit recipe
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          recipe="${{ needs.prepare.outputs.recipe }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "todo/$recipe"
+          if git diff --cached --quiet; then
+            echo "No recipe changes to commit."
+            exit 0
+          fi
+
+          git commit -m "add recipe $recipe"
+          git push
