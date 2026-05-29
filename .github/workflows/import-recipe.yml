@@ -38,7 +38,7 @@ jobs:
 
           echo "recipe=$recipe" >> "$GITHUB_OUTPUT"
 
-      - name: Check feedstock exists
+      - name: Check feedstock exists and Download it
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -51,17 +51,9 @@ jobs:
             exit 1
           fi
 
-      - uses: kohlerdominik/docker-run-action@v2.1.0
-        with:
-          image: ghcr.io/fsslc/pixi:latest
-          volumes: ${{ github.workspace }}:${{ github.workspace }}
-          shell: /bin/bash
-          workdir: ${{ github.workspace }}
-          run: |
-            set -Eeuo pipefail
-            ./scripts/prep.sh "${{ steps.normalize.outputs.recipe }}"
+          ./scripts/prep.sh "${{ steps.normalize.outputs.recipe }}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: prepared-recipe
           path: todo/${{ steps.normalize.outputs.recipe }}
@@ -80,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: prepared-recipe
           path: todo/${{ needs.prepare.outputs.recipe }}
@@ -127,7 +119,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: build-log-${{ matrix.target }}
@@ -150,7 +142,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: prepared-recipe
           path: todo/${{ needs.prepare.outputs.recipe }}
