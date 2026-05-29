@@ -51,7 +51,8 @@ if [[ ! -f "$todo_recipe_dir/recipe.yaml" ]]; then
     echo "add ${pkgname} to only-meta.txt"
     echo "${pkgname}" >> only-meta.txt
     awk 'NF{print} END{print ""}' only-meta.txt > tmp && mv tmp only-meta.txt
-    return "$status"
+    trap - EXIT
+    exit 0
   }
   trap 'cleanup_recipe_tmp $?' EXIT
   crm convert "$todo_recipe_dir/meta.yaml" > "$tmp_recipe"
