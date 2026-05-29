@@ -52,9 +52,11 @@ if $skip_existing; then
   cmd+=(--skip-existing=all)
 fi
 
-for ch in "${extra_cs[@]}"; do
-  cmd+=(-c "$ch")
-done
+if [[ ${#extra_cs[@]} -gt 0 ]]; then
+  for ch in "${extra_cs[@]}"; do
+    cmd+=(-c "$ch")
+  done
+fi
 
 build_status=0
 "${cmd[@]}" || build_status=$?

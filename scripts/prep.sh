@@ -28,25 +28,30 @@ todo_recipe_dir="$REPO_ROOT/todo/$pkgname"
 refers_dir="$REPO_ROOT/../refers"
 refers_feedstock_dir="$refers_dir/$feedstock_dir"
 
+mkdir -p "$refers_dir"
+if [[ -d "$refers_feedstock_dir" ]]; then
+  rm -rf -- "$refers_feedstock_dir"
+fi
+
+pushd "$refers_dir" > /dev/null || exit 1
 git clone "https://github.com/conda-forge/${feedstock_dir}.git"
+popd > /dev/null || exit 1
 
 rm -rf -- "$todo_recipe_dir"
 mkdir -p "$REPO_ROOT/todo"
-cp -R "$feedstock_dir/recipe" "$todo_recipe_dir"
+cp -R "$refers_dir"/"$feedstock_dir/recipe" "$todo_recipe_dir"
 
-if [[ -f "$todo_recipe_dir/meta.yaml" ]]; then
+if [[ ! -f "$todo_recipe_dir/recipe.yaml" ]]; then
   tmp_recipe="$(mktemp "$todo_recipe_dir/recipe.yaml.tmp.XXXXXX")"
   cleanup_recipe_tmp() {
     rm -f "$tmp_recipe"
+    echo "Failed to convert meta.yaml to recipe.yaml"
+    echo "add ${pkgname} to only-meta.txt"
+    echo "${pkgname}" >> only-meta.txt
+    awk 'NF{print} END{print ""}' only-meta.txt > tmp && mv tmp only-meta.txt
   }
   trap cleanup_recipe_tmp EXIT
   crm convert "$todo_recipe_dir/meta.yaml" > "$tmp_recipe"
   mv "$tmp_recipe" "$todo_recipe_dir/recipe.yaml"
   trap - EXIT
 fi
-
-mkdir -p "$refers_dir"
-if [[ -d "$refers_feedstock_dir" ]]; then
-  rm -rf -- "$refers_feedstock_dir"
-fi
-mv "$feedstock_dir" "$refers_dir"
