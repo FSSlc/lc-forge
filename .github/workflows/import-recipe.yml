@@ -51,6 +51,8 @@ jobs:
             exit 1
           fi
 
+          ./scripts/setup_pixi.sh
+          source ~/.bashrc
           ./scripts/prep.sh "${{ steps.normalize.outputs.recipe }}"
 
       - uses: actions/upload-artifact@v7
