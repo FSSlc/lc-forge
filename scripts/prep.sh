@@ -44,13 +44,16 @@ cp -R "$refers_dir"/"$feedstock_dir/recipe" "$todo_recipe_dir"
 if [[ ! -f "$todo_recipe_dir/recipe.yaml" ]]; then
   tmp_recipe="$(mktemp "$todo_recipe_dir/recipe.yaml.tmp.XXXXXX")"
   cleanup_recipe_tmp() {
+    local status="$1"
+    set +e
     rm -f "$tmp_recipe"
     echo "Failed to convert meta.yaml to recipe.yaml"
     echo "add ${pkgname} to only-meta.txt"
     echo "${pkgname}" >> only-meta.txt
     awk 'NF{print} END{print ""}' only-meta.txt > tmp && mv tmp only-meta.txt
+    return "$status"
   }
-  trap cleanup_recipe_tmp EXIT
+  trap 'cleanup_recipe_tmp $?' EXIT
   crm convert "$todo_recipe_dir/meta.yaml" > "$tmp_recipe"
   mv "$tmp_recipe" "$todo_recipe_dir/recipe.yaml"
   trap - EXIT
