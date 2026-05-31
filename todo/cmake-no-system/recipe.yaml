@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   version: "4.3.3"
-  version_major_minor: ${{ ".".join(version | split(".")[:2]) }}
+  version_major_minor: "4.3"
 
 package:
   name: cmake-no-system
@@ -11,9 +11,11 @@ package:
 source:
   - url: https://github.com/Kitware/CMake/releases/download/v${{ version }}/cmake-${{ version }}.tar.gz
     sha256: cba4bb7a44edf2877bb6f059932896383babe435b3a8c3b5df48b4aa41c9bb85
-  - url: ${{ 'https://cmake.org/files/v${{ version_major_minor }}/cmake-${{ version }}-windows-x86_64.zip' if win else '' }}
-    sha256: ${{ '935ade9e5e8723583c07f44c5592cea2a1c8f65c56ca7e07b34c025c880e0bd6' if win else '' }}
-    target_directory: ${{ 'cmake-${{ version }}-windows' if win else '' }}
+  - if: win
+    then:
+      - url: ${{ 'https://cmake.org/files/v${{ version_major_minor }}/cmake-${{ version }}-windows-x86_64.zip' if win else '' }}
+        sha256: ${{ '935ade9e5e8723583c07f44c5592cea2a1c8f65c56ca7e07b34c025c880e0bd6' if win else '' }}
+        target_directory: ${{ 'cmake-${{ version }}-windows' if win else '' }}
 
 build:
   number: 0
