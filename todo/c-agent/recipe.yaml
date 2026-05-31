@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+
+schema_version: 1
+
+package:
+  name: c-agent
+  version: "0.1.0"
+
+source:
+  path: ./c-agent-0.1.0.tar.gz
+  sha256: c2a816a254f59a368881886b380519242cffc4c6315d7e21389d0836f4f30d95
+
+build:
+  number: 0
+  skip:
+    - win  # no Windows support (uses POSIX APIs: fork, signals, etc.)
+  script:
+    # The Makefile respects CC, CFLAGS, LDFLAGS from env
+    - make -j$CPU_COUNT
+    - mkdir -p "$PREFIX/bin"
+    - cp c-agent "$PREFIX/bin/"
+    - mkdir -p "$PREFIX/share/doc/c-agent"
+    - cp README.md LICENSE "$PREFIX/share/doc/c-agent/"
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - make
+  host:
+    - curl
+    - libedit
+  run:
+    - curl
+    # libedit is linked at runtime; conda handles shared lib deps automatically
+    # pthreads is provided by the system / libc
+    # Runtime tool dependencies — these are invoked via popen/system/execl:
+    - bash          # tool_bash: executes arbitrary shell commands
+    - coreutils     # provides mkdir, cp, rm, mktemp, ls used by skill.c, telegram.c
+    - grep          # tool_grep: code search
+    - git           # skill_install: clones skill repositories
+
+tests:
+  - script:
+      - c-agent --help 2>&1 | grep -q "Usage:"
+  - script:
+      - test -x "$PREFIX/bin/c-agent"
+  - script:
+      - test -f "$PREFIX/share/doc/c-agent/README.md"
+      - test -f "$PREFIX/share/doc/c-agent/LICENSE"
+
+about:
+  homepage: https://github.com/FSSlc/c-agent
+  license: LicenseRef-c-agent
+  license_file: LICENSE
+  summary: "A pure-C AI Agent that runs in your terminal — reads/writes files, executes commands, searches code, and manages tasks."
+  description: |
+    c-agent is a lightweight, pure-C AI coding assistant that runs directly in
+    your terminal. It features an interactive REPL with line editing, tool-augmented
+    AI (bash, file read/write/edit, grep, directory listing), multi-model routing
+    (default/planner/explorer sub-agents), TODO planning, session persistence,
+    MCP (Model Context Protocol) support, a skills system, and Telegram bot mode.
+    Runtime dependencies include libcurl, libedit, bash, coreutils (mkdir/cp/rm/mktemp/ls), grep, and git.
+  documentation: https://github.com/FSSlc/c-agent#readme
+  repository: https://github.com/FSSlc/c-agent
+
+extra:
+  recipe-maintainers:
+    - fsslc
+  
