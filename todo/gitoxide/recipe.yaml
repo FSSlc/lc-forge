@@ -1,0 +1,46 @@
+context:
+  version: "0.84.0"
+
+package:
+  name: gitoxide
+  version: ${{ version }}
+
+source:
+  url: https://github.com/Byron/gitoxide/archive/gix-v${{ version }}.tar.gz
+  sha256: 62c2d452138153b8a46512e68f3dcdeb8c7f27d97b981ad3aa7837e86781ed30
+
+build:
+  number: 0
+  skip: ppc64le
+
+requirements:
+  build:
+    - ${{ compiler('rust') }}
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('cxx') }}
+    - cargo-bundle-licenses
+    - cmake
+    - make
+    - pkg-config
+  host:
+    - openssl
+
+tests:
+  - script:
+      - gix --help
+      - ein --help
+
+about:
+  license: Apache-2.0 AND MIT
+  license_file:
+    - LICENSE-APACHE
+    - LICENSE-MIT
+    - THIRDPARTY.yml
+  summary: An idiomatic, lean, fast & safe pure Rust implementation of Git
+  homepage: https://github.com/Byron/gitoxide
+  repository: https://github.com/Byron/gitoxide
+
+extra:
+  recipe-maintainers:
+    - danielnachun

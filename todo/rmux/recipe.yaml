@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+
+schema_version: 1
+
+context:
+  version: "0.3.1"
+
+package:
+  name: rmux
+  version: ${{ version }}
+
+source:
+  url: https://github.com/Helvesec/rmux/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 6ff9ab1b4f393a880bc594ed87c85837b1ea0071b3f94ad18855f9d150f99c28
+
+build:
+  number: 0
+  skip:
+    - win  # no Windows support yet (uses POSIX APIs: fork, signals, etc.)
+  prefix_detection:
+    ignore_binary_files: true
+
+requirements:
+  build:
+    - ${{ compiler('rust') }}
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - cargo-bundle-licenses
+    - make
+    - pkg-config
+  host:
+    - curl
+    - libcurl
+
+tests:
+  - script:
+      - rmux --help 2>&1 | grep -q "rmux"
+  - script:
+      - test -x "$PREFIX/bin/rmux"
+  - script:
+      - rmux -V 2>&1 | grep -q "${{ version }}"
+
+about:
+  homepage: https://rmux.io
+  license: MIT OR Apache-2.0
+  license_file:
+    - LICENSE-MIT
+    - LICENSE-APACHE
+    - THIRDPARTY.yml
+  summary: "A local terminal multiplexer with a tmux-style CLI, daemon runtime, Rust SDK, and ratatui integration."
+  description: |
+    RMUX is a blazing-fast, tmux-compatible terminal multiplexer built from
+    scratch in Rust. It features a typed SDK, persistent sessions, structured
+    snapshots, and native local transports on Linux, macOS, and Windows
+    (including Windows Named Pipes). RMUX is usable by agents, headless CLI
+    workflows, and humans alike: you can give terminal apps detachable
+    execution, reconnect later, inspect their state, drive them from code,
+    or simply use it for normal tmux-style terminal work.
+  documentation: https://github.com/Helvesec/rmux#readme
+  repository: https://github.com/Helvesec/rmux
+
+extra:
+  recipe-maintainers:
+    - fsslc
