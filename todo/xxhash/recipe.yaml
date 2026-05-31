@@ -1,0 +1,50 @@
+schema_version: 1
+
+context:
+  name: xxHash
+  version: "0.8.3"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/Cyan4973/${{ name }}/archive/v${{ version }}.tar.gz
+  sha256: aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - if: unix
+      then: make
+    - if: win
+      then: cmake
+  run_exports:
+    - ${{ pin_subpackage("xxhash", upper_bound="x.x.x") }}
+
+tests:
+  - script:
+      - xxhsum --help
+
+about:
+  license: BSD-2-Clause
+  license_file: LICENSE
+  summary: Extremely fast hash algorithm
+  description: |
+    xxHash is an Extremely fast Hash algorithm, running at RAM speed limits. It
+    successfully completes the SMHasher test suite which evaluates collision,
+    dispersion and randomness qualities of hash functions. Code is highly
+    portable, and hashes are identical on all platforms (little / big endian).
+  homepage: http://www.xxhash.com/
+  repository: https://github.com/Cyan4973/xxHash
+  documentation: https://github.com/Cyan4973/xxHash
+
+extra:
+  recipe-maintainers:
+    - beckermr
+    - xhochy
+
