@@ -1,0 +1,63 @@
+schema_version: 1
+
+context:
+  version: "1.3.10"
+
+package:
+  name: "pax-utils"
+  version: ${{ version }}
+
+source:
+  url: https://gitweb.gentoo.org/proj/pax-utils.git/snapshot/pax-utils-${{ version }}.tar.gz
+  sha256: 4ee86899b0cb8b702f443908dc4e9e5e19a2bd870d0520cbae4066658c89df14
+
+build:
+  number: 0
+  skip: win
+
+requirements:
+  build:
+    - ${{ stdlib("c") }}
+    - ${{ compiler("c") }}
+    - meson
+    - ninja
+    - pkg-config
+  host:
+    - libcap
+  run:
+    - pyelftools
+
+tests:
+  - package_contents:
+      strict: true
+      bin:
+        - scanelf
+        - dumpelf
+        - scanmacho
+        - pspax
+        - lddtree
+        - symtree
+
+  - script:
+      - scanelf --help
+      - dumpelf --help
+      - scanmacho --help
+      - pspax --help
+
+about:
+  license: GPL-2.0-only
+  license_file: COPYING
+  summary: Portable App Format eXecutable (PAX) utilities
+  description: |
+    PaX-utils provides a variety of programs and scripts for working with ELF
+    binaries. It includes scanelf (for scanning ELF files), dumpelf (for
+    dumping ELF headers), scanmacho (for scanning Mach-O files), pspax (for
+    listing PaX flags of running processes), lddtree (a shell/python script
+    for displaying a tree-like dependency listing), and symtree (for
+    displaying a tree of symbolic links).
+  homepage: https://wiki.gentoo.org/wiki/Project:Hardened/PaX_Utilities
+  repository: https://gitweb.gentoo.org/proj/pax-utils.git
+
+extra:
+  recipe-maintainers:
+    - fsslc
