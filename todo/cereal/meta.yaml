@@ -1,0 +1,44 @@
+{% set name = "cereal" %}
+{% set version = "1.3.2" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/USCiLab/{{ name }}/archive/v{{ version }}.tar.gz
+  sha256: 16a7ad9b31ba5880dac55d62b5d6f243c3ebc8d46a3514149e56b5e7ea81f85f
+
+  patches:
+    # remove cxx compiler dependency
+    - no-compiler.patch
+    # ref: https://github.com/USCiLab/cereal/pull/835
+    - template-apply.patch
+
+build:
+  noarch: generic
+  number: 1
+
+requirements:
+  build:
+    - cmake
+    - ninja
+
+test:
+  commands:
+    - test -f $PREFIX/include/cereal/cereal.hpp  # [not win]
+    - if not exist %LIBRARY_INC%\\cereal\\cereal.hpp exit 1  # [win]
+
+about:
+  home: http://uscilab.github.io/cereal/
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file: LICENSE
+  summary: A C++11 library for serialization
+  doc_url: http://uscilab.github.io/cereal/
+  dev_url: http://github.com/USCiLab/cereal
+
+extra:
+  recipe-maintainers:
+    - saraedum
+    - joaander
