@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Julien Jerphanion <git@jjerphan.xyz>
+Date: Thu, 9 Jan 2025 10:00:00 +0100
+Subject: [PATCH] alloc: Define `_mi_theap_malloc_zero` as `extern inline`
+
+Change _mi_theap_malloc_zero from inline to extern inline to ensure
+an out-of-line copy is generated and exported on Windows when building
+a shared library. This fixes undefined symbol errors when the function
+is referenced from other translation units.
+
+Signed-off-by: Julien Jerphanion <git@jjerphan.xyz>
+---
+ src/alloc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/alloc.c b/src/alloc.c
+index 55505f34..1e11a27a 100644
+--- a/src/alloc.c
++++ b/src/alloc.c
+@@ -250,7 +250,7 @@ extern mi_decl_forceinline void* _mi_theap_malloc_zero_ex(mi_theap_t* theap, si
+   }
+ }
+ 
+-inline void* _mi_theap_malloc_zero(mi_theap_t* theap, size_t size, bool zero, size_t* usable) mi_attr_noexcept {
++extern inline void* _mi_theap_malloc_zero(mi_theap_t* theap, size_t size, bool zero, size_t* usable) mi_attr_noexcept {
+   return _mi_theap_malloc_zero_ex(theap, size, zero, 0, usable);
+ }
+ 
+-- 
+2.47.1

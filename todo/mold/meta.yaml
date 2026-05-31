@@ -1,0 +1,42 @@
+{% set name = "mold" %}
+{% set version = "2.40.4" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/rui314/mold/archive/v{{ version }}.tar.gz
+  sha256: 69414c702ec1084e1fa8ca16da24f167f549e5e11e9ecd5d70a8dcda6f08c249
+
+build:
+  number: 3
+  skip: true  # [win]
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - {{ stdlib("c") }}
+    - cmake
+    - ninja
+
+  host:
+    - mimalloc  # [not osx]
+    - openssl  # [not osx]
+    - tbb-devel
+    - zlib
+    - zstd
+
+test:
+  commands:
+    - mold --version
+
+about:
+  home: https://github.com/rui314/mold
+  license: MIT
+  license_file: LICENSE
+  summary: A Modern Linker
+
+extra:
+  recipe-maintainers:
+    - apmorton

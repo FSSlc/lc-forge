@@ -41,19 +41,22 @@ rm -rf -- "$todo_recipe_dir"
 mkdir -p "$REPO_ROOT/todo"
 cp -R "$refers_dir"/"$feedstock_dir/recipe" "$todo_recipe_dir"
 
-stderr_file="$(mktemp)"
-cleanup() {
-  rm -f "$stderr_file"
-}
-trap cleanup EXIT
+if [[ ! -f "$todo_recipe_dir/recipe.yaml" ]]; then
+  stderr_file="$(mktemp)"
+  cleanup() {
+    rm -f "$stderr_file"
+  }
+  trap cleanup EXIT
 
-crm convert "$todo_recipe_dir/meta.yaml" > "$todo_recipe_dir/recipe.yaml" 2> "$stderr_file" || true
+  crm convert "$todo_recipe_dir/meta.yaml" > "$todo_recipe_dir/recipe.yaml" 2> "$stderr_file" || true
 
-if [[ -s "$stderr_file" ]]; then
-  if ! grep -q '0 errors' "$stderr_file"; then
-    echo "Failed to convert meta.yaml to recipe.yaml"
-    echo "add ${pkgname} to only-meta.txt"
-    echo "${pkgname}" >> only-meta.txt
-    awk 'NF{print} END{print ""}' only-meta.txt > tmp && mv tmp only-meta.txt
+  if [[ -s "$stderr_file" ]]; then
+    if ! grep -q '0 errors' "$stderr_file"; then
+      echo "Failed to convert meta.yaml to recipe.yaml"
+      echo "add ${pkgname} to only-meta.txt"
+      echo "${pkgname}" >> only-meta.txt
+      rm -f "$todo_recipe_dir/recipe.yaml"
+      awk 'NF{print} END{print ""}' only-meta.txt > tmp && mv tmp only-meta.txt
+    fi
   fi
 fi

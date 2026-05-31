@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Julien Jerphanion <git@jjerphan.xyz>
+Date: Thu, 9 Jan 2025 10:00:00 +0100
+Subject: [PATCH] cmake: Suppress int-conversion warnings on Windows
+
+Do not treat -Wint-conversion and -Wincompatible-pointer-types as errors
+on Windows when using Clang.
+
+Signed-off-by: Julien Jerphanion <git@jjerphan.xyz>
+---
+ CMakeLists.txt | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 05b97fc9..4c19ad22 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -424,6 +424,10 @@ if(CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang|GNU" AND NOT MI_CLANG_CL)
+   endif()
+ endif()
+ 
++# Suppress int-conversion and incompatible-pointer-types warnings on Windows with Clang
++if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
++  list(APPEND mi_cflags -Wno-int-conversion -Wno-incompatible-pointer-types)
++endif()
++
+ if(CMAKE_C_COMPILER_ID MATCHES "Intel")
+   list(APPEND mi_cflags -fvisibility=hidden)
+ endif()
+-- 
+2.47.1

@@ -1,0 +1,29 @@
+From 18e98c137999ba48e098e621e4c9ff43a062eac6 Mon Sep 17 00:00:00 2001
+From: Julien Jerphanion <git@jjerphan.xyz>
+Date: Fri, 17 Jan 2025 09:01:16 +0100
+Subject: [PATCH] cmake: Remove non-portable `mtune` specification
+
+Signed-off-by: Julien Jerphanion <git@jjerphan.xyz>
+---
+ CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 05b97fc9..4c19ad22 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -411,9 +411,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang|GNU|Intel")
+   endif()
+   if(MI_OPT_ARCH)
+     if(MI_ARCH STREQUAL "x64")
+-      set(MI_OPT_ARCH_FLAGS "-march=haswell;-mavx2;-mtune=native")    # fast bit scan (since 2013)
++      set(MI_OPT_ARCH_FLAGS "-march=haswell;-mavx2")    # fast bit scan (since 2013)
+     elseif(MI_ARCH STREQUAL "arm64")
+-      set(MI_OPT_ARCH_FLAGS "-march=armv8.1-a;-mtune=native")         # fast atomics (since 2016)
++      set(MI_OPT_ARCH_FLAGS "-march=armv8.1-a")         # fast atomics (since 2016)
+     endif()
+   endif()
+ endif()
+-- 
+2.47.1
+

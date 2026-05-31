@@ -1,0 +1,79 @@
+schema_version: 1
+
+context:
+  name: mimalloc
+  version: "3.3.2"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  - url: https://github.com/microsoft/mimalloc/archive/v${{ version }}.tar.gz
+    sha256: ca02384e007f46950598500dfaebde5ff9948c1d231f5a81b058799afa64bbbb
+    patches:
+      - patches/0001-cmake-Remove-non-portable-mtune-specification.patch
+      - if: win
+        then:
+          - patches/0002-cmake-Suppress-int-conversion-warnings-on-Windows.patch
+          - patches/0003-alloc-Define-_mi_theap_malloc_zero-as-extern-inline.patch
+  - if: win
+    then:
+      - url: https://github.com/microsoft/mimalloc/raw/v${{ version }}/bin/mimalloc-redirect.lib
+        sha256: 39ef7147f6d563a48b019db2f197ae34487bd3daa1b91a369ce7ba32179f7cb6
+        target_directory: bin
+      - url: https://github.com/microsoft/mimalloc/raw/v${{ version }}/bin/mimalloc-redirect.dll
+        sha256: bc3dfdf51fbc80b88cb62cdb6a6784ecc894164bdd4ae7f3885048d870809491
+        target_directory: bin
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+    - cmake
+    - ninja
+  run_exports:
+    - ${{ pin_subpackage("mimalloc", upper_bound="x.x.x") }}
+
+tests:
+  - files:
+      recipe:
+        - test.c
+    requirements:
+      run:
+        - ${{ compiler('c') }}
+        - ${{ compiler('cxx') }}
+    script:
+      - if: unix
+        then:
+          - test -f $PREFIX/lib/libmimalloc${SHLIB_EXT}
+          - test -f $PREFIX/include/mimalloc.h
+      - if: win
+        then:
+          - if not exist %LIBRARY_PREFIX%\\bin\\mimalloc.dll exit 1
+          - if not exist %LIBRARY_PREFIX%\\lib\\mimalloc.dll.lib exit 1
+          - if not exist %LIBRARY_PREFIX%\\include\\mimalloc.h exit 1
+      - if: unix
+        then:
+          - $CC $CFLAGS $LDFLAGS test.c -lmimalloc -o test
+          - LD_LIBRARY_PATH=$PREFIX/lib ./test
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: mimalloc is a compact general purpose allocator with excellent performance.
+  description: |
+    mimalloc (pronounced "me-malloc") is a general purpose allocator with
+    excellent performance characteristics. Initially developed by Daan Leijen
+    for the run-time systems of the Koka and Lean languages.
+  homepage: https://github.com/microsoft/mimalloc
+  repository: https://github.com/microsoft/mimalloc
+
+extra:
+  recipe-maintainers:
+    - jjerphan
+    - elbaro
+    - xhochy
