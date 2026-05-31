@@ -17,18 +17,23 @@ fi
 
 meta_file="$REPO_ROOT/$recipe_dir/meta.yaml"
 recipe_file="$REPO_ROOT/$recipe_dir/recipe.yaml"
-tmp_file="$(mktemp "$REPO_ROOT/$recipe_dir/recipe.yaml.tmp.XXXXXX")"
-
-cleanup() {
-  rm -f "$tmp_file"
-}
-trap cleanup EXIT
 
 if [[ ! -f "$meta_file" ]]; then
   echo "Missing meta.yaml: $meta_file" >&2
   exit 1
 fi
 
-crm convert "$meta_file" > "$tmp_file"
-mv "$tmp_file" "$recipe_file"
-trap - EXIT
+stderr_file="$(mktemp)"
+cleanup() {
+  rm -f "$stderr_file"
+}
+trap cleanup EXIT
+
+crm convert "$meta_file" > "$recipe_file" 2> "$stderr_file" || true
+
+if [[ -s "$stderr_file" ]]; then
+  if ! grep -q '0 errors' "$stderr_file"; then
+    cat "$stderr_file" >&2
+    exit 1
+  fi
+fi

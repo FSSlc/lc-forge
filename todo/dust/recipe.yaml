@@ -1,0 +1,52 @@
+schema_version: 1
+
+context:
+  version: "1.2.4"
+
+package:
+  name: dust
+  version: ${{ version }}
+
+source:
+  url: https://github.com/bootandy/dust/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 2f6768534bd01727234e67f1dd3754c9547aa18c715f6ee52094e881ebac50e3
+
+build:
+  number: 0
+  script:
+    - if: unix
+      then: RUSTFLAGS="-Clink-args=-Wl,-L$PREFIX/lib" cargo install --path . --root "$PREFIX"
+    - if: win
+      then: cargo install --path . --root "%LIBRARY_PREFIX%"
+    - cargo-bundle-licenses --format yaml --output THIRDPARTY.yml
+
+requirements:
+  build:
+    - ${{ compiler('rust') }}
+    - if: unix
+      then: ${{ compiler('c') }}
+    - if: unix
+      then: ${{ stdlib('c') }}
+    - if: win
+      then: m2w64-binutils
+    - cargo-bundle-licenses
+
+tests:
+  - script:
+      - dust --version
+
+about:
+  summary: du + rust = dust. Like du but more intuitive.
+  description: |
+    An alternative tool for du to show disk usage in a more intuitive way.
+  license: Apache-2.0
+  license_file:
+    - LICENSE
+    - THIRDPARTY.yml
+  homepage: https://github.com/bootandy/dust
+  repository: https://crates.io/crates/du-dust
+
+extra:
+  recipe-maintainers:
+    - Zeitsperre
+
