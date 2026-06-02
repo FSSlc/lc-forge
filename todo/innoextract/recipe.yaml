@@ -31,12 +31,13 @@ requirements:
     - ${{ stdlib('c') }}
     - cmake
     - ninja
-  host:
-    - bzip2
     - boost-cpp
     - libiconv
     - xz
-    - zlib
+  run:
+    - boost-cpp
+    - libiconv
+    - xz
 
 tests:
   - package_contents:

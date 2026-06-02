@@ -1,6 +1,6 @@
 {% set name = "zoltan" %}
 {% set version = "3.901" %}
-{% set build = 2 %}
+{% set build = 3 %}
 
 {% set mpi = mpi or 'mpich' %}
 
@@ -57,3 +57,4 @@ extra:
     - DavidBrochart
     - rishi9699
     - xylar
+    - fsslc
