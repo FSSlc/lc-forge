@@ -1,0 +1,90 @@
+schema_version: 1
+
+context:
+  version: "1.82.0"
+
+package:
+  name: boost-cpp
+  version: ${{ version }}
+
+source:
+  url: https://archives.boost.io/release/${{ version }}/source/boost_${{ version|replace(".", "_") }}.tar.bz2
+  sha256: a6e1ab9b0860e6a2881dd7b21fe9f737a095e5f33a3a874afc6a345228597ee6
+  patches:
+    - if: not win
+      then: 5eff1ecc8413b0dc93a1ab047d7fed751e6cb40e.patch
+
+build:
+  number: 2
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+  host:
+    - if: unix
+      then: icu
+    - if: unix
+      then: xz
+    - bzip2
+    - zlib
+    - zstd
+  run:
+    - if: unix
+      then: icu
+    - if: unix
+      then: xz
+    - bzip2
+    - zstd
+  run_constraints:
+    - libboost <0
+
+tests:
+  - files:
+      recipe:
+        - test
+    requirements:
+      run:
+        - if: build_platform == target_platform
+          then: ${{ compiler('cxx') }}
+    script:
+      - if: unix
+        then: "! test -f $PREFIX/include/boost/python.hpp"
+      - if: unix
+        then: "! test -d $PREFIX/include/boost/python"
+      - if: win
+        then: if exist %PREFIX%\\Library\\include\\boost\\python.hpp exit 1
+      - if: win
+        then: if exist %PREFIX%\\Library\\include\\boost\\python exit 1
+      - if: unix
+        then: test -f $PREFIX/lib/libboost_exception.a
+      - if: unix
+        then: test -f $PREFIX/lib/libboost_test_exec_monitor.a
+      - if: unix
+        then: test ! -f $PREFIX/lib/libboost_${{ each_boost_lib }}.a
+      - if: osx
+        then: test -f $PREFIX/lib/libboost_${{ each_boost_lib }}.dylib
+      - if: linux
+        then: test -f $PREFIX/lib/libboost_${{ each_boost_lib }}.so
+      - if: win
+        then: if not exist %PREFIX%\\Library\\bin\\boost_${{ each_boost_lib }}.dll exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\lib\\boost_${{ each_boost_lib }}.lib exit 1
+      - if: win
+        then: if exist %PREFIX%\\Library\\lib\\libboost_${{ each_boost_lib }}.lib exit 1
+
+about:
+  license: BSL-1.0
+  license_file: LICENSE_1_0.txt
+  summary: Free peer-reviewed portable C++ source libraries.
+  homepage: http://www.boost.org/
+
+extra:
+  recipe-maintainers:
+    - ccordoba12
+    - jakirkham
+    - msarahan
+    - ocefpaf
+    - jschueller
+    - isuruf
+    - xhochy
+

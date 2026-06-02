@@ -151,10 +151,9 @@ assimp:
 attr:
   - 2.5
 boost:
-  - 1.78
   - 1.90
 boost_cpp:
-  - 1.78
+  - 1.82
 bzip2:
   - 1
 c_ares:

@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  name: innoextract
+  version: "1.9"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://constexpr.org/innoextract/files/${{ name }}-${{ version }}/${{ name }}-${{ version }}.tar.gz
+  sha256: 6344a69fc1ed847d4ed3e272e0da5998948c6b828cb7af39c6321aba6cf88126
+
+build:
+  number: 0
+  script:
+    - cmake -S . -B build
+      -G Ninja
+      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_INSTALL_PREFIX=$PREFIX
+      -DCMAKE_INSTALL_LIBDIR=lib
+      -DUSE_LZMA=ON
+      -DSTRICT_USE=ON
+      -DUSE_STATIC_LIBS=OFF
+    - cmake --build build --target install -j $CPU_COUNT
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+  host:
+    - bzip2
+    - boost-cpp
+    - libiconv
+    - xz
+    - zlib
+
+tests:
+  - package_contents:
+      bin:
+        - innoextract
+  - script:
+      - innoextract --version
+
+about:
+  license: Zlib
+  license_file: LICENSE
+  summary: Tool to extract installers created by Inno Setup
+  description: |
+    innoextract allows extracting installers created by Inno Setup without
+    running the installer. It supports many Inno Setup versions and common
+    compression methods, including LZMA.
+  homepage: https://constexpr.org/innoextract/
+  repository: https://github.com/dscharrer/innoextract
+
+extra:
+  recipe-maintainers:
+    - fsslc
