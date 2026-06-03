@@ -1,0 +1,76 @@
+{% set name = "gdb" %}
+{% set version = "11.2" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: http://ftp.gnu.org/gnu/gdb/gdb-{{ version }}.tar.xz
+  sha256: 1497c36a71881b8671a9a84a0ee40faab788ca30d7ba19d8463c3cc787152e32
+  patches:
+    - 0001-gdb-darwin-remove-not-so-harmless-spurious-call-to-w.patch
+    - 0002-gdb-darwin-skip-over-WIFSTOPPED-wait4-status.patch
+
+build:
+  number: 1
+  skip: true  # [win]
+  # needed by macOS codesigning script
+  script_env:
+    - TMPDIR
+
+requirements:
+  build:
+    - {{ compiler('fortran') }}
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - make >=3.82
+    - sysroot_linux-64 2.17  # [linux64]
+  host:
+    - python
+    - ncurses
+    - texinfo
+    - xz
+    - zlib
+    - readline
+    - libiconv  # [osx]
+    - expat     # [osx]
+    - gmp
+  run:
+    - python
+    - ncurses
+    - xz
+    - zlib
+    - six
+    - libiconv  # [osx]
+    - expat     # [osx]
+    - pygments
+
+test:
+  commands:
+    - gdb --version
+  requires:
+    - {{ compiler('c') }}
+
+about:
+  home: https://www.gnu.org/software/gdb/
+  license: GPL-3.0-only
+  license_family: GPL
+  license_file: gdb/COPYING
+  summary: GDB, the GNU Project debugger, allows you to see what is going on inside another program while it executes -- or what another program was doing at the moment it crashed.
+  description: |
+    GDB, the GNU Project debugger, allows you to see what is going on `inside'
+    another program while it executes -- or what another program was doing at
+    the moment it crashed.
+    The program being debugged can be written in Ada, C, C++, Objective-C,
+    Pascal (and many other languages). Those programs might be executing on the
+    same machine as GDB (native) or on another machine (remote).
+    GDB can run on most popular UNIX and Microsoft Windows variants.
+  doc_url: https://sourceware.org/gdb/current/onlinedocs/gdb/
+  dev_url: git://sourceware.org/git/binutils-gdb.git
+
+extra:
+  recipe-maintainers:
+    - gqmelo
+    - marcelotrevisani
+    - phil-blain
