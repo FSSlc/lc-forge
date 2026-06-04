@@ -1,0 +1,42 @@
+schema_version: 1
+
+context:
+  name: tser
+  version: "1.2"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/KonanM/tser/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: cd2e00bf39dce209abe667cf0e3194de1b1852727ec5f35d291bfb46b03635e3
+
+build:
+  number: 0
+  noarch: generic
+  script:
+    - if: unix
+      then: mkdir -p "${PREFIX}/include/tser" && cp -a include/tser/. "${PREFIX}/include/tser/"
+    - if: win
+      then: if not exist "%LIBRARY_INC%\\tser" mkdir "%LIBRARY_INC%\\tser"
+    - if: win
+      then: copy /Y include\\tser\\*.hpp "%LIBRARY_INC%\\tser\\"
+
+tests:
+  - package_contents:
+      include:
+        - tser/base64_encoding.hpp
+        - tser/tser.hpp
+        - tser/varint_encoding.hpp
+
+about:
+  homepage: https://github.com/KonanM/tser
+  repository: https://github.com/KonanM/tser
+  license: BSL-1.0
+  license_file: LICENSE
+  summary: Tiny C++17 header-only serialization library.
+
+extra:
+  recipe-maintainers:
+    - fsslc

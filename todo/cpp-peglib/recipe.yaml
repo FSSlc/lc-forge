@@ -1,0 +1,41 @@
+schema_version: 1
+
+context:
+  name: cpp-peglib
+  version: "1.10.3"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/yhirose/cpp-peglib/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: af654d345788715754cee3757433837620aed38a2efc30a3e94ee709bf407ba0
+
+build:
+  number: 0
+  noarch: generic
+  script:
+    - if: unix
+      then: mkdir -p "${PREFIX}/include" && cp peglib.h "${PREFIX}/include/peglib.h"
+    - if: win
+      then: if not exist "%LIBRARY_INC%" mkdir "%LIBRARY_INC%"
+    - if: win
+      then: copy /Y peglib.h "%LIBRARY_INC%\\peglib.h"
+
+tests:
+  - package_contents:
+      include:
+        - peglib.h
+
+about:
+  homepage: https://github.com/yhirose/cpp-peglib
+  repository: https://github.com/yhirose/cpp-peglib
+  documentation: https://yhirose.github.io/cpp-peglib/
+  license: MIT
+  license_file: LICENSE
+  summary: C++17 header-only PEG parser library.
+
+extra:
+  recipe-maintainers:
+    - fsslc

@@ -1,4 +1,6 @@
-#!/usr/bin/env bash -ex
+#!/bin/bash
+
+set -ex
 
 # Make sure we are not prompted for a password before running an executable in GDB on macOS
 if [[ $(uname) == "Darwin" ]]; then
@@ -42,15 +44,12 @@ if [[ $(uname) == "Darwin" ]]; then
   exit 0
 fi
 
-if [[ $(uname -m) == "ppc64le" ]]; then
-  # Skip Python test on ppc64le due to missing debug symbols
+if [[ $(uname -m) == "ppc64le" || $(uname -m) == "aarch64" ]]; then
+  # Skip Python test on ppc64le/aarch64 due to missing debug symbols
   exit 0
 fi
 
 gdb -batch -ex "run" -ex "py-bt" --args python "$RECIPE_DIR/testing/process_to_debug.py" | tee gdb_output
-if [[ "$CONDA_PY" != "27" ]]; then
-    grep "built-in method kill" gdb_output
-fi
 
 # Unfortunately some python packages do not have enough debug info for py-bt
 #
@@ -64,17 +63,20 @@ fi
 # debugged out-of-the-box with this gdb package. When things change, there is not much to be
 # done besides adding or removing versions from this list.
 # Example: insufficient_debug_info_versions=("27" "37")
-insufficient_debug_info_versions=()
+insufficient_debug_info_versions=("312")
 
 if [[ " ${insufficient_debug_info_versions[@]} " =~ " ${CONDA_PY} " ]]; then
     if grep "line 3" gdb_output; then
-        echo "This test was expected to fail due to missing debug info in python"
-        echo "As it passed the test should be re-enabled"
-        exit 1
+        if grep "built-in method kill" gdb_output; then
+            echo "This test was expected to fail due to missing debug info in python"
+            echo "As it passed the test should be re-enabled"
+            exit 1
+        fi
     fi
 else
     # We are lucky! This Python version has enough debug info for us to easily identify
     # the exact Python code where the crash happened.
+    grep "built-in method kill" gdb_output
     grep "line 3" gdb_output
     grep "process_to_debug.py" gdb_output
     grep 'os.kill(os.getpid(), signal.SIGSEGV)' gdb_output

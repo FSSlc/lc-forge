@@ -1,0 +1,50 @@
+schema_version: 1
+
+context:
+  name: nlohmann_fifo_map
+  version: "1.0.1"
+  sha256: cbf8ed2551a16989e5cf25b74d0fb98cb5828f25acbebe3825c992d13dd37f13
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/nlohmann/fifo_map/archive/v${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  noarch: generic
+  script: 
+    - if: unix
+      then: mkdir -p ${PREFIX}/include/nlohmann && cp $SRC_DIR/src/*.hpp ${PREFIX}/include/nlohmann
+    - if: win
+      then: mkdir "%LIBRARY_INC%\\nlohmann" && move "%SRC_DIR%\\src\\*.hpp" "%LIBRARY_INC%\\nlohmann" 
+
+requirements:
+  build: []
+  host: []
+
+tests:
+  - script:
+      - if: unix
+        then: test -d ${PREFIX}/include/nlohmann
+      - if: unix
+        then: test -f ${PREFIX}/include/nlohmann/fifo_map.hpp
+      - if: win
+        then: if not exist %LIBRARY_INC%\nlohmann\fifo_map.hpp exit /B 1
+
+about:
+  license: MIT
+  license_file: LICENSE.MIT
+  summary: FIFO-ordered associative container for C++
+  description: fifo_map is a FIFO-ordered associative container for C++ that can be used as drop-in replacement for std::map.
+  homepage: http://github.com/nlohmann/fifo_map
+  repository: http://github.com/nlohmann/fifo_map
+  documentation: http://github.com/nlohmann/fifo_map
+
+extra:
+  recipe-maintainers:
+    - tadeu
+
