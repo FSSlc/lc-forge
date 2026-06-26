@@ -1,0 +1,62 @@
+context:
+  name: cppcheck
+  version: "2.21.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/danmar/cppcheck/archive/${{ version }}.tar.gz
+  sha256: f028ff75ca5372738f3737c8b3e8611426a6526b6aea2ef01301ab0f5902f044
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then:
+        - python
+        - cross-python_${{ target_platform }}
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - ninja
+    - cmake >=3.22
+  host:
+    - python
+    - pip
+    - setuptools >=45
+    - setuptools-scm >=3.4
+    - pcre
+    - tinyxml2
+  run:
+    - pygments
+    - python
+
+tests:
+  - script:
+      - cppcheck --version
+      - "echo ';' > test.h; cppcheck --check-config test.h"
+
+
+about:
+  description: |
+    Cppcheck is a static analysis tool for C/C++ code. Unlike C/C++ compilers and many other
+    analysis tools it does not detect syntax errors in the code.
+    Cppcheck primarily detects the types of bugs that the compilers normally do not detect.
+    The goal is to detect only real errors in the code (i.e. have zero false
+    positives).
+  license: GPL-3.0-or-later
+  license_file: COPYING
+  summary: A static analysis tool for C/C++ code.
+  homepage: http://cppcheck.sourceforge.io/
+  repository: https://github.com/cppcheck-opensource/cppcheck
+
+extra:
+  recipe-maintainers:
+    - timsnyder
+    - tovrstra
+    - seanyen
+    - wolfv

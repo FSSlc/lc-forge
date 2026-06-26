@@ -520,8 +520,6 @@ tbb_devel:
   - '2022'
 thrift_cpp:
   - 0.16.0
-tinyxml2:
-  - 9
 tk:
   - 8.6                # [not ppc64le]
 tiledb:
