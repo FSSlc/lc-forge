@@ -18,7 +18,7 @@ jobs:
     outputs:
       recipe: ${{ steps.normalize.outputs.recipe }}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - id: normalize
         shell: bash
@@ -72,7 +72,7 @@ jobs:
           - { target: linux-64, os: ubuntu-22.04 }
           - { target: linux-aarch64, os: ubuntu-22.04-arm }
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - uses: actions/download-artifact@v8
         with:
@@ -151,7 +151,7 @@ jobs:
       - build
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
 
