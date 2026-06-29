@@ -5,7 +5,7 @@ package:
   version: {{ version }}
 
 source:
-  url: ../../pkgs/libarchive-3.6.1.tar.gz
+  url: https://github.com/libarchive/libarchive/archive/v{{ version }}.tar.gz
   sha256: 3d5dce7be5ed9b2c239e25b0579167c133296d9dedd17b484b678aec6c010b62
   patches:
     - patches/0001-Add-lib-to-CMAKE_FIND_LIBRARY_PREFIXES-for-lzma.patch
