@@ -1,0 +1,61 @@
+{% set name = "_openmp_mutex" %}
+{% set build = "7" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  path: .
+
+build:
+  number: {{ build }}
+  string: {{ build }}_kmp_llvm           # [openmp_impl == "llvm"]
+  string: {{ build }}_vcomp_kmp_intel    # [openmp_impl == "intel" and win]
+  string: {{ build }}_vcomp_msvc         # [openmp_impl == "msvc"]
+  always_include_files:
+    # this major version has to match the libgomp version from gcc
+    - lib/libgomp.so.1             # [linux]
+  # Remove track_features because directly depending on mutex=*=*llvm
+  # would make the downstream package have low priority
+  # For eg: newer blas packages are not used by the solver
+  # track_features:
+  #  - llvm_openmp
+  ignore_run_exports:
+    - _openmp_mutex
+  run_exports:
+    - {{ pin_subpackage('_openmp_mutex', max_pin=None) }}
+
+requirements:
+  host:
+  run:
+    - llvm-openmp >=9.0.1                # [openmp_impl == "llvm"]
+    - intel-openmp >=2020                # [openmp_impl == "intel"]
+    - vcomp14                            # [openmp_impl == "msvc"]
+
+test:
+  requires:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+  commands:
+    - test -f $PREFIX/lib/libgomp.so.1                                                    # [linux]
+    - if [ ! "$PREFIX/lib/libgomp.so.1" -ef "$PREFIX/lib/libomp.so" ]; then exit 1; fi    # [linux]
+    - rm -f omp_hello && ${CC} -v -fopenmp omp_hello.c -o omp_hello && ./omp_hello        # [linux]
+    - ldd omp_hello                                                                       # [linux and build_platform == target_platform]
+    - rm -f omp_hello && ${CXX} -v -fopenmp omp_hello.c -o omp_hello && ./omp_hello       # [linux]
+    - ldd omp_hello                                                                       # [linux and build_platform == target_platform]
+    - cl.exe -fopenmp:llvm omp_hello.c -o omp_hello %LIBRARY_LIB%\\libiomp5md.lib         # [win and openmp_impl in ("llvm", "intel")]
+    - omp_hello                                                                           # [win and openmp_impl in ("llvm", "intel")]
+  files:
+    - omp_hello.c
+
+about:
+  summary: OpenMP Implementation Mutex
+  license: BSD-3-Clause
+  license_file: LICENSE
+  home: https://github.com/conda-forge/openmp-feedstock
+
+extra:
+  recipe-maintainers:
+    - isuruf
+    - beckermr
