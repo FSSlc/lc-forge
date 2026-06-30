@@ -9,8 +9,8 @@ CF="${CFLAGS}"
 unset CFLAGS
 
 if [[ "$USE_OPENMP" == "1" ]]; then
-    echo Run the the fork test
-    # sed -i.bak 's/test_potrs.o/test_potrs.o test_fork.o/g' utest/Makefile
+    # Run the the fork test
+    sed -i.bak 's/test_potrs.o/test_potrs.o test_fork.o/g' utest/Makefile
 fi
 
 if [ ! -z "$FFLAGS" ]; then
