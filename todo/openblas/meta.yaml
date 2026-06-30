@@ -1,4 +1,4 @@
-{% set version = "0.3.33" %}
+{% set version = "0.3.23" %}
 {% set build_number = 0 %}
 
 # ensure INTERFACE64 variable gets detected by conda-build
@@ -9,11 +9,8 @@ package:
   version: {{ version }}
 
 source:
-  url: https://github.com/OpenMathLib/OpenBLAS/archive/v{{ version }}.tar.gz
-  sha256: 6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab
-  patches:
-    # don't run test_fork in emulation, it has a tendency to hang indefinitely
-    - patches/0001-don-t-run-test_fork-in-cross-compilation.patch  # [build_platform != target_platform]
+  url: https://github.com/xianyi/OpenBLAS/archive/v{{ version }}.tar.gz
+  sha256: 5d9491d07168a5d00116cdc068a40022c3455bf9293c7cb86a65b1054d7e5114
 
 build:
   number: {{ build_number }}
@@ -56,9 +53,7 @@ outputs:
         - {{ stdlib("c") }}
         - {{ compiler("c") }}
         - {{ compiler("fortran") }}
-        - llvm-openmp                   # [USE_OPENMP == 1]
-      run_constrained:
-        - {{ pin_subpackage("openblas" ~ name_suffix, max_pin="x.x.x") }}
+        - llvm-openmp                                      # [(osx or linux) and USE_OPENMP == 1]
     files:
       # Include files like
       #   - libopenblasp-r0.3.5.so
