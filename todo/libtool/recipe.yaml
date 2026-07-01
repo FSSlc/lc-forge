@@ -23,21 +23,6 @@ build:
   number: 0
   skip: win
 
-requirements:
-  build:
-    - ${{ stdlib('c') }}
-    - ${{ compiler('c') }}
-    - ${{ compiler('cxx') }}
-    - m4
-    - help2man
-    - autoconf
-    - automake
-    - make
-    - patch
-  ignore_run_exports:
-    from_package:
-      - ${{ compiler('cxx') }}
-
 outputs:
   - package:
       name: libtool
