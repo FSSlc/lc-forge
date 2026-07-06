@@ -279,7 +279,7 @@ kealib:
 krb5:
   - '1.19'
 libarchive:
-  - 3.6
+  - 3.*
 libavif:
   - 0.11.1
 libblitz:
