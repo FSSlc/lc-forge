@@ -1,0 +1,96 @@
+{% set name = "mesa" %}
+{% set version = "24.2.8" %}
+
+package:
+  name: {{ name|lower }}
+  version: "{{ version }}"
+
+source:
+  - url: https://archive.mesa3d.org/mesa-24.2.8.tar.xz
+    sha256: 999d0a854f43864fc098266aaf25600ce7961318a1e2e358bff94a7f53580e30
+
+  - url: https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v1.613.1.tar.gz
+    sha256: b85edcf03c8ffd68dd5705485bddce02b35cf5bb778e3f72ce1ab905da480adf
+    folder: subprojects/DirectX-Headers-1.0
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - meson >=1.1.0
+    - pyyaml
+    - mako
+    - flex
+    - bison
+    - pkg-config
+    - xorg-libxxf86vm      # [linux]
+    - xorg-libxshmfence    # [linux]
+    - xorg-libxrender
+    - xorg-libxrandr
+    - xorg-libxfixes
+    - xorg-libxdamage
+    - xorg-xorgproto
+  host:
+    - expat
+    - zlib
+    - libdrm           # [linux]
+    - elfutils                     # [linux]
+    - ncurses
+    - llvmdev  21.*
+    - libxcb
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxrender
+    - xorg-libxrandr
+    - xorg-libxfixes
+    - xorg-libxdamage
+    - xorg-xorgproto
+    - xorg-libxxf86vm      # [linux]
+    - xorg-libxshmfence    # [linux]
+  run:
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxrender
+    - xorg-libxrandr
+    - xorg-libxfixes
+    - xorg-libxdamage
+    - xorg-xorgproto
+    - xorg-libxxf86vm      # [linux]
+    - xorg-libxshmfence    # [linux]
+    - xorg-libxdmcp
+test:
+  requires:
+    - pkg-config
+  commands:
+    - test -f $PREFIX/lib/libGL${SHLIB_EXT}               # [linux]
+    - test -f $PREFIX/lib/libOSMesa${SHLIB_EXT}           # [linux]
+    - test -f $PREFIX/lib/libglapi${SHLIB_EXT}            # [linux]
+    - pkg-config --exists osmesa
+    - pkg-config --exists gl
+
+about:
+  home: https://www.mesa3d.org
+  license: MIT
+  license_family: MIT
+  license_file: docs/license.rst
+  summary: Mesa is an open-source implementation of the OpenGL specification - a system for rendering interactive 3D graphics.
+  dev_url: https://gitlab.freedesktop.org/mesa/mesa
+  doc_url: https://docs.mesa3d.org/
+
+extra:
+    recipe-maintainers:
+      - dnadeau4
+      - doutriaux1
+      - sankhesh
+      - danlipsa
+      - hmaarrfk
+      - muryanto1
+      - downiec
+      - jasonb5
+      - matthiasdiener
+      - programfan
+      - fsslc
+

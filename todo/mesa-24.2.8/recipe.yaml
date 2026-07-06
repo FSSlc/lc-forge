@@ -1,0 +1,110 @@
+schema_version: 1
+
+context:
+  name: mesa
+  version: "24.2.8"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  - url: https://archive.mesa3d.org/mesa-24.2.8.tar.xz
+    sha256: 999d0a854f43864fc098266aaf25600ce7961318a1e2e358bff94a7f53580e30
+  - url: https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v1.613.1.tar.gz
+    sha256: b85edcf03c8ffd68dd5705485bddce02b35cf5bb778e3f72ce1ab905da480adf
+    target_directory: subprojects/DirectX-Headers-1.0
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - meson >=1.1.0
+    - pyyaml
+    - mako
+    - flex
+    - bison
+    - pkg-config
+    - if: linux
+      then: xorg-libxxf86vm
+    - if: linux
+      then: xorg-libxshmfence
+    - xorg-libxrender
+    - xorg-libxrandr
+    - xorg-libxfixes
+    - xorg-libxdamage
+    - xorg-xorgproto
+  host:
+    - expat
+    - zlib
+    - if: linux
+      then: libdrm
+    - if: linux
+      then: elfutils
+    - ncurses
+    - llvmdev  21.*
+    - libxcb
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxrender
+    - xorg-libxrandr
+    - xorg-libxfixes
+    - xorg-libxdamage
+    - xorg-xorgproto
+    - if: linux
+      then: xorg-libxxf86vm
+    - if: linux
+      then: xorg-libxshmfence
+  run:
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxrender
+    - xorg-libxrandr
+    - xorg-libxfixes
+    - xorg-libxdamage
+    - xorg-xorgproto
+    - if: linux
+      then: xorg-libxxf86vm
+    - if: linux
+      then: xorg-libxshmfence
+    - xorg-libxdmcp
+
+tests:
+  - requirements:
+      run:
+        - pkg-config
+    script:
+      - if: linux
+        then: test -f $PREFIX/lib/libGL${SHLIB_EXT}
+      - if: linux
+        then: test -f $PREFIX/lib/libOSMesa${SHLIB_EXT}
+      - if: linux
+        then: test -f $PREFIX/lib/libglapi${SHLIB_EXT}
+      - pkg-config --exists osmesa
+      - pkg-config --exists gl
+
+about:
+  license: MIT
+  license_file: docs/license.rst
+  summary: Mesa is an open-source implementation of the OpenGL specification - a system for rendering interactive 3D graphics.
+  homepage: https://www.mesa3d.org
+  repository: https://gitlab.freedesktop.org/mesa/mesa
+  documentation: https://docs.mesa3d.org/
+
+extra:
+  recipe-maintainers:
+    - dnadeau4
+    - doutriaux1
+    - sankhesh
+    - danlipsa
+    - hmaarrfk
+    - muryanto1
+    - downiec
+    - jasonb5
+    - matthiasdiener
+    - programfan
+    - fsslc
+
