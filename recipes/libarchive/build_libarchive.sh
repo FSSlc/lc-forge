@@ -7,7 +7,7 @@ else
 fi
 
 autoreconf -vfi
-mkdir build-${HOST} && pushd build-${HOST}
+mkdir -p build-${HOST} && cd build-${HOST}
 ${SRC_DIR}/configure --prefix=${PREFIX}  \
                      --with-zlib         \
                      --with-bz2lib       \
@@ -24,4 +24,4 @@ ${SRC_DIR}/configure --prefix=${PREFIX}  \
 
 make -j${CPU_COUNT} ${VERBOSE_AT}
 make install
-popd
+

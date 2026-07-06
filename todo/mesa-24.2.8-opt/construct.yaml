@@ -1,0 +1,17 @@
+name: mesa
+version: 24.2.8-1
+
+channels:
+  - https://prefix.dev/scns
+
+specs:
+  - mesa 24.2.8 *1
+  - libglu
+  - llvmdev 21.*
+  - xorg-libxshmfence
+  - xorg-libxxf86vm
+  - xorg-libxfixes
+  - xorg-libxdmcp
+  - libdrm
+
+ignore_duplicate_files: true

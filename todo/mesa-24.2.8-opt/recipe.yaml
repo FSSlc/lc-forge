@@ -1,0 +1,29 @@
+schema_version: 1
+
+context:
+  name: mesa-opt
+  version: "24.2.8"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  path: construct.yaml
+  sha256: 4ba63601771980c6156eb1234d19cf3c7273314f18e907f0e337e5bfc13287ca
+
+build:
+  number: 2
+
+requirements:
+  build:
+    - constructor
+  host:
+
+about:
+  license: MIT
+  summary: Mesa is an open-source implementation of the OpenGL specification - a system for rendering interactive 3D graphics.
+  homepage: https://www.mesa3d.org
+  repository: https://gitlab.freedesktop.org/mesa/mesa
+  documentation: https://docs.mesa3d.org/
+

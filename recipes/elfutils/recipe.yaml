@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  version: "0.188"
+  version: "0.194"
 
 package:
   name: elfutils
@@ -9,18 +9,26 @@ package:
 
 source:
   url: https://fedorahosted.org/releases/e/l/elfutils/${{ version }}/elfutils-${{ version }}.tar.bz2
-  sha256: fb8b0e8d0802005b9a309c60c1d8de32dd2951b56f0c3a3cb56d21ce01595dff
+  sha256: 09e2ff033d39baa8b388a2d7fbc5390bfde99ae3b7c67c7daaf7433fbcf0f01e
+  patches:
+    - disable-werror.patch
 
 build:
   number: 0
-  skip: not linux
+  # ppc64le was dropped due to lack of maintainer interest
+  # https://github.com/conda-forge/conda-forge.github.io/issues/2510
+  skip: ppc64le or not linux
 
 requirements:
   build:
     - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
     - ${{ compiler('cxx') }}
     - pkg-config
     - make
+    - gettext-tools
+    - libtool
+    - automake
   host:
     - bzip2
     - libarchive
@@ -28,7 +36,7 @@ requirements:
     - libmicrohttpd
     - m4
     - sqlite
-    - xz
+    - liblzma-devel
     - zlib
     - zstd
   run_exports:
@@ -36,6 +44,9 @@ requirements:
 
 tests:
   - script: run_test.sh
+    files:
+      recipe:
+        - test_libdwarf.c
     requirements:
       run:
         - ${{ compiler('c') }}
@@ -51,4 +62,3 @@ extra:
   recipe-maintainers:
     - edisongustavo
     - xhochy
-

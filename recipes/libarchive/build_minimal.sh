@@ -7,7 +7,7 @@ else
 fi
 
 autoreconf -vfi
-mkdir build-minimal-${HOST} && pushd build-minimal-${HOST}
+mkdir -p build-minimal-${HOST} && cd build-minimal-${HOST}
 
 ${SRC_DIR}/configure --prefix=${PREFIX}  \
                      --with-zlib         \
@@ -26,4 +26,3 @@ ${SRC_DIR}/configure --prefix=${PREFIX}  \
 
 make -j${CPU_COUNT} ${VERBOSE_AT}
 make install
-popd
