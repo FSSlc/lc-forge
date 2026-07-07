@@ -25,7 +25,7 @@ build:
       - go build -buildvcs=false -v -ldflags "-w -s" ${{ '.' if (build_platform != target_platform) else '-o $PREFIX/bin/git-lfs' }}
       - if: build_platform == target_platform and not win
         then:
-          - go install -v -ldflags "-w -s" .
+          - go install -buildvcs=false -v -ldflags "-w -s" .
       - if: win
         then:
           - go build -buildvcs=false -v -ldflags "-w -s" -o "%PREFIX%\Library\bin\git-lfs.exe"
