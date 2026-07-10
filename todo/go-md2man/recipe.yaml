@@ -1,0 +1,52 @@
+schema_version: 1
+
+context:
+  version: "2.0.7"
+
+package:
+  name: go-md2man
+  version: ${{ version }}
+
+source:
+  url: https://github.com/cpuguy83/go-md2man/archive/v${{ version }}.tar.gz
+  sha256: ca3a5b57e2c01759f5a00ad2a578d034c5370fae9aa7a6c3af5648b2fc802a92
+  target_directory: src
+
+build:
+  number: 0
+  script:
+    - cd src
+    - go-licenses save . --save_path=../library_licenses
+    - if: unix
+      then: go build -buildvcs=false -v -o $PREFIX/bin/go-md2man -ldflags="-s -w"
+      else: go build -buildvcs=false -v -o %LIBRARY_BIN%\go-md2man.exe -ldflags="-s"
+
+requirements:
+  build:
+    - ${{ compiler("go-nocgo") }}
+    - go-licenses
+
+tests:
+  - script:
+      - go-md2man -help
+  - package_contents:
+      bin:
+        - go-md2man
+
+about:
+  license: MIT
+  license_file:
+    - src/LICENSE.md
+    - library_licenses/
+  summary: Converts markdown into roff (man pages)
+  description: |
+    go-md2man converts standard markdown formatted documents into manpages.
+    It is written purely in Go so as to reduce dependencies on 3rd party libs.
+  homepage: https://github.com/cpuguy83/go-md2man
+  repository: https://github.com/cpuguy83/go-md2man
+  documentation: https://github.com/cpuguy83/go-md2man
+
+extra:
+  recipe-maintainers:
+    - mbargull
+    - janjagusch
