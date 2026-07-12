@@ -1,0 +1,73 @@
+diff --git a/vendor/go.podman.io/storage/pkg/configfile/parse.go b/vendor/go.podman.io/storage/pkg/configfile/parse.go
+index 9a9ea71..890e250 100644
+--- a/vendor/go.podman.io/storage/pkg/configfile/parse.go
++++ b/vendor/go.podman.io/storage/pkg/configfile/parse.go
+@@ -150,6 +150,8 @@ func getSearchPaths(conf *File) (SearchPaths, bool, error) {
+ 		defaultConfig = filepath.Join(defaultConfig, configFileName)
+ 		if conf.RootForImplicitAbsolutePaths != "" {
+ 			defaultConfig = filepath.Join(conf.RootForImplicitAbsolutePaths, defaultConfig)
++		} else {
++			defaultConfig = condaFallbackToExeRelPath(defaultConfig)
+ 		}
+ 	}
+ 
+@@ -159,6 +161,8 @@ func getSearchPaths(conf *File) (SearchPaths, bool, error) {
+ 		overrideConfig = filepath.Join(overrideConfig, configFileName)
+ 		if conf.RootForImplicitAbsolutePaths != "" {
+ 			overrideConfig = filepath.Join(conf.RootForImplicitAbsolutePaths, overrideConfig)
++		} else {
++			overrideConfig = condaFallbackToExeRelPath(overrideConfig)
+ 		}
+ 	}
+ 
+diff --git a/vendor/go.podman.io/storage/pkg/configfile/path.go b/vendor/go.podman.io/storage/pkg/configfile/path.go
+index d9443dd..329c930 100644
+--- a/vendor/go.podman.io/storage/pkg/configfile/path.go
++++ b/vendor/go.podman.io/storage/pkg/configfile/path.go
+@@ -2,6 +2,14 @@
+ 
+ package configfile
+ 
++import (
++	"os"
++	"path/filepath"
++	"strings"
++
++	"github.com/sirupsen/logrus"
++)
++
+ const (
+ 	// builtinSystemConfigPath is the location for the default config files shipped by the distro/vendor.
+ 	builtinSystemConfigPath = "/usr/share/containers"
+@@ -10,6 +18,31 @@ const (
+ 	builtinAdminOverrideConfigPath = "/etc/containers"
+ )
+ 
++// For Conda environments we transform default configuration paths like so:
++// (This assumes the executable always resides at PREFIX/bin/executable!)
++//   /etc/path -> PREFIX/bin/../etc/path -> PREFIX/etc/path
++//   /usr/share/path -> PREFIX/bin/../share/path -> PREFIX/share/path
++func condaExeRelPath(path string) string {
++	exePath, err := os.Executable()
++	if err != nil {
++		return path
++	}
++	relativePath := strings.TrimPrefix(path, "/usr")
++	return filepath.Join(filepath.Dir(filepath.Dir(exePath)), relativePath)
++}
++
++func condaFallbackToExeRelPath(path string) string {
++	if path == "" {
++		return path
++	}
++	if _, err := os.Stat(path); err == nil {
++		return path
++	}
++	condaPath := condaExeRelPath(path)
++	logrus.Debugf("Using Conda environment config path %q (system path %q not found)", condaPath, path)
++	return condaPath
++}
++
+ func getAdminOverrideConfigPath() string {
+ 	return builtinAdminOverrideConfigPath
+ }

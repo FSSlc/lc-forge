@@ -1,0 +1,69 @@
+schema_version: 1
+
+context:
+  version: "1.23.0"
+
+package:
+  name: skopeo
+  version: ${{ version }}
+
+source:
+  url: https://github.com/containers/skopeo/archive/v${{ version }}.tar.gz
+  sha256: de96bfc2bb523c852af675ffdadd934484812ce190aa8620e1d5fd6c51442e25
+  target_directory: src
+  patches:
+    - 0001-Allow-relative-paths-for-system-config-files.patch
+
+build:
+  number: 0
+  skip:
+    - win
+  script:
+    - cd src
+    # Use specific targets instead of 'install' to avoid running the binary
+    # (which fails during cross-compilation from osx-amd64 to osx-arm64)
+    - make install-binary install-docs \ DISABLE_CGO="1" \ CONTAINERSCONFDIR="${PREFIX}/share/containers" \ LOOKASIDEDIR="${PREFIX}/etc/containers/sigstore" \ GIT_COMMIT=
+    # Remove gpgme-related files before running go-licenses.
+    # These files require CGO and are excluded from the build when DISABLE_CGO=1.
+    # The build uses pure Go alternatives via the containers_image_openpgp tag instead.
+    # Without removal, go-licenses fails with "build constraints exclude all Go files".
+    - rm -rf vendor/github.com/proglottis/gpgme
+    - rm -f vendor/go.podman.io/image/v5/signature/mechanism_gpgme.go
+    - rm -f vendor/go.podman.io/image/v5/signature/mechanism_gpgme_only.go
+    - go-licenses save ./cmd/skopeo --save_path="../library_licenses"
+
+requirements:
+  build:
+    - ${{ compiler("go-nocgo") }}
+    - make
+    - go-licenses
+    - go-md2man
+  run:
+    - containers-common
+
+tests:
+  - script:
+      - skopeo --help
+      - skopeo --version
+      # Verify that skopeo looks for config files relative to the conda prefix
+      # (via the 0001-Allow-relative-paths-for-system-config-files.patch)
+      # rather than hardcoded system paths like /etc/containers/.
+      - skopeo --debug inspect --override-arch amd64 --override-os linux docker://docker.io/alpine 2>&1 | grep "Using Conda environment"
+
+about:
+  license: Apache-2.0
+  license_file:
+    - src/LICENSE
+    - library_licenses/
+  summary: Work with remote images registries - retrieving information, images, signing content
+  homepage: https://github.com/containers/skopeo
+  repository: https://github.com/containers/skopeo
+  documentation: https://github.com/containers/skopeo
+
+extra:
+  recipe-maintainers:
+    - epruesse
+    - bgruening
+    - mbargull
+    - dhirschfeld
+    - janjagusch
