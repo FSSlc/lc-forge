@@ -22,6 +22,7 @@ build:
     - cd src
     # Use specific targets instead of 'install' to avoid running the binary
     # (which fails during cross-compilation from osx-amd64 to osx-arm64)
+    - sed -i 's#build \$#build -buildvcs=false \$#g' Makefile
     - make install-binary install-docs \ DISABLE_CGO="1" \ CONTAINERSCONFDIR="${PREFIX}/share/containers" \ LOOKASIDEDIR="${PREFIX}/etc/containers/sigstore" \ GIT_COMMIT=
     # Remove gpgme-related files before running go-licenses.
     # These files require CGO and are excluded from the build when DISABLE_CGO=1.
