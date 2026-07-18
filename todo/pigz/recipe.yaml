@@ -1,0 +1,58 @@
+schema_version: 1
+
+context:
+  version: 2.8
+
+package:
+  name: pigz
+  version: ${{ version }}
+
+source:
+  url: https://github.com/madler/pigz/archive/v${{ version }}.tar.gz
+  sha256: 2f7f6a6986996d21cb8658535fff95f1c7107ddce22b5324f4b41890e2904706
+
+build:
+  number: 2
+
+requirements:
+  build:
+    - if: unix
+      then:
+        - ${{ compiler("c") }}
+        - ${{ stdlib("c") }}
+        - make
+      else:
+        - ${{ compiler("m2w64_c") }}
+        - ${{ stdlib("m2w64_c") }}
+        - m2-base
+        - m2-filesystem
+        - m2-sed
+        - m2-coreutils
+        - m2-zip
+        - m2-make
+        - m2-pkg-config
+  host:
+    - zlib
+
+tests:
+  - script:
+      - pigz -h
+      - unpigz -h
+
+about:
+  license: Zlib
+  license_file: README
+  summary: Parallel implementation of gzip
+  description: |
+    pigz, which stands for parallel implementation of gzip, is a fully functional
+    replacement for gzip that exploits multiple processors and multiple cores
+    to the hilt when compressing data.
+  homepage: https://zlib.net/pigz/
+  documentation: https://zlib.net/pigz/pigz.pdf
+
+extra:
+  recipe-maintainers:
+    - danielnachun
+    - epruesse
+    - mfansler
+    - martin-g
