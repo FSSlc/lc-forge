@@ -1,0 +1,39 @@
+schema_version: 1
+
+context:
+  name: gnuconfig
+  version: "2025.07.09"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  git: https://git.savannah.gnu.org/r/config.git
+  rev: a2287c3041a3f2a204eb942e09c015eab00dc7dd
+
+build:
+  number: 0
+  noarch: generic
+  script: |
+    mkdir -p $PREFIX/share/gnuconfig
+    cp config.sub $PREFIX/share/gnuconfig/config.sub
+    cp config.guess $PREFIX/share/gnuconfig/config.guess
+
+
+
+tests:
+  - script:
+      - test -f $PREFIX/share/gnuconfig/config.sub
+      - test -f $PREFIX/share/gnuconfig/config.guess
+
+about:
+  license: GPL-3.0-or-later WITH Autoconf-exception-2.0
+  license_file: LICENSE.txt
+  summary: Updated config.sub and config.guess file from GNU
+  homepage: https://savannah.gnu.org/projects/config/
+
+extra:
+  recipe-maintainers:
+    - isuruf
+
