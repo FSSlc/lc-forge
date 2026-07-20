@@ -1,0 +1,55 @@
+schema_version: 1
+
+context:
+  version: "1.35"
+
+package:
+  name: tar
+  version: ${{ version }}
+
+source:
+  url: http://ftp.gnu.org/gnu/tar/tar-${{ version }}.tar.xz
+  sha256: 4d62ff37342ec7aed748535323930c7cf94acf71c3591882b26a7ea50f3edc16
+  patches:
+    - 0001-Add-liconv-at-the-end-of-the-link-line.patch
+
+build:
+  number: 0
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - make
+    - pkg-config
+    - gnuconfig
+    - gettext-tools
+  host:
+    - libiconv
+    - if: osx
+      then: libintl-devel
+
+tests:
+  - script:
+      - tar --version | grep ${{ version }}
+
+about:
+  license: GPL-3.0-or-later
+  license_file: COPYING
+  summary: GNU tape archive program
+  description: |
+    GNU tar saves many files together into a single tape or disk
+    archive, and can restore individual files from the archive.  It includes
+    multivolume support, the ability to archive sparse files, automatic archive
+    compression/decompression, remote archives and special features that allow
+    tar to be used for incremental and full backups.
+
+
+  homepage: https://www.gnu.org/software/tar/
+
+extra:
+  recipe-maintainers:
+    - notestaff
+    - xhochy
+

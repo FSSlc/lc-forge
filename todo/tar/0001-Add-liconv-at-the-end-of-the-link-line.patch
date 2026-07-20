@@ -1,0 +1,25 @@
+From 621981105e3c38c2e5a1e4f6416c749f19dd5118 Mon Sep 17 00:00:00 2001
+From: Uwe Korn <uwelk@xhochy.com>
+Date: Wed, 7 Feb 2024 20:03:22 +0000
+Subject: [PATCH] Add -liconv at the end of the link line
+
+---
+ src/Makefile.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Makefile.in b/src/Makefile.in
+index 4ff186d..e5717b0 100644
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -1889,7 +1889,7 @@ installcheck-binPROGRAMS: $(bin_PROGRAMS)
+ 
+ tar$(EXEEXT): $(tar_OBJECTS) $(tar_DEPENDENCIES) $(EXTRA_tar_DEPENDENCIES) 
+ 	@rm -f tar$(EXEEXT)
+-	$(AM_V_CCLD)$(LINK) $(tar_OBJECTS) $(tar_LDADD) $(LIBS)
++	$(AM_V_CCLD)$(LINK) $(tar_OBJECTS) $(tar_LDADD) $(LIBS) -liconv
+ 
+ mostlyclean-compile:
+ 	-rm -f *.$(OBJEXT)
+-- 
+2.25.1
+
