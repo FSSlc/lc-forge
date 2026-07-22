@@ -1,0 +1,136 @@
+{% set version = "2.12" %}
+{% set kernel_headers_version = "2.6.32" %}
+{% set build_number = "17" %}
+
+package:
+  name: linux-sysroot
+  version: {{ version }}
+
+source:
+  - url: http://vault.centos.org/centos/6.10/os/x86_64/Packages/glibc-2.12-1.212.el6.x86_64.rpm
+    sha256: b893707c0dc87a556274feb53c544515a1d3b0fe2743c454dece682f5b7d5719
+    folder: binary
+  - url: http://vault.centos.org/centos/6.10/os/x86_64/Packages/glibc-common-2.12-1.212.el6.x86_64.rpm
+    sha256: 721dfba71f7402d94070fe155f468666f2b785d56a638eec3d6ba3dc97fbef75
+    folder: binary-glibc-common
+  - url: http://vault.centos.org/centos/6.10/os/x86_64/Packages/glibc-devel-2.12-1.212.el6.x86_64.rpm
+    sha256: 65b97f1f868afc090b1beec846490d1e6974751f188fd42b1ebc59d1c2866549
+    folder: binary-glibc-devel
+  - url: http://vault.centos.org/centos/6.10/os/x86_64/Packages/tzdata-2018e-3.el6.noarch.rpm
+    sha256: d66cde6ab07be8739b2222c0463cc7c0218a55f1f825944545cef692107ae685
+    folder: binary-tzdata
+  - url: http://vault.centos.org/centos/6.10/os/x86_64/Packages/glibc-headers-2.12-1.212.el6.x86_64.rpm
+    sha256: 7f1f3a2cf562465f2c18031e4e76734987ea8489c1202301e019dfb722ff5031
+    folder: binary-glibc-headers
+    patches:
+      # these patches are from the anaconda fork of crosstool-ng
+      - 0003-typedef-caddr.patch
+      - 0013-Implement-aligned_alloc-using-posix_memaligned.patch
+  - url: http://vault.centos.org/centos/6.10/os/x86_64/Packages/glibc-static-2.12-1.212.el6.x86_64.rpm
+    sha256: f2e9b9a789e980237220ab4ff40c5fa071281c10cccc5f3203280e96efa30c19
+    folder: binary-glibc-static
+  - url: http://vault.centos.org/centos/6.10/os/x86_64/Packages/kernel-headers-{{ kernel_headers_version }}-754.el6.x86_64.rpm
+    sha256: 93b20d547637e3d25a9604b8034334afa910f61898da0f265a3969a68bf8cc6d
+    folder: binary-kernel-headers
+  - url: http://vault.centos.org/centos/6.10/os/x86_64/Packages/nss-softokn-freebl-3.14.3-23.3.el6_8.x86_64.rpm
+    sha256: bccc1e55c5cf90d7ee5ef2d25253fc8dd2c3854121a65711f5f5618b097ffb70
+    folder: binary-freebl
+    no_hoist: true
+
+build:
+  number: {{ build_number }}
+  noarch: generic
+  missing_dso_whitelist:
+    - '*'
+
+outputs:
+  - name: kernel-headers_{{ cross_target_platform }}
+    version: {{ kernel_headers_version }}
+    script: build-kernel-headers.sh
+    build:
+      noarch: generic
+      binary_relocation: False
+      detect_binary_files_with_prefix: False
+    requirements:
+      run_constrained:
+        - sysroot_{{ cross_target_platform }} =={{ version }}
+    test:
+      commands:
+        test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/linux/version.h
+
+  - name: _sysroot_{{ cross_target_platform }}_curr_repodata_hack
+    version: 4
+    build:
+      noarch: generic
+    requirements:
+      run:
+        - sysroot_{{ cross_target_platform }} {{ version }}.*
+        - kernel-headers_{{ cross_target_platform }} {{ kernel_headers_version }}.*
+    test:
+      commands:
+        - echo "works!"
+
+  - name: sysroot_{{ cross_target_platform }}
+    script: build-sysroot.sh
+    build:
+      noarch: generic
+      binary_relocation: False
+      detect_binary_files_with_prefix: False
+    requirements:
+      run:
+        - {{ pin_subpackage('kernel-headers_' ~ cross_target_platform, exact=True) }}
+    test:
+      commands:
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/lib/libc.so.6
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/sbin/ldconfig
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/lib/crt1.o
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/limits.h
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs-64.h
+        - test -d $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/share/locale
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/bin/ldd
+        - find "${PREFIX}" \( -name 'libnsl*' -o -path '*/rpcsvc/yp*' \) | { ! grep . ; }
+        - find "${PREFIX}" \( -name 'libcrypt*' -o -name 'crypt*' \) \! -name libcrypt.so.1 \! -name libcrypt-2.12.so | { ! grep . ; }
+
+  - name: sysroot-{{ cdt_name }}-{{ cdt_arch }}
+    build:
+      noarch: generic
+    requirements:
+      run:
+        - sysroot_{{ cross_target_platform }} =={{ version }}
+    test:
+      commands:
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/lib/libc.so.6
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/sbin/ldconfig
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/lib/crt1.o
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/limits.h
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs-64.h
+        - test -d $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/share/locale
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/bin/ldd
+        - find "${PREFIX}" \( -name 'libnsl*' -o -path '*/rpcsvc/yp*' \) | { ! grep . ; }
+        - find "${PREFIX}" \( -name 'libcrypt*' -o -name 'crypt*' \) \! -name libcrypt.so.1 \! -name libcrypt-2.12.so | { ! grep . ; }
+
+about:
+  home: http://sources.redhat.com/glibc/
+  license: LGPL-2.0-or-later AND LGPL-2.0-or-later WITH exceptions AND GPL-2.0-or-later AND MPL-2.0
+  license_family: GPL
+  # other license files are packaged with source
+  license_file: nss-license
+  summary: "(CDT) The GNU libc libraries and header files for the Linux kernel for use by glibc"
+  description: |
+        The glibc package contains standard libraries which are used by multiple
+        programs on the system. In order to save disk space and memory, as well as to
+        make upgrading easier, common system code is kept in one place and shared
+        between programs. This particular package contains the most important sets of
+        shared libraries: the standard C library and the standard math library.
+        Without these two libraries, a Linux system will not function.
+
+        Kernel-headers includes the C header files that specify the interface between
+        the Linux kernel and userspace libraries and programs.  The header files
+        define structures and constants that are needed for building most standard
+        programs and are also needed for rebuilding the glibc package.
+
+extra:
+  recipe-maintainers:
+    - isuruf
+    - scopatz
+    - beckermr

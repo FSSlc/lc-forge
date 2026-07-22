@@ -1,0 +1,10 @@
+target_machine:
+  - x86_64
+cross_target_platform:
+  - linux-64
+ctng_vendor:
+  - scns
+cdt_name:
+  - cos6
+cdt_arch:
+  - x86_64
