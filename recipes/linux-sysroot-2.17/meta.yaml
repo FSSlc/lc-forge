@@ -1,0 +1,160 @@
+{% set version = "2.17" %}
+{% set kernel_headers_version = "3.10.0" %}  # [cross_target_platform != "linux-aarch64"]
+{% set kernel_headers_version = "4.18.0" %}  # [cross_target_platform == "linux-aarch64"]
+{% set build_number = "18" %}
+{% set rpm_url = "https://vault.centos.org/centos/7.9.2009/os/x86_64/Packages" %}  # [cross_target_platform == "linux-64"]
+{% set rpm_url = "https://vault.centos.org/altarch/7/os/aarch64/Packages" %}       # [cross_target_platform == "linux-aarch64"]
+{% set rpm_url = "https://vault.centos.org/altarch/7/os/ppc64le/Packages" %}       # [cross_target_platform == "linux-ppc64le"]
+{% set rpm_url = "https://download.sinenomine.net/clefos/7/os/s390x" %}             # [cross_target_platform == "linux-s390x"]
+
+package:
+  name: linux-sysroot
+  version: {{ version }}
+
+source:
+  - folder: binary
+    url: {{ rpm_url }}/glibc-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: 49eb081de1ddd13f5440abdbb3b42cdd01d11b74d624793ae1b80a1cf432551b  # [cross_target_platform == "linux-64"]
+    sha256: ca1976545bcd4a6c099f1b3e2505469083b6bb4901d2517275a8da4138c0b21a  # [cross_target_platform == "linux-aarch64"]
+    sha256: f9ff840d0cd01cb900c5ae3a5ce0adb5d388be7a938dc83cdeb374d27fc0a68e  # [cross_target_platform == "linux-ppc64le"]
+    sha256: 3b37b5d41f81c4e63808d10a6ac5e4cf45501cb3c7553c8cd592f6afb2c724d4  # [cross_target_platform == "linux-s390x"]
+
+  - folder: binary-glibc-common
+    url: {{ rpm_url }}/glibc-common-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: e89e472b20c02c25fd69047abc7a0e7e3b1deeb4d5b88b17886318c8af8439d7  # [cross_target_platform == "linux-64"]
+    sha256: 07c274dd3bd53185d63cb960726175d001f912f272c32019462dbd78c05f7083  # [cross_target_platform == "linux-aarch64"]
+    sha256: b83d663f9822828bd52282c0e43523a266ad3646d76108e4e3a32e7cf25ac658  # [cross_target_platform == "linux-ppc64le"]
+    sha256: a3b96710b7e8f532b62fa62ee7cda97cae2aa2ffbc6d1aebb79a6896926ead6c  # [cross_target_platform == "linux-s390x"]
+
+  - folder: binary-glibc-devel
+    url: {{ rpm_url }}/glibc-devel-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: 57e04523b12c9aa5a0632cbfa2ff13e33f1ecec5e6bd0b609a77d9c24cebf8c4  # [cross_target_platform == "linux-64"]
+    sha256: 458738f7b415fb73473725b6bef340234954e4eb00731cbf8aa1afad5ccd12f6  # [cross_target_platform == "linux-aarch64"]
+    sha256: 915b115a348dd14bad459287601bbd4c963c5e06d01217aafd343b7d3cccc10c  # [cross_target_platform == "linux-ppc64le"]
+    sha256: e18aa2509940bdd5751a5ddb4c962688ba54a29d7ef1c080ee0f87656033dd1e  # [cross_target_platform == "linux-s390x"]
+
+  - folder: binary-glibc-headers
+    url: {{ rpm_url }}/glibc-headers-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: b7e4e19b362cbd73e09e6ee5eff3d70dbeb7cc2c702a927b8f646f324d4ec4a3  # [cross_target_platform == "linux-64"]
+    sha256: 58a5802d026435b36d7080ea4943868a82fc41642a2b0e475239bd6aaa5882cd  # [cross_target_platform == "linux-aarch64"]
+    sha256: e1b7daaccec1eafa1fb7ead6c4c81bf9390b2b849e96e1d2498e1352c0254a67  # [cross_target_platform == "linux-ppc64le"]
+    sha256: 029b6d565ee8014bd25434efa25097bd0f35c084e6a018a2c19c8a6cf6df57e3  # [cross_target_platform == "linux-s390x"]
+
+
+  - folder: binary-glibc-static
+    url: {{ rpm_url }}/glibc-static-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: 18ee19487ec11ccebe39f52018f3d3aab7e1826bf754779ab1665104473806b7  # [cross_target_platform == "linux-64"]
+    sha256: 9738890cf7a46874e92c337966bc1dbf481094da95b16a468bab7edba665777d  # [cross_target_platform == "linux-aarch64"]
+    sha256: 5ca6ac4974d817596132974b43ef79d8afbf57144a3f18df7eff66e495b2c7f8  # [cross_target_platform == "linux-ppc64le"]
+    sha256: e8eca33de49bb465129e609713d7178457c0b5189d9c2d8a6cd836ad08fbfadc  # [cross_target_platform == "linux-s390x"]
+
+  - folder: binary-kernel-headers
+    url: {{ rpm_url }}/kernel-headers-{{ kernel_headers_version }}-1160.el7.{{ centos_machine }}.rpm  # [cross_target_platform == "linux-64"]
+    url: {{ rpm_url }}/kernel-headers-{{ kernel_headers_version }}-193.28.1.el7.{{ centos_machine }}.rpm  # [cross_target_platform == "linux-aarch64"]
+    url: {{ rpm_url }}/kernel-headers-{{ kernel_headers_version }}-1160.el7.{{ centos_machine }}.rpm  # [cross_target_platform == "linux-ppc64le"]
+    url: {{ rpm_url }}/kernel-headers-{{ kernel_headers_version }}-1160.el7.{{ centos_machine }}.rpm  # [cross_target_platform == "linux-s390x"]
+    sha256: 81b4e4f401d2402736ceba4627eaafd5b615c2cc45aa4d4f941ea79562045139  # [cross_target_platform == "linux-64"]
+    sha256: 56fffc40800cd7c30830009c860f04c8dba1110a6271efd804a0bb01e0bdf8a4  # [cross_target_platform == "linux-aarch64"]
+    sha256: 6875ad8dbbf0cff85bf39bd2446ffb9e92de78e113496fba37fa5da9f10348b1  # [cross_target_platform == "linux-ppc64le"]
+    sha256: 77de4979db9fc09108fcb09c7b19daed832f7ec8964d8fc8b18610b54e4b30da  # [cross_target_platform == "linux-s390x"]
+
+  - folder: binary-freebl
+    url: {{ rpm_url }}/nss-softokn-freebl-3.44.0-8.el7_7.{{ centos_machine }}.rpm
+    sha256: 9949831b67f6eb68dc9df6df3e4570bd5f9301de3c7d67c41512fcaaadb40da5  # [cross_target_platform == "linux-64"]
+    sha256: 5a62051cc69e76ffa44291ed12464a3ce4a8224dbf829330739aae500f33b2b2  # [cross_target_platform == "linux-aarch64"]
+    sha256: 01439cbf4297a341e31b425961bdafc251a4765e22035977ca459c939f949899  # [cross_target_platform == "linux-ppc64le"]
+    sha256: 8c88f6be69f0d88ac91a577cfb507c879446d3950a19843927082bf0d660accf  # [cross_target_platform == "linux-s390x"]
+
+build:
+  number: {{ build_number }}
+  noarch: generic
+  missing_dso_whitelist:
+    - '*'
+
+outputs:
+  - name: kernel-headers_{{ cross_target_platform }}
+    version: {{ kernel_headers_version }}
+    script: build-kernel-headers.sh
+    build:
+      noarch: generic
+      binary_relocation: False
+      detect_binary_files_with_prefix: False
+    requirements:
+      run_constrained:
+        - sysroot_{{ cross_target_platform }} =={{ version }}
+    test:
+      commands:
+        test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/linux/version.h
+
+  - name: sysroot_{{ cross_target_platform }}
+    script: build-sysroot.sh
+    build:
+      noarch: generic
+      binary_relocation: False
+      detect_binary_files_with_prefix: False
+{% if cross_target_platform == "linux-64" %}
+      run_exports:
+        strong:
+          - __glibc >={{ version }},<3.0.a0
+{% endif %}
+    requirements:
+      run:
+        - {{ pin_subpackage('kernel-headers_' ~ cross_target_platform, exact=True) }}
+        - tzdata
+    test:
+      commands:
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/lib/libc.so.6
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/sbin/ldconfig
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/lib/crt1.o
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/limits.h
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs-64.h  # [cross_target_platform == "linux-64"]
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs.h  # [cross_target_platform != "linux-64"]
+        - test -d $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/share/locale
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/bin/ldd
+        - find "${PREFIX}" \( -name 'libnsl*' -o -path '*/rpcsvc/yp*' \) | { ! grep . ; }                                                # [with_crypt == "false"]
+        - find "${PREFIX}" \( -name 'libcrypt*' -o -name 'crypt.*' \) \! -name libcrypt.so.1 \! -name libcrypt-2.17.so | { ! grep . ; }  # [with_crypt == "false"]
+
+  - name: sysroot-{{ sysroot_cdt_name }}-{{ sysroot_cdt_arch }}
+    build:
+      noarch: generic
+    requirements:
+      run:
+        - sysroot_{{ cross_target_platform }} =={{ version }}
+    test:
+      commands:
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/lib/libc.so.6
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/sbin/ldconfig
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/lib/crt1.o
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/limits.h
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs-64.h  # [cross_target_platform == "linux-64"]
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs.h  # [cross_target_platform != "linux-64"]
+        - test -d $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/share/locale
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/bin/ldd
+        - find "${PREFIX}" \( -name 'libnsl*' -o -path '*/rpcsvc/yp*' \) | { ! grep . ; }                                                # [with_crypt == "false"]
+        - find "${PREFIX}" \( -name 'libcrypt*' -o -name 'crypt.*' \) \! -name libcrypt.so.1 \! -name libcrypt-2.17.so | { ! grep . ; }  # [with_crypt == "false"]
+
+about:
+  home: https://vault.centos.org/centos/7.9.2009
+  license: LGPL-2.0-or-later AND LGPL-2.0-or-later WITH exceptions AND GPL-2.0-or-later AND MPL-2.0
+  license_family: GPL
+  license_file: nss-license
+  # other license files are packaged with source
+  summary: "(CDT) The GNU libc libraries and header files for the Linux kernel for use by glibc"
+  description: |
+        The glibc package contains standard libraries which are used by multiple
+        programs on the system. In order to save disk space and memory, as well as to
+        make upgrading easier, common system code is kept in one place and shared
+        between programs. This particular package contains the most important sets of
+        shared libraries: the standard C library and the standard math library.
+        Without these two libraries, a Linux system will not function.
+
+        Kernel-headers includes the C header files that specify the interface between
+        the Linux kernel and userspace libraries and programs.  The header files
+        define structures and constants that are needed for building most standard
+        programs and are also needed for rebuilding the glibc package.
+
+extra:
+  recipe-maintainers:
+    - isuruf
+    - scopatz
+    - beckermr
