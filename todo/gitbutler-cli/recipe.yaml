@@ -1,0 +1,63 @@
+schema_version: 1
+
+context:
+  version: "0.21.1"
+  release_build: "3159"
+
+package:
+  name: gitbutler-cli
+  version: ${{ version }}
+
+source:
+  - if: linux and x86_64
+    then:
+      url: https://releases.gitbutler.com/releases/release/${{ version }}-${{ release_build }}/linux/x86_64/but
+      sha256: 1ea64e563f1d19e2e60a9812ddaf77fa801cc1025076a8ec4c652bc16ac2134b
+      
+  - if: linux and aarch64
+    then:
+      url: https://releases.gitbutler.com/releases/release/${{ version }}-${{ release_build }}/linux/aarch64/but
+      sha256: 260f473aa66d75ac5fc5b0476fce26504eb92b4143d8d4271c09daae815b6a54
+
+  - url: https://github.com/gitbutlerapp/gitbutler/blob/master/LICENSE.md
+
+build:
+  number: 0
+  script:
+    - mkdir -p $PREFIX/bin
+    - install -m 755 but $PREFIX/bin/but
+
+requirements:
+  build:
+    - ${{ stdlib('c') }}
+  run:
+    - xz
+
+about:
+  homepage: https://gitbutler.com
+  repository: https://github.com/gitbutlerapp/gitbutler
+  license: FSL-1.1-MIT
+  license_file: LICENSE.md
+  summary: GitButler CLI - a modern Git-based version control tool for AI-powered workflows
+  description: |
+    GitButler (`but`) is a modern Git-based version control CLI built from the
+    ground up for AI-powered workflows. It works instantly in any existing Git
+    repo as a friendlier and more powerful drop-in Git UI replacement.
+
+    Features include:
+    - Stacked branches: create branches stacked on other branches, amend or
+      edit any commit with automatic restacking.
+    - Parallel branches: organize work on multiple branches simultaneously.
+    - Easy commit management: uncommit, reword, amend, move, split and squash
+      commits with simple commands.
+    - Unlimited undo timeline: logs all operations and allows easy undo/revert.
+    - First-class conflict resolution: rebases always succeed; commits can be
+      marked as conflicted and resolved at any time.
+    - Forge integration: authenticate to GitHub, GitLab, or Bitbucket to create
+      and manage pull requests, list branches, get CI statuses, and more.
+    - AI tooling: built-in AI handlers for commit messages, branch names, PR
+      descriptions, and agent skill integration.
+
+extra:
+  recipe-maintainers:
+    - FSSlc

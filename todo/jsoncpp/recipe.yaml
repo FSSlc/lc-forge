@@ -1,0 +1,45 @@
+context:
+  version: "1.9.8"
+
+package:
+  name: jsoncpp
+  version: ${{ version }}
+
+source:
+  url: https://github.com/open-source-parsers/jsoncpp/archive/${{ version }}.tar.gz
+  sha256: 51828cf3574281d2b79ec2a1c56a9e4c20cc1103711321ea96384cffb8d2d904
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler("cxx") }}
+    - ${{ stdlib("c") }}
+    - cmake
+    - ninja
+    - if: unix
+      then: pkg-config
+  run_exports:
+    - ${{ pin_subpackage('jsoncpp', upper_bound='x.x.x') }}
+
+tests:
+  - package_contents:
+      include:
+        - json/json.h
+      lib:
+        - jsoncpp
+
+about:
+  homepage: https://github.com/open-source-parsers/jsoncpp
+  license: LicenseRef-Public-Domain OR MIT
+  license_file: LICENSE
+  summary: A C++ library for interacting with JSON.
+
+extra:
+  recipe-maintainers:
+    - jakirkham
+    - jschueller
+    - stuarteberg
+    - marcelotrevisani
+    - matthiasdiener
