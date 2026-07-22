@@ -1,76 +1,69 @@
-{% set alma_version = "8.9" %}
-{% set glibc_version = "2.28" %}
-{% set kernel_headers_version = "4.18.0" %}
-{% set build_number = "9" %}
-
-{% set rpm_url = "https://repo.almalinux.org/vault/" ~ alma_version ~ "/BaseOS/" ~ centos_machine ~ "/os/Packages" %}
-{% set appstream_rpm_url = "https://repo.almalinux.org/vault/" ~ alma_version ~ "/AppStream/" ~ centos_machine ~ "/os/Packages" %}
-{% set powertools_rpm_url = "https://repo.almalinux.org/vault/" ~ alma_version ~ "/PowerTools/" ~ centos_machine ~ "/os/Packages" %}
+{% set version = "2.17" %}
+{% set kernel_headers_version = "3.10.0" %}  # [cross_target_platform != "linux-aarch64"]
+{% set kernel_headers_version = "4.18.0" %}  # [cross_target_platform == "linux-aarch64"]
+{% set build_number = "18" %}
+{% set rpm_url = "https://vault.centos.org/centos/7.9.2009/os/x86_64/Packages" %}  # [cross_target_platform == "linux-64"]
+{% set rpm_url = "https://vault.centos.org/altarch/7/os/aarch64/Packages" %}       # [cross_target_platform == "linux-aarch64"]
+{% set rpm_url = "https://vault.centos.org/altarch/7/os/ppc64le/Packages" %}       # [cross_target_platform == "linux-ppc64le"]
+{% set rpm_url = "https://download.sinenomine.net/clefos/7/os/s390x" %}             # [cross_target_platform == "linux-s390x"]
 
 package:
   name: linux-sysroot
-  version: {{ glibc_version }}
+  version: {{ version }}
 
 source:
-  # for calculating the hashes below, you can run `python update.py`
-  # in the recipe folder (after ensuring the versions in CBC are correct)
-  # START source
-  - folder: binary-glibc
-    url: {{ rpm_url }}/glibc-2.28-236.el8_9.13.{{ centos_machine }}.rpm
-    sha256: 372270ca0753bd9cf00db5aa854b7e0a6c513edf9cb9d1bceea8cec4796e0bbe  # [cross_target_platform == "linux-64"]
-    sha256: c70b1a74854850d99e677b23c3bc97c6fa9fb309a3cb36049aff0a48ca755d5a  # [cross_target_platform == "linux-aarch64"]
-    sha256: 21315346520e2c8a5d301c9a54e05d9f29e1cfb32f8dc49efce4a0fce2b3482a  # [cross_target_platform == "linux-ppc64le"]
-    sha256: b08408bdfc2b4cb4d210bb235414443da66cecb8810dc42e340815f24ee0e481  # [cross_target_platform == "linux-s390x"]
-
-  - folder: binary-glibc-all-langpacks
-    url: {{ rpm_url }}/glibc-all-langpacks-2.28-236.el8_9.13.{{ centos_machine }}.rpm
-    sha256: 531b421cec19b5e4a2c0589bc45cacec057d6c7d8a8f9f6e4d8023669afbda53  # [cross_target_platform == "linux-64"]
-    sha256: 53782952fb4c4dbef7cea98c89a02fb4d5a21bc2070141eeeb4c5497df32fd5d  # [cross_target_platform == "linux-aarch64"]
-    sha256: 004990da77a6ab2f11dacb87580c33876c3c1f021232ea95e669a1b62308838b  # [cross_target_platform == "linux-ppc64le"]
-    sha256: 06635fdd898da811cc311dd2b86eb6c4c9fb232b91ac447dc085ccd1a00c8284  # [cross_target_platform == "linux-s390x"]
+  - folder: binary
+    url: {{ rpm_url }}/glibc-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: 49eb081de1ddd13f5440abdbb3b42cdd01d11b74d624793ae1b80a1cf432551b  # [cross_target_platform == "linux-64"]
+    sha256: ca1976545bcd4a6c099f1b3e2505469083b6bb4901d2517275a8da4138c0b21a  # [cross_target_platform == "linux-aarch64"]
+    sha256: f9ff840d0cd01cb900c5ae3a5ce0adb5d388be7a938dc83cdeb374d27fc0a68e  # [cross_target_platform == "linux-ppc64le"]
+    sha256: 3b37b5d41f81c4e63808d10a6ac5e4cf45501cb3c7553c8cd592f6afb2c724d4  # [cross_target_platform == "linux-s390x"]
 
   - folder: binary-glibc-common
-    url: {{ rpm_url }}/glibc-common-2.28-236.el8_9.13.{{ centos_machine }}.rpm
-    sha256: 62e674f5310262440065d1189d52948dfc327b706c8cafb007526ff3df05df8a  # [cross_target_platform == "linux-64"]
-    sha256: f7ec3ffcfaf9d781e2bc0d472ebae88fb5f888885e1b89734fea345f64de700a  # [cross_target_platform == "linux-aarch64"]
-    sha256: d615fb36e7a735b05bf01912f473af086d183c78da258003da02b4a880818750  # [cross_target_platform == "linux-ppc64le"]
-    sha256: 9576e18b45663d37508d6d048fc8d8740eaf2a4bb2371cffde5174917858b6ec  # [cross_target_platform == "linux-s390x"]
+    url: {{ rpm_url }}/glibc-common-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: e89e472b20c02c25fd69047abc7a0e7e3b1deeb4d5b88b17886318c8af8439d7  # [cross_target_platform == "linux-64"]
+    sha256: 07c274dd3bd53185d63cb960726175d001f912f272c32019462dbd78c05f7083  # [cross_target_platform == "linux-aarch64"]
+    sha256: b83d663f9822828bd52282c0e43523a266ad3646d76108e4e3a32e7cf25ac658  # [cross_target_platform == "linux-ppc64le"]
+    sha256: a3b96710b7e8f532b62fa62ee7cda97cae2aa2ffbc6d1aebb79a6896926ead6c  # [cross_target_platform == "linux-s390x"]
 
   - folder: binary-glibc-devel
-    url: {{ rpm_url }}/glibc-devel-2.28-236.el8_9.13.{{ centos_machine }}.rpm
-    sha256: ba78eb42c3a83dec5efb4d70e23532c526a0820ccff8dee31ee783cfcd995185  # [cross_target_platform == "linux-64"]
-    sha256: 1e675c2a6388c9bb0ddfd63c0a9c163a204abdb8c9f60fc308231fb35efd3e54  # [cross_target_platform == "linux-aarch64"]
-    sha256: 64d80d525d91757152005c0861b21ed588b9ca319553c24b54e4fd923213f18e  # [cross_target_platform == "linux-ppc64le"]
-    sha256: 8147ebbd6f15bea71b445bbac8d1548f520f8e24ebd1fda096e6759e3ac3ed7d  # [cross_target_platform == "linux-s390x"]
-
-  - folder: binary-glibc-gconv-extra
-    url: {{ rpm_url }}/glibc-gconv-extra-2.28-236.el8_9.13.{{ centos_machine }}.rpm
-    sha256: d7a88ab0c32573c0e67a7615a8d5684a78459ab8958ef9eccc11e7e0ceb27165  # [cross_target_platform == "linux-64"]
-    sha256: ec99fbd1cac3bc54a363628b25d5c440b9a65d592381c9a63ac11da0fe1a0602  # [cross_target_platform == "linux-aarch64"]
-    sha256: 5b5ec48c05da06778ff0a97f229472c43f995b0f4858a29313b09f7859fe4c06  # [cross_target_platform == "linux-ppc64le"]
-    sha256: bdede6fee32acf52adf5cc669d6d5b68d6921cc101a23536147c8f0312aee0f1  # [cross_target_platform == "linux-s390x"]
+    url: {{ rpm_url }}/glibc-devel-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: 57e04523b12c9aa5a0632cbfa2ff13e33f1ecec5e6bd0b609a77d9c24cebf8c4  # [cross_target_platform == "linux-64"]
+    sha256: 458738f7b415fb73473725b6bef340234954e4eb00731cbf8aa1afad5ccd12f6  # [cross_target_platform == "linux-aarch64"]
+    sha256: 915b115a348dd14bad459287601bbd4c963c5e06d01217aafd343b7d3cccc10c  # [cross_target_platform == "linux-ppc64le"]
+    sha256: e18aa2509940bdd5751a5ddb4c962688ba54a29d7ef1c080ee0f87656033dd1e  # [cross_target_platform == "linux-s390x"]
 
   - folder: binary-glibc-headers
-    url: {{ rpm_url }}/glibc-headers-2.28-236.el8_9.13.{{ centos_machine }}.rpm
-    sha256: 06ca75b82882634be4d21163799b31a74a63328f46e462930cbd0c5f51840680  # [cross_target_platform == "linux-64"]
-    sha256: db5b2ba4d7ff82293f27b644e1e2e470870fe6d0e3ff5019a2c01a0f10617322  # [cross_target_platform == "linux-aarch64"]
-    sha256: 9af0dfb99b3e1b48cd12478cf5990d81ca2741ff7b6ed73f26c103b087bae6d4  # [cross_target_platform == "linux-ppc64le"]
-    sha256: df20862810f932edd2ec7498cf7eb66a9e7530761b49970d1f38710856a3b39f  # [cross_target_platform == "linux-s390x"]
+    url: {{ rpm_url }}/glibc-headers-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: b7e4e19b362cbd73e09e6ee5eff3d70dbeb7cc2c702a927b8f646f324d4ec4a3  # [cross_target_platform == "linux-64"]
+    sha256: 58a5802d026435b36d7080ea4943868a82fc41642a2b0e475239bd6aaa5882cd  # [cross_target_platform == "linux-aarch64"]
+    sha256: e1b7daaccec1eafa1fb7ead6c4c81bf9390b2b849e96e1d2498e1352c0254a67  # [cross_target_platform == "linux-ppc64le"]
+    sha256: 029b6d565ee8014bd25434efa25097bd0f35c084e6a018a2c19c8a6cf6df57e3  # [cross_target_platform == "linux-s390x"]
+
 
   - folder: binary-glibc-static
-    url: {{ powertools_rpm_url }}/glibc-static-2.28-236.el8_9.13.{{ centos_machine }}.rpm
-    sha256: e62d95f6222546cc3ecc19fd17a1eb35740ef9d489244635a3f54efa001b9d50  # [cross_target_platform == "linux-64"]
-    sha256: 39e095652d8e2a4373a1fef933080bf09a75d267ff6efff40d962a841788c4ea  # [cross_target_platform == "linux-aarch64"]
-    sha256: 182084336d5870c606633e479fa7ffc06ff0f1ebecc79909264df39877e2a6d5  # [cross_target_platform == "linux-ppc64le"]
-    sha256: c3ac2c243a879e985a5ee9669c998374908e6f083d4a96586b028862075485cc  # [cross_target_platform == "linux-s390x"]
+    url: {{ rpm_url }}/glibc-static-2.17-317.el7.{{ centos_machine }}.rpm
+    sha256: 18ee19487ec11ccebe39f52018f3d3aab7e1826bf754779ab1665104473806b7  # [cross_target_platform == "linux-64"]
+    sha256: 9738890cf7a46874e92c337966bc1dbf481094da95b16a468bab7edba665777d  # [cross_target_platform == "linux-aarch64"]
+    sha256: 5ca6ac4974d817596132974b43ef79d8afbf57144a3f18df7eff66e495b2c7f8  # [cross_target_platform == "linux-ppc64le"]
+    sha256: e8eca33de49bb465129e609713d7178457c0b5189d9c2d8a6cd836ad08fbfadc  # [cross_target_platform == "linux-s390x"]
 
   - folder: binary-kernel-headers
-    url: {{ rpm_url }}/kernel-headers-4.18.0-513.24.1.el8_9.{{ centos_machine }}.rpm
-    sha256: 1da03ae05118d6e42bd26efd5a0770d30362109731cbd5bdaef9e0a4f01a7659  # [cross_target_platform == "linux-64"]
-    sha256: 28cc76582fb17f7c557aa95d4b2a364113c019ffdf2e95efb5232da8873b977c  # [cross_target_platform == "linux-aarch64"]
-    sha256: 47019f21239170869460c073a54adae5508e45284c10d22b7c9fbff1e8436269  # [cross_target_platform == "linux-ppc64le"]
-    sha256: aabf8d0539f1cdf5067d13cbfc8fdfa8223a90cafae159da84eea29bcb31cc1e  # [cross_target_platform == "linux-s390x"]
-  # END source
+    url: {{ rpm_url }}/kernel-headers-{{ kernel_headers_version }}-1160.el7.{{ centos_machine }}.rpm  # [cross_target_platform == "linux-64"]
+    url: {{ rpm_url }}/kernel-headers-{{ kernel_headers_version }}-193.28.1.el7.{{ centos_machine }}.rpm  # [cross_target_platform == "linux-aarch64"]
+    url: {{ rpm_url }}/kernel-headers-{{ kernel_headers_version }}-1160.el7.{{ centos_machine }}.rpm  # [cross_target_platform == "linux-ppc64le"]
+    url: {{ rpm_url }}/kernel-headers-{{ kernel_headers_version }}-1160.el7.{{ centos_machine }}.rpm  # [cross_target_platform == "linux-s390x"]
+    sha256: 81b4e4f401d2402736ceba4627eaafd5b615c2cc45aa4d4f941ea79562045139  # [cross_target_platform == "linux-64"]
+    sha256: 56fffc40800cd7c30830009c860f04c8dba1110a6271efd804a0bb01e0bdf8a4  # [cross_target_platform == "linux-aarch64"]
+    sha256: 6875ad8dbbf0cff85bf39bd2446ffb9e92de78e113496fba37fa5da9f10348b1  # [cross_target_platform == "linux-ppc64le"]
+    sha256: 77de4979db9fc09108fcb09c7b19daed832f7ec8964d8fc8b18610b54e4b30da  # [cross_target_platform == "linux-s390x"]
+
+  - folder: binary-freebl
+    url: {{ rpm_url }}/nss-softokn-freebl-3.44.0-8.el7_7.{{ centos_machine }}.rpm
+    sha256: 9949831b67f6eb68dc9df6df3e4570bd5f9301de3c7d67c41512fcaaadb40da5  # [cross_target_platform == "linux-64"]
+    sha256: 5a62051cc69e76ffa44291ed12464a3ce4a8224dbf829330739aae500f33b2b2  # [cross_target_platform == "linux-aarch64"]
+    sha256: 01439cbf4297a341e31b425961bdafc251a4765e22035977ca459c939f949899  # [cross_target_platform == "linux-ppc64le"]
+    sha256: 8c88f6be69f0d88ac91a577cfb507c879446d3950a19843927082bf0d660accf  # [cross_target_platform == "linux-s390x"]
 
 build:
   number: {{ build_number }}
@@ -88,7 +81,7 @@ outputs:
       detect_binary_files_with_prefix: False
     requirements:
       run_constrained:
-        - sysroot_{{ cross_target_platform }} =={{ glibc_version }}
+        - sysroot_{{ cross_target_platform }} =={{ version }}
     test:
       commands:
         test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/linux/version.h
@@ -99,16 +92,13 @@ outputs:
       noarch: generic
       binary_relocation: False
       detect_binary_files_with_prefix: False
-      track_features:
-        - sysroot_{{ cross_target_platform }}_{{ glibc_version }}               # [with_features]
-      #run_exports:
-      #  strong:
-      #    - __glibc >={{ glibc_version }},<3.0.a0
+{% if cross_target_platform == "linux-64" %}
+      run_exports:
+        strong:
+          - __glibc >={{ version }},<3.0.a0
+{% endif %}
     requirements:
-      host:
-        - tzdata
       run:
-        # - __glibc >={{ glibc_version }}     # [not with_features]
         - {{ pin_subpackage('kernel-headers_' ~ cross_target_platform, exact=True) }}
         - tzdata
     test:
@@ -121,15 +111,34 @@ outputs:
         - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs.h  # [cross_target_platform != "linux-64"]
         - test -d $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/share/locale
         - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/bin/ldd
-        - find "${PREFIX}" \( -name 'libnsl*' -o -path '*/rpcsvc/yp*' \) | { ! grep . ; }
-        - find "${PREFIX}" \( -name 'libcrypt*' -o -name 'crypt.*' \) | { ! grep . ; }
+        - find "${PREFIX}" \( -name 'libnsl*' -o -path '*/rpcsvc/yp*' \) | { ! grep . ; }                                                # [with_crypt == "false"]
+        - find "${PREFIX}" \( -name 'libcrypt*' -o -name 'crypt.*' \) \! -name libcrypt.so.1 \! -name libcrypt-2.17.so | { ! grep . ; }  # [with_crypt == "false"]
+
+  - name: sysroot-{{ sysroot_cdt_name }}-{{ sysroot_cdt_arch }}
+    build:
+      noarch: generic
+    requirements:
+      run:
+        - sysroot_{{ cross_target_platform }} =={{ version }}
+    test:
+      commands:
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/lib/libc.so.6
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/sbin/ldconfig
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/lib/crt1.o
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/limits.h
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs-64.h  # [cross_target_platform == "linux-64"]
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/include/gnu/stubs.h  # [cross_target_platform != "linux-64"]
+        - test -d $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/share/locale
+        - test -f $PREFIX/{{ target_machine }}-{{ ctng_vendor }}-linux-gnu/sysroot/usr/bin/ldd
+        - find "${PREFIX}" \( -name 'libnsl*' -o -path '*/rpcsvc/yp*' \) | { ! grep . ; }                                                # [with_crypt == "false"]
+        - find "${PREFIX}" \( -name 'libcrypt*' -o -name 'crypt.*' \) \! -name libcrypt.so.1 \! -name libcrypt-2.17.so | { ! grep . ; }  # [with_crypt == "false"]
 
 about:
-  home: https://repo.almalinux.org/vault/{{ alma_version }}
-  license: LGPL-2.0-or-later AND LGPL-2.0-or-later WITH exceptions AND GPL-2.0-or-later
+  home: https://vault.centos.org/centos/7.9.2009
+  license: LGPL-2.0-or-later AND LGPL-2.0-or-later WITH exceptions AND GPL-2.0-or-later AND MPL-2.0
   license_family: GPL
-  license_file: LICENSE
-  # license files are packaged with source
+  license_file: nss-license
+  # other license files are packaged with source
   summary: "(CDT) The GNU libc libraries and header files for the Linux kernel for use by glibc"
   description: |
         The glibc package contains standard libraries which are used by multiple
