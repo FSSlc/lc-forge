@@ -1,0 +1,27 @@
+target_machine:
+  - x86_64
+  - aarch64
+  - powerpc64le
+  - s390x
+centos_machine:
+  - x86_64
+  - aarch64
+  - ppc64le
+  - s390x
+cross_target_platform:
+  - linux-64
+  - linux-aarch64
+  - linux-ppc64le
+  - linux-s390x
+
+ctng_vendor:
+  - scns
+
+zip_keys:
+  - - target_machine
+    - cross_target_platform
+    - centos_machine
+
+with_features:
+  - true
+  - false
