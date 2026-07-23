@@ -1,6 +1,6 @@
 context:
   name: jcode
-  version: "0.54.4"
+  version: "0.55.0"
 
 package:
   name: ${{ name }}
@@ -10,32 +10,32 @@ source:
   - if: linux and x86_64
     then:
       url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-linux-x86_64.tar.gz
-      sha256: 375b01437a9d312b3fe9c5aff6bbd4b654f1a564662e2b9f51266e807291b1ec
+      sha256: bf4580e65f957a0732114fc2c68d9fb2c028b806ada09eb24261486cb802e226
 
   - if: linux and aarch64
     then:
       url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-linux-aarch64.tar.gz
-      sha256: a2a858dcbbbd39afb22a16f4306547921387a41831621b449b031adc9c7ec180
+      sha256: 241b2f8dd91e75cbceaab3403bfb2784626c602e7728cd528ee134968dec7493
 
   - if: osx and x86_64
     then:
       url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-macos-x86_64.tar.gz
-      sha256: 2484f2124174aef907bd2ba6eff7067999ad3b85bc7bff4726c5d72f991cc305
+      sha256: ca0ee20ac397cb681034f25c71d245f54c70823876d24521a4bf04af473af53c
 
   - if: osx and arm64
     then:
       url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-macos-aarch64.tar.gz
-      sha256: b041bae921f5ee2bf17f9d44f94ffc77b093b3bec3a9dcad52231596ba71fdf7
+      sha256: c60bf425dc45fd587e8fbe19142aaf202a71459a3b61a528e020a2d8dd67e079
 
   - if: win and x86_64
     then:
       url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-windows-x86_64.exe
-      sha256: 2572765b72f776ef4bfdd41efc055e0078910d60aae600aa35c6b1fcb5f54523
+      sha256: 07353a81f68792f7241d14ba73a2e89f8652b8bebb6e5a5aa770f42a6d4df7c0
 
   - if: win and arm64
     then:
       url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-windows-aarch64.exe
-      sha256: 602f5c91f432d37e9d5262024c6fcaae7928ddc3c606eff1e1e4a7ba8aac716d
+      sha256: a2b6780f4dbe2f78cd2c7dfa438ac902e97b829ed90c6953dc3b8b9759908152
 
   - url: https://raw.githubusercontent.com/1jehuang/jcode/v${{ version }}/LICENSE
     sha256: 720443eee2efeda8f9f93a7a6a6f62763c17171106f60df58a35b8ea638fdf60

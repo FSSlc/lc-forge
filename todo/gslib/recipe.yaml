@@ -1,0 +1,45 @@
+context:
+  version: "1.0.9"
+
+package:
+  name: gslib
+  version: ${{ version }}
+
+source:
+  url: https://github.com/Nek5000/gslib/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 572c78b1ca4ddda75ec85c6299ee0597459f4dbf5170b9faa6de4c435dcdc80b
+
+build:
+  number: 0
+  script:
+    - make CC=mpicc -j${CPU_COUNT} all
+    - make install INSTALL_ROOT=${PREFIX}
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - make
+  host:
+    - ${{ mpi }}
+  run:
+    - ${{ mpi }}
+
+tests:
+  - script:
+      - test -f ${PREFIX}/lib/libgs.a
+      - test -f ${PREFIX}/include/gslib.h
+      - test -f ${PREFIX}/include/gslib/gslib.h
+      - test -f ${PREFIX}/include/gslib/config.h
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Sparse communication library for gather-scatter collectives and GLL interpolation
+  description: |
+    GSLIB is a sparse communication library providing scalable many-to-many
+    (neighborhood) gather-scatter collectives and robust GLL interpolation on
+    hexahedral spectral element meshes. It is used by Nek5000, CEED, Nektar++,
+    and Libparanumal.
+  homepage: https://github.com/Nek5000/gslib
+  repository: https://github.com/Nek5000/gslib
+  documentation: https://github.com/Nek5000/gslib
