@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  version: "1.8.3"
+
+package:
+  name: libunwind
+  version: ${{ version }}
+
+source:
+  url: https://github.com/libunwind/libunwind/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 21b26bc75cd37b548d7952f2794cde711efa6c6151c4147cc3c52cfedbf11df4
+
+build:
+  number: 0
+  skip: win or osx
+
+requirements:
+  build:
+    - ${{ stdlib('c') }}
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - make
+    - autoconf
+    - automake
+    - libtool
+  host:
+  run_exports:
+    - ${{ pin_subpackage('libunwind', upper_bound='x.x') }}
+
+tests:
+  - script:
+      - test -f "${PREFIX}/lib/libunwind.so"
+      - test ! -f "${PREFIX}/lib/libunwind.a"
+      - test -f "${PREFIX}/include/libunwind.h"
+      - test -f "${PREFIX}/include/unwind.h"
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: Defines a portable and efficient C programming interface (API) to determine the call-chain of a program
+  homepage: https://www.nongnu.org/libunwind
+  repository: https://github.com/libunwind/libunwind
+  documentation: https://www.nongnu.org/libunwind/docs.html
+
+extra:
+  recipe-maintainers:
+    - synapticarbors
+    - xhochy
+    - matthiasdiener
+
