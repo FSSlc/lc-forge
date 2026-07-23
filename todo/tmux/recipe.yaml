@@ -1,0 +1,59 @@
+context:
+  version: "3.7b"
+
+package:
+  name: tmux
+  version: ${{ version }}_
+
+source:
+  url: https://github.com/tmux/tmux/archive/${{ version }}.tar.gz
+  sha256: 156dc43dcbc7f06e35e1fae3118c44d77a370c46676b34b82bbafc4e608d8130
+
+build:
+  number: 0
+  skip:
+    - win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - autoconf
+    - automake
+    - libtool
+    - m4
+    - make
+    - patch
+    - pkg-config
+    - bison
+    - if: unix
+      then:
+        - gnuconfig
+  host:
+    - libevent
+    - ncurses
+    - if: osx
+      then:
+        - libutf8proc
+  run:
+    - libevent
+    - ncurses
+
+tests:
+  - script:
+      - tmux -V
+
+about:
+  homepage: https://tmux.github.io/
+  license: ISC
+  license_file: COPYING
+  summary: A terminal multiplexer.
+
+extra:
+  recipe-maintainers:
+    - XhstormR
+    - jakirkham
+    - djsutherland
+    - dbast
+    - matthiasdiener
+    - seowalex
