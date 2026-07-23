@@ -30,7 +30,7 @@ tests:
       - iperf3 --help
 
 about:
-  license: PUBLIC-DOMAIN
+  license: LicenseRef-PUBLIC-DOMAIN
   license_file: LICENSE
   summary: A TCP, UDP, and SCTP network bandwidth measurement tool
   homepage: http://software.es.net/iperf/
