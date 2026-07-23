@@ -12,7 +12,6 @@ package:
 source:
   url: https://github.com/esnet/${{ name }}/archive/${{ version }}.tar.gz
   sha256: ${{ sha256 }}
-  file_name: ${{ version }}.tar.gz
 
 build:
   number: 0
