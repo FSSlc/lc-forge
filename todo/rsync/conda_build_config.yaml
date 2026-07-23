@@ -1,3 +1,0 @@
-c_stdlib_version:  # [linux or osx]
-  - '2.28'         # [linux]
-  - '13'           # [osx]

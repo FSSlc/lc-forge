@@ -1,0 +1,109 @@
+context:
+  name: jcode
+  version: "0.55.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  - if: linux and x86_64
+    then:
+      url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-linux-x86_64.tar.gz
+      sha256: bf4580e65f957a0732114fc2c68d9fb2c028b806ada09eb24261486cb802e226
+
+  - if: linux and aarch64
+    then:
+      url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-linux-aarch64.tar.gz
+      sha256: 241b2f8dd91e75cbceaab3403bfb2784626c602e7728cd528ee134968dec7493
+
+  - if: osx and x86_64
+    then:
+      url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-macos-x86_64.tar.gz
+      sha256: ca0ee20ac397cb681034f25c71d245f54c70823876d24521a4bf04af473af53c
+
+  - if: osx and arm64
+    then:
+      url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-macos-aarch64.tar.gz
+      sha256: c60bf425dc45fd587e8fbe19142aaf202a71459a3b61a528e020a2d8dd67e079
+
+  - if: win and x86_64
+    then:
+      url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-windows-x86_64.exe
+      sha256: 07353a81f68792f7241d14ba73a2e89f8652b8bebb6e5a5aa770f42a6d4df7c0
+
+  - if: win and arm64
+    then:
+      url: https://github.com/1jehuang/jcode/releases/download/v${{ version }}/jcode-windows-aarch64.exe
+      sha256: a2b6780f4dbe2f78cd2c7dfa438ac902e97b829ed90c6953dc3b8b9759908152
+
+  - url: https://raw.githubusercontent.com/1jehuang/jcode/v${{ version }}/LICENSE
+    sha256: 720443eee2efeda8f9f93a7a6a6f62763c17171106f60df58a35b8ea638fdf60
+    file_name: LICENSE
+
+build:
+  number: 0
+  script:
+    - |
+      mkdir -p "${PREFIX}/bin"
+
+      if [[ "${target_platform}" == linux-* ]]; then
+          if [[ "${target_platform}" == "linux-64" ]]; then
+              mv jcode-linux-x86_64 "${PREFIX}/bin/jcode"
+              if [[ -f jcode-linux-x86_64.bin ]]; then
+                  cp jcode-linux-x86_64.bin "${PREFIX}/bin/"
+              fi
+          elif [[ "${target_platform}" == "linux-aarch64" ]]; then
+              mv jcode-linux-aarch64 "${PREFIX}/bin/jcode"
+              if [[ -f jcode-linux-aarch64.bin ]]; then
+                  cp jcode-linux-aarch64.bin "${PREFIX}/bin/"
+              fi
+          fi
+
+      elif [[ "${target_platform}" == osx-* ]]; then
+          if [[ "${target_platform}" == "osx-64" ]]; then
+              mv jcode-macos-x86_64 "${PREFIX}/bin/jcode"
+          elif [[ "${target_platform}" == "osx-arm64" ]]; then
+              mv jcode-macos-aarch64 "${PREFIX}/bin/jcode"
+          fi
+
+      elif [[ "${target_platform}" == win-* ]]; then
+          if [[ "${target_platform}" == "win-64" ]]; then
+              mv jcode-windows-x86_64.exe "${PREFIX}/bin/jcode.exe"
+          elif [[ "${target_platform}" == "win-arm64" ]]; then
+              mv jcode-windows-aarch64.exe "${PREFIX}/bin/jcode.exe"
+          fi
+
+      fi
+
+      if [[ "${target_platform}" != win-* ]]; then
+          chmod +x "${PREFIX}/bin/jcode"
+      fi
+
+requirements:
+  build: null
+  run: null
+
+tests:
+  - script:
+      - jcode --version
+      - jcode --help
+
+about:
+  homepage: https://github.com/1jehuang/jcode
+  repository: https://github.com/1jehuang/jcode
+  license: MIT
+  license_file: LICENSE
+  summary: The most intelligent agent harness for code
+  description: |
+    jcode is a next-generation coding agent harness built for multi-session
+    workflows, infinite customizability, and performance. It features a
+    blazing-fast TUI, multi-model support, swarm coordination, browser
+    automation, and 30+ built-in tools.
+
+    Supported platforms: Linux x86_64/aarch64, macOS x86_64/ARM64,
+    Windows x86_64/ARM64, and FreeBSD x86_64.
+
+extra:
+  recipe-maintainers:
+    - FSSlc
