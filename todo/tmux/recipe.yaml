@@ -1,0 +1,59 @@
+schema_version: 1
+
+context:
+  version: "3.5"
+  sha256: 2fe01942e7e7d93f524a22f2c883822c06bc258a4d61dba4b407353d7081950f
+
+package:
+  name: tmux
+  version: ${{ version }}
+
+source:
+  url: https://github.com/tmux/tmux/releases/download/${{ version }}/tmux-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip: win
+
+requirements:
+  build:
+    - if: unix
+      then: gnuconfig
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - autoconf
+    - automake
+    - libtool
+    - m4
+    - make
+    - patch
+    - pkg-config
+    - bison
+  host:
+    - libevent
+    - if: osx
+      then: libutf8proc
+    - ncurses
+  run:
+    - libevent
+    - ncurses
+
+tests:
+  - script:
+      - which tmux
+      - $(tmux info || true) 2> >(grep "no server running on")
+
+about:
+  license: ISC
+  license_file: COPYING
+  summary: A terminal multiplexer.
+  homepage: https://tmux.github.io/
+
+extra:
+  recipe-maintainers:
+    - jakirkham
+    - djsutherland
+    - dbast
+    - matthiasdiener
+

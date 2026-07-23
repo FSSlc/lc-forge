@@ -355,7 +355,7 @@ libthrift:
 libtiff:
   - 4
 libunwind:
-  - '1.6'
+  - '1.8'
 libv8:
   - 8.9.83
 libvips:
