@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  name: ssh-python
+  version: 1.2.0.post1
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name | replace('-', '_') }}-${{ version }}.tar.gz
+  sha256: cbf44919d8c7d9f10fc9768e69c69e6e5df896561ac4cd34b2d94397d8154543
+
+build:
+  number: 2
+  skip: win
+  script: SYSTEM_LIBSSH=1 ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+  host:
+    - python
+    - cython
+    - libssh
+    - pip
+    - setuptools
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - ssh
+      pip_check: true
+
+about:
+  summary: libssh C library bindings for Python.
+  license: LGPL-2.1-only AND BSD-3-Clause
+  license_file:
+    - COPYING
+    - LICENSE
+    - libssh/COPYING
+    - libssh/cmake/Modules/COPYING-CMAKE-SCRIPTS
+  homepage: https://github.com/ParallelSSH/ssh-python
+
+extra:
+  recipe-maintainers:
+    - thewchan
