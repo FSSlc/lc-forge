@@ -1,0 +1,40 @@
+{% set name = "iperf" %}
+{% set version = "3.20" %}
+{% set sha256 = "84640ea0f43831850434e50134d0554b7a94f97fb02e2488ffbe252c9fb05a56" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  fn: {{ version }}.tar.gz
+  url: https://github.com/esnet/{{ name }}/archive/{{ version }}.tar.gz
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  skip: true  # [win]
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+    - make
+  host:
+
+test:
+  commands:
+    - iperf3 --help
+
+about:
+  home: http://software.es.net/iperf/
+  license: PUBLIC-DOMAIN
+  license_file: LICENSE
+  summary: A TCP, UDP, and SCTP network bandwidth measurement tool
+
+  doc_url: http://software.es.net/iperf/
+  dev_url: https://github.com/esnet/iperf/
+
+extra:
+  recipe-maintainers:
+    - brainstorm

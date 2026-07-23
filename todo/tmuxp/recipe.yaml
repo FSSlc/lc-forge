@@ -1,0 +1,65 @@
+schema_version: 1
+
+context:
+  name: tmuxp
+  version: "1.74.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: 9e0480ea012999602635887e0461d395c2d8aa6e36a85b5a6d1d65dcd6c7809c
+
+build:
+  # Seeing weird errors like the following on Windows, along with weird encoding.
+  # https://learn.microsoft.com/en-us/cpp/error-messages/tool-errors/c-runtime-error-r6033?view=msvc-170
+  number: 0
+  noarch: python
+  script:
+    - ${{ PYTHON }} -m pip install --no-deps --no-build-isolation . -vv
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - pip
+    - hatchling
+  run:
+    - python >=${{ python_min }}
+    - colorama >=0.3.9
+    - pyyaml >=6.0
+    - libtmux >=0.44.0
+    - __unix
+
+tests:
+  - files:
+      recipe:
+        - session.yaml
+    requirements:
+      run:
+        - python ${{ python_min }}.*
+        - pip
+    script:
+      - pip check
+      - if: unix
+        then:
+          - tmuxp --version
+          - tmuxp load -d -y ./session.yaml
+
+about:
+  summary: Session manager for tmux, build on libtmux
+  description: |
+    Session manager for tmux, which allows users to save and load tmux sessions through simple
+    configuration files.
+    Powered by libtmux.
+  license: MIT
+  license_file: LICENSE
+  homepage: https://tmuxp.git-pull.com/
+  repository: https://github.com/tmux-python/tmuxp
+  documentation: https://tmuxp.git-pull.com/
+
+extra:
+  recipe-maintainers:
+    - AntoinePrv
+    - tony
