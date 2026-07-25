@@ -1,22 +1,62 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091 # common.sh is sourced via a runtime-computed path
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 cd "$REPO_ROOT" || exit 1
 
-DEFAULT_CHANNEL="https://prefix.dev/scns"
-
 usage() {
-  echo "Usage: $0 <recipe_dir>"
-  exit 1
+  echo "Usage: $0 -r <recipe_dir> [-c <channel>]... [--] [extra rattler-build args...]"
+  echo "  -r <recipe_dir>  Specify the recipe directory (required)"
+  echo "  -c <channel>     Add an additional -c channel; can be specified multiple times"
+  echo "  -h               Show this help"
+  echo
+  echo "Environment:"
+  echo "  DEFAULT_CHANNEL  Default channel (default: https://prefix.dev/scns)"
+  echo "  EXTRA_CHANNELS   Extra channels, space- and/or comma-separated"
+  exit "${1:-1}"
 }
 
-recipe_dir="${1:-}"
+recipe_dir=""
+extra_cs=()
+
+while getopts ":r:c:h" opt; do
+  case $opt in
+    r) recipe_dir="$OPTARG" ;;
+    c) extra_cs+=("$OPTARG") ;;
+    h) usage 0 ;;
+    :)
+      echo "Option -$OPTARG requires an argument" >&2
+      usage
+      ;;
+    *) usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+if [[ "${1:-}" == "--" ]]; then
+  shift
+fi
 
 if [[ -z "$recipe_dir" ]]; then
   usage
 fi
 
-rattler-build build --skip-existing=all --experimental \
-  -m conda_build_config.yaml -c "$DEFAULT_CHANNEL" \
-  --render-only -r "$recipe_dir"
+recipe_dir="$(resolve_recipe_dir "$recipe_dir")"
+require_cmd rattler-build
+
+build_channel_args "${extra_cs[@]}"
+
+cmd=(
+  rattler-build build
+  --experimental
+  --render-only
+  -m conda_build_config.yaml
+  "${CHANNEL_ARGS[@]}"
+  -r "$recipe_dir"
+)
+
+if [[ $# -gt 0 ]]; then
+  cmd+=("$@")
+fi
+
+"${cmd[@]}"

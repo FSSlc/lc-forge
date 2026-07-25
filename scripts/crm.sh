@@ -1,39 +1,38 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091 # common.sh is sourced via a runtime-computed path
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 cd "$REPO_ROOT" || exit 1
 
 usage() {
-  echo "Usage: $0 <recipe_dir>"
-  exit 1
+  echo "Usage: $0 -r <recipe_dir>"
+  echo "  -r <recipe_dir>  Convert meta.yaml to recipe.yaml in the given recipe directory"
+  echo "  -h               Show this help"
+  exit "${1:-1}"
 }
 
-recipe_dir="${1:-}"
+recipe_dir=""
+
+while getopts ":r:h" opt; do
+  case $opt in
+    r) recipe_dir="$OPTARG" ;;
+    h) usage 0 ;;
+    :)
+      echo "Option -$OPTARG requires an argument" >&2
+      usage
+      ;;
+    *) usage ;;
+  esac
+done
+shift $((OPTIND - 1))
 
 if [[ -z "$recipe_dir" ]]; then
   usage
 fi
 
-meta_file="$REPO_ROOT/$recipe_dir/meta.yaml"
-recipe_file="$REPO_ROOT/$recipe_dir/recipe.yaml"
+recipe_dir="$(resolve_recipe_dir "$recipe_dir")"
+meta_file="$recipe_dir/meta.yaml"
+recipe_file="$recipe_dir/recipe.yaml"
 
-if [[ ! -f "$meta_file" ]]; then
-  echo "Missing meta.yaml: $meta_file" >&2
-  exit 1
-fi
-
-stderr_file="$(mktemp)"
-cleanup() {
-  rm -f "$stderr_file"
-}
-trap cleanup EXIT
-
-crm convert "$meta_file" > "$recipe_file" 2> "$stderr_file" || true
-
-if [[ -s "$stderr_file" ]]; then
-  if ! grep -q '0 errors' "$stderr_file"; then
-    cat "$stderr_file" >&2
-    exit 1
-  fi
-fi
+crm_convert "$meta_file" "$recipe_file"

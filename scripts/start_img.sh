@@ -1,15 +1,23 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091 # common.sh is sourced via a runtime-computed path
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 cd "$REPO_ROOT" || exit 1
 
-IMAGE_REPO="ghcr.io/fsslc/pixi"
-CONTAINER_NAME="pixi"
+IMAGE_REPO="${IMAGE_REPO:-ghcr.io/fsslc/pixi}"
+CONTAINER_NAME="${CONTAINER_NAME:-pixi}"
 
 usage() {
   echo "Usage: $0 [-f|--force] [tag]"
-  echo "  -f, --force   Remove an existing pixi container before starting"
+  echo "  -f, --force   Remove an existing container before starting"
+  echo "  -h, --help    Show this help"
+  echo
+  echo "Environment:"
+  echo "  IMAGE_REPO      Container image repo (default: ghcr.io/fsslc/pixi)"
+  echo "  CONTAINER_NAME  Container name (default: pixi)"
+  echo "  HOST_UID        Host UID for chown in build scripts (auto-set at run)"
+  echo "  HOST_GID        Host GID for chown in build scripts (auto-set at run)"
   exit "${1:-1}"
 }
 
@@ -24,7 +32,10 @@ container_status() {
 run_container() {
   local tag="$1"
 
-  docker run -ti --name "$CONTAINER_NAME" -v "$REPO_ROOT":"$REPO_ROOT" -w "$REPO_ROOT" \
+  docker run -ti --name "$CONTAINER_NAME" \
+    -e HOST_UID="$(id -u)" \
+    -e HOST_GID="$(id -g)" \
+    -v "$REPO_ROOT":"$REPO_ROOT" -w "$REPO_ROOT" \
     "${IMAGE_REPO}:${tag}"
 }
 
@@ -56,18 +67,18 @@ if [[ -z "$img_tag" ]]; then
   img_tag="latest"
 fi
 
+require_cmd docker
+
 docker pull "${IMAGE_REPO}:${img_tag}"
 
 if [[ "$force" -eq 1 ]]; then
   docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
   run_container "$img_tag"
+elif ! container_exists; then
+  run_container "$img_tag"
 else
-  if container_exists; then
-    if [[ "$(container_status)" == Exited* ]]; then
-      docker start "$CONTAINER_NAME"
-    fi
-    docker exec -ti "$CONTAINER_NAME" bash
-  else
-    run_container "$img_tag"
+  if [[ "$(container_status)" == Exited* ]]; then
+    docker start "$CONTAINER_NAME"
   fi
+  docker exec -ti "$CONTAINER_NAME" bash
 fi

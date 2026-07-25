@@ -1,15 +1,22 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091 # common.sh is sourced via a runtime-computed path
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 cd "$REPO_ROOT" || exit 1
 
 PACKAGE_NAME_PATTERN='^[A-Za-z0-9_.-]+$'
 
 usage() {
   echo "Usage: $0 <package_name>"
-  exit 1
+  echo "  Clone conda-forge feedstock and copy recipe into todo/<package_name>."
+  echo "  -h  Show this help"
+  exit "${1:-1}"
 }
+
+case "${1:-}" in
+  -h|--help) usage 0 ;;
+esac
 
 pkgname="${1:-}"
 
@@ -23,6 +30,8 @@ if [[ ! "$pkgname" =~ $PACKAGE_NAME_PATTERN ]]; then
   exit 1
 fi
 
+require_cmd git
+
 feedstock_dir="${pkgname}-feedstock"
 todo_recipe_dir="$REPO_ROOT/todo/$pkgname"
 refers_dir="$REPO_ROOT/../refers"
@@ -33,30 +42,31 @@ if [[ -d "$refers_feedstock_dir" ]]; then
   rm -rf -- "$refers_feedstock_dir"
 fi
 
-pushd "$refers_dir" > /dev/null || exit 1
-git clone "https://github.com/conda-forge/${feedstock_dir}.git"
-popd > /dev/null || exit 1
+git clone "https://github.com/conda-forge/${feedstock_dir}.git" "$refers_feedstock_dir"
+
+if [[ ! -d "$refers_feedstock_dir/recipe" ]]; then
+  echo "Feedstock has no recipe/ directory: $refers_feedstock_dir" >&2
+  exit 1
+fi
 
 rm -rf -- "$todo_recipe_dir"
 mkdir -p "$REPO_ROOT/todo"
-cp -R "$refers_dir"/"$feedstock_dir/recipe" "$todo_recipe_dir"
+cp -R "$refers_feedstock_dir/recipe" "$todo_recipe_dir"
 
 if [[ ! -f "$todo_recipe_dir/recipe.yaml" ]]; then
-  stderr_file="$(mktemp)"
-  cleanup() {
-    rm -f "$stderr_file"
-  }
-  trap cleanup EXIT
+  if [[ ! -f "$todo_recipe_dir/meta.yaml" ]]; then
+    echo "Neither recipe.yaml nor meta.yaml found in $todo_recipe_dir" >&2
+    exit 1
+  fi
 
-  crm convert "$todo_recipe_dir/meta.yaml" > "$todo_recipe_dir/recipe.yaml" 2> "$stderr_file" || true
-
-  if [[ -s "$stderr_file" ]]; then
-    if ! grep -q '0 errors' "$stderr_file"; then
-      echo "Failed to convert meta.yaml to recipe.yaml"
-      echo "add ${pkgname} to only-meta.txt"
-      echo "${pkgname}" >> only-meta.txt
-      rm -f "$todo_recipe_dir/recipe.yaml"
-      awk 'NF{print} END{print ""}' only-meta.txt > tmp && mv tmp only-meta.txt
+  if ! crm_convert "$todo_recipe_dir/meta.yaml" "$todo_recipe_dir/recipe.yaml"; then
+    echo "Failed to convert meta.yaml to recipe.yaml" >&2
+    echo "add ${pkgname} to only-meta.txt" >&2
+    only_meta="$REPO_ROOT/only-meta.txt"
+    touch "$only_meta"
+    if ! grep -Fxq "$pkgname" "$only_meta"; then
+      printf '%s\n' "$pkgname" >>"$only_meta"
     fi
+    rm -f "$todo_recipe_dir/recipe.yaml"
   fi
 fi

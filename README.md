@@ -26,6 +26,8 @@
 ./scripts/start_img.sh [--force] [tag]
 ```
 
+容器启动时会自动注入 `HOST_UID` / `HOST_GID`，与 `cbuild.sh` / `rbuild.sh` 中的 `fix_output_owner` 配合，确保 `output/` 目录属主与宿主机一致。可用 `IMAGE_REPO` 和 `CONTAINER_NAME` 环境变量覆盖默认镜像和容器名。
+
 ## Recipe 工作流
 
 准备新 recipe：
@@ -48,14 +50,14 @@ git mv todo/<package_name> recipes/<package_name>
 转换旧格式 recipe：
 
 ```bash
-./scripts/crm.sh todo/<package>
+./scripts/crm.sh -r todo/<package>
 ```
 
 渲染 recipe：
 
 ```bash
-./scripts/crender.sh todo/<package>
-./scripts/rrender.sh todo/<package>
+./scripts/crender.sh -r todo/<package>
+./scripts/rrender.sh -r todo/<package>
 ```
 
 本地构建 recipe：
@@ -65,13 +67,18 @@ git mv todo/<package_name> recipes/<package_name>
 ./scripts/cbuild.sh -r todo/<package>
 ```
 
-强制重建可追加 `-f`，额外 channel 可追加 `-c <channel>`。构建输出默认写入 `output/`，正式结果以 GitHub Actions 为准。
+所有 recipe 脚本统一用 `-r <recipe_dir>` 指定 recipe 目录。强制重建可追加 `-f`，额外 channel 可追加 `-c <channel>`，也可用环境变量 `EXTRA_CHANNELS`（空格或逗号分隔）统一附加 channel。`--` 之后的参数会透传给底层工具。构建输出默认写入 `output/`（可用 `OUTPUT_DIR` 覆盖），正式结果以 GitHub Actions 为准。
+
+```bash
+./scripts/rbuild.sh -r todo/<package> -c conda-forge -- --verbose
+EXTRA_CHANNELS="conda-forge,bioconda" ./scripts/rrender.sh -r todo/<package>
+```
 
 ## 脚本速查
 
 | 脚本 | 用途 |
 | --- | --- |
-| `setup_pixi.sh` | 安装 pixi 和常用构建工具。 |
+| `setup_pixi.sh` | 安装 pixi 和常用构建工具（可重复执行）。 |
 | `start_img.sh` | 启动 `ghcr.io/fsslc/pixi:<tag>` 容器。 |
 | `prep.sh` | 从 conda-forge feedstock 准备 recipe。 |
 | `crm.sh` | 转换 `meta.yaml` 为 `recipe.yaml`。 |
@@ -79,14 +86,15 @@ git mv todo/<package_name> recipes/<package_name>
 | `rrender.sh` | 使用 `rattler-build --render-only` 渲染 recipe。 |
 | `cbuild.sh` | 使用 `conda build` 构建 recipe。 |
 | `rbuild.sh` | 使用 `rattler-build` 构建 recipe。 |
+| `lib/common.sh` | 脚本共享逻辑（路径解析、channel、crm convert 等）。 |
 
 ## 维护提醒
 
 - 提交前检查 source、license、test、run_exports 和 pinning。
 - `scripts/prep.sh` 会访问网络，并可能覆盖已有 `todo/<package_name>`。
-- `scripts/setup_pixi.sh` 会更新当前用户的 `~/.bashrc`。
+- `scripts/setup_pixi.sh` 会更新当前用户的 `~/.bashrc` / `~/.zshrc`（PATH 与 completion）。
 - 修改脚本后可运行语法检查：
 
 ```bash
-for f in scripts/*.sh; do bash -n "$f" || exit 1; done
+for f in scripts/*.sh scripts/lib/*.sh; do bash -n "$f" || exit 1; done
 ```

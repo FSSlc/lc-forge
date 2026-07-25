@@ -1,50 +1,61 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091 # common.sh is sourced via a runtime-computed path
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 cd "$REPO_ROOT" || exit 1
 
-DEFAULT_CHANNEL="https://prefix.dev/scns"
-OUTPUT_DIR="$REPO_ROOT/output"
-
 usage() {
-  echo "Usage: $0 -r <recipe_dir> [-f] [-c <channel>]..."
+  echo "Usage: $0 -r <recipe_dir> [-f] [-c <channel>]... [--] [extra rattler-build args...]"
   echo "  -r <recipe_dir>  Specify the recipe directory (required)"
   echo "  -f               Force rebuild existing packages (optional, default: skip existing)"
   echo "  -c <channel>     Add an additional -c channel; can be specified multiple times"
-  exit 1
-}
-
-fix_output_owner() {
-  if [[ ! -d "$OUTPUT_DIR" || "${EUID:-$(id -u)}" -ne 0 ]]; then
-    return 0
-  fi
-
-  chown -R "${HOST_UID:-1000}:${HOST_GID:-1000}" "$OUTPUT_DIR"
+  echo "  -h               Show this help"
+  echo
+  echo "Environment:"
+  echo "  DEFAULT_CHANNEL  Default channel (default: https://prefix.dev/scns)"
+  echo "  EXTRA_CHANNELS   Extra channels, space- and/or comma-separated"
+  echo "  OUTPUT_DIR       Build output root (default: <repo>/output)"
+  exit "${1:-1}"
 }
 
 recipe_dir=""
 skip_existing=true
 extra_cs=()
 
-while getopts "r:fc:" opt; do
+while getopts ":r:fc:h" opt; do
   case $opt in
     r) recipe_dir="$OPTARG" ;;
     f) skip_existing=false ;;
     c) extra_cs+=("$OPTARG") ;;
+    h) usage 0 ;;
+    :)
+      echo "Option -$OPTARG requires an argument" >&2
+      usage
+      ;;
     *) usage ;;
   esac
 done
+shift $((OPTIND - 1))
+if [[ "${1:-}" == "--" ]]; then
+  shift
+fi
 
 if [[ -z "$recipe_dir" ]]; then
   usage
 fi
 
+recipe_dir="$(resolve_recipe_dir "$recipe_dir")"
+require_cmd rattler-build
+mkdir -p "$OUTPUT_DIR"
+
+build_channel_args "${extra_cs[@]}"
+
 cmd=(
   rattler-build build
   --experimental
   -m conda_build_config.yaml
-  -c "$DEFAULT_CHANNEL"
+  "${CHANNEL_ARGS[@]}"
   -r "$recipe_dir"
 )
 
@@ -52,10 +63,8 @@ if $skip_existing; then
   cmd+=(--skip-existing=all)
 fi
 
-if [[ ${#extra_cs[@]} -gt 0 ]]; then
-  for ch in "${extra_cs[@]}"; do
-    cmd+=(-c "$ch")
-  done
+if [[ $# -gt 0 ]]; then
+  cmd+=("$@")
 fi
 
 build_status=0
@@ -66,7 +75,7 @@ fix_output_owner || {
   if [[ "$build_status" -eq 0 ]]; then
     exit "$chown_status"
   fi
-  printf 'Warning: failed to fix output ownership after failed build\n' >&2
+  echo "Warning: failed to fix output ownership after failed build" >&2
 }
 
 exit "$build_status"
