@@ -1,0 +1,89 @@
+schema_version: 1
+
+context:
+  pc: atk
+  name: atk
+  version: "2.38.0"
+  major_minor: "2.38"
+  abi_version: "1.0"
+  lib: atk-1.0
+
+recipe:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: http://ftp.gnome.org/pub/gnome/sources/${{ name }}/${{ major_minor }}/${{ name }}-${{ version }}.tar.xz
+  sha256: ac4de2a4ef4bd5665052952fe169657e65e895c5057dffb3c2a810f6191a0c36
+
+build:
+  number: 2
+  skip: win and vc<14
+
+outputs:
+  - package:
+      name: atk-${{ abi_version }}
+    build:
+      script:
+        file: ${{ 'bld_atk.bat' if win else 'build_atk.sh' if unix else '' }}
+    requirements:
+      build:
+        - meson
+        - gobject-introspection 1.*
+        - ninja
+        - python >=3.6
+        - pkg-config
+        - ${{ compiler('c') }}
+        - ${{ stdlib('c') }}
+        - if: build_platform != target_platform
+          then: glib
+        # Required for the conda-forge meson cross-compilation config to work
+        - ${{ compiler('cxx') }}
+      host:
+        - glib
+        - if: not linux
+          then: libintl-devel
+      run:
+        - libglib
+      run_exports:
+        - atk-${{ abi_version }} >=${{ version }}
+      run_constraints:
+        - atk-${{ abi_version }} ==${{ version }}
+    tests:
+      - requirements:
+          run:
+            - pkg-config
+        script:
+          - if: unix
+            then: 
+              - test -f $PREFIX/lib/lib${{ lib }}${SHLIB_EXT}
+              - test -f `pkg-config --variable=libdir --dont-define-prefix ${{ pc }}`/lib${{ lib }}${SHLIB_EXT}
+          - if: win
+            then: 
+              - if not exist %PREFIX%\\Library\\bin\\${{ lib }}-0.dll exit 1
+              - for /f "usebackq tokens=*" %%a in (`pkg-config --variable=exec_prefix --dont-define-prefix ${{ pc }}`) do if not exist "%%a/bin/${{ lib }}-0.dll" exit 1
+              - if not exist %PREFIX%\\Library\\lib\\${{ lib }}.lib exit 1
+              - for /f "usebackq tokens=*" %%a in (`pkg-config --variable=libdir --dont-define-prefix ${{ pc }}`) do if not exist "%%a/${{ lib }}.lib" exit 1
+  - package:
+      name: atk
+    requirements:
+      run:
+        - atk-${{ abi_version }} ==${{ version }}
+    tests:
+      - script:
+          - if: unix
+            then: test -f $PREFIX/lib/libatk-${{ abi_version }}${SHLIB_EXT}
+
+about:
+  license: LGPL-2.0-or-later
+  license_file: COPYING
+  summary: Accessibility Toolkit.
+  homepage: http://www.gtk.org/
+
+extra:
+  recipe-maintainers:
+    - pkgw
+    - ocefpaf
+    - isuruf
+    - tschoonj
+
