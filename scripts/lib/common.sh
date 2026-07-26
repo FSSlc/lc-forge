@@ -112,8 +112,14 @@ crm_convert() {
     cat "$stderr_file" >&2
   fi
 
-  # Success: rc == 0 with either clean stderr or "0 errors" reported
-  if [[ $rc -eq 0 ]] && { [[ ! -s "$stderr_file" ]] || grep -q '0 errors' "$stderr_file"; }; then
+  # Success: stderr reports "0 errors", or rc == 0 with clean stderr.
+  # crm may exit non-zero when warnings exist, but "0 errors" means the
+  # conversion itself succeeded.
+  if grep -q '0 errors' "$stderr_file" 2>/dev/null; then
+    mv "$recipe_tmp" "$recipe_file"
+    rm -f "$stderr_file"
+    _success=true
+  elif [[ $rc -eq 0 && ! -s "$stderr_file" ]]; then
     mv "$recipe_tmp" "$recipe_file"
     rm -f "$stderr_file"
     _success=true
