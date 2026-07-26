@@ -1,0 +1,57 @@
+context:
+  version: "0.7.5"
+
+package:
+  name: herdr
+  version: ${{ version }}
+
+source:
+  # Pre-built binary per platform
+  - if: linux and x86_64
+    then:
+      url: https://github.com/ogulcancelik/herdr/releases/download/v${{ version }}/herdr-linux-x86_64
+      sha256: 3dc83288073e4c2d3c679a30e7be97bcca9141c6fd17dbbb9219142e95c59253
+  - if: linux and aarch64
+    then:
+      url: https://github.com/ogulcancelik/herdr/releases/download/v${{ version }}/herdr-linux-aarch64
+      sha256: 32e763a1499a6b694b1d708e4f062b743be1da9f34fcfa4d212d6db6fe09a8b9
+  - if: osx and x86_64
+    then:
+      url: https://github.com/ogulcancelik/herdr/releases/download/v${{ version }}/herdr-macos-x86_64
+      sha256: 3fe50c4a63dc8102306b1322178628ddb3655cd3ae56d784f094153408d69e62
+  - if: osx and aarch64
+    then:
+      url: https://github.com/ogulcancelik/herdr/releases/download/v${{ version }}/herdr-macos-aarch64
+      sha256: 37350546b0012555943b92eaf962665de4e264395baeb44227b8015e8ff5b0d6
+  # LICENSE file (all platforms)
+  - url: https://raw.githubusercontent.com/ogulcancelik/herdr/v${{ version }}/LICENSE
+    sha256: a7fa24f74382fb3e4d320a608533a7c2999dbc0f780f1f734c8b891b31f0d9bd
+
+build:
+  number: 0
+  skip: win
+  dynamic_linking:
+    binary_relocation: false
+  
+  script:
+    - install -Dm 755 herdr-* "${PREFIX}/bin/herdr"
+    - install -Dm 644 LICENSE "${PREFIX}/share/licenses/herdr/LICENSE"
+
+tests:
+  - script:
+      - herdr --version
+
+about:
+  homepage: https://herdr.dev
+  repository: https://github.com/ogulcancelik/herdr
+  license: AGPL-3.0-or-later
+  license_file: LICENSE
+  summary: Agent multiplexer that lives in your terminal.
+  description: |
+    Herdr is an agent multiplexer that lives in your terminal. It provides
+    a TUI for managing multiple AI coding agents with support for plugins,
+    named sessions, and live-agent CLI workflows.
+
+extra:
+  recipe-maintainers:
+    - FSSlc
