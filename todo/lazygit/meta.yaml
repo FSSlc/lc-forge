@@ -1,0 +1,47 @@
+{% set goname = "github.com/jesseduffield/lazygit" %}
+{% set version = "0.63.1" %}
+
+{% set name = goname.split('/')[-1] %}
+{% set pkg_src = ('src/'+goname).replace("/",os.sep) %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version|replace("-", "_") }}
+
+source:
+  - folder: {{ pkg_src }}
+    url: https://github.com/jesseduffield/lazygit/archive/v{{ version }}.tar.gz
+    sha256: 227ff262138440ff68e893f6c95c4e586e954c46913106d84fff78d220e18b6c
+
+build:
+  number: 0
+  script:
+    - pushd {{ pkg_src }}
+    - go build -buildvcs=false -ldflags "-s -w" -v -o $PREFIX/bin/lazygit        # [not win]
+    - go build -buildvcs=false -ldflags "-s -w" -v -o %LIBRARY_BIN%\lazygit.exe  # [win]
+    - go-licenses save . --save_path ../../../../library_licenses
+
+requirements:
+  build:
+    - {{ compiler('go') }}
+    - go-licenses
+
+test:
+  commands:
+    - lazygit --help
+
+about:
+  home: https://github.com/jesseduffield/lazygit
+  license: MIT
+  license_family: MIT
+  license_file:
+    - {{ pkg_src }}/LICENSE
+    - library_licenses/
+  summary: |
+    A simple terminal UI for git commands, written in Go with the gocui library.
+  doc_url: https://godoc.org/github.com/jesseduffield/lazygit
+  dev_url: https://github.com/jesseduffield/lazygit
+
+extra:
+  recipe-maintainers:
+    - dbast

@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  goname: github.com/jesseduffield/lazygit
+  version: "0.63.1"
+  name: lazygit
+  pkg_src: lazygit
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version|replace("-", "_") }}
+
+source:
+  - url: https://github.com/jesseduffield/lazygit/archive/v${{ version }}.tar.gz
+    sha256: 227ff262138440ff68e893f6c95c4e586e954c46913106d84fff78d220e18b6c
+    target_directory: ${{ pkg_src }}
+
+build:
+  number: 0
+  script:
+    - pushd ${{ pkg_src }}
+    - if: not win
+      then: go build -buildvcs=false -ldflags "-s -w" -v -o $PREFIX/bin/lazygit
+    - if: win
+      then: go build -buildvcs=false -ldflags "-s -w" -v -o %LIBRARY_BIN%\lazygit.exe
+    - go-licenses save . --save_path library_licenses
+
+requirements:
+  build:
+    - ${{ compiler('go') }}
+    - go-licenses
+
+tests:
+  - script:
+      - lazygit --help
+
+about:
+  license: MIT
+  license_file:
+    - ${{ pkg_src }}/LICENSE
+    - ${{ pkg_src }}/library_licenses/
+  summary: |
+    A simple terminal UI for git commands, written in Go with the gocui library.
+  homepage: https://github.com/jesseduffield/lazygit
+  repository: https://github.com/jesseduffield/lazygit
+  documentation: https://godoc.org/github.com/jesseduffield/lazygit
+
+extra:
+  recipe-maintainers:
+    - dbast
+
