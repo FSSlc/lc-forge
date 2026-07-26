@@ -44,7 +44,11 @@ fi
 recipe_dir="$(resolve_recipe_dir "$recipe_dir")"
 require_cmd rattler-build
 
-build_channel_args "${extra_cs[@]}"
+if [[ ${#extra_cs[@]} -gt 0 ]]; then
+  build_channel_args "${extra_cs[@]}"
+else
+  build_channel_args
+fi
 
 cmd=(
   rattler-build build
