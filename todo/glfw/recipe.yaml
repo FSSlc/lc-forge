@@ -1,0 +1,91 @@
+schema_version: 1
+
+context:
+  version: "3.4"
+
+package:
+  name: glfw
+  version: ${{ version }}
+
+source:
+  url: https://github.com/glfw/glfw/archive/${{ version }}.tar.gz
+  sha256: c038d34200234d071fae9345bc455e4a8f2f544ab60150765d7704e08f3dac01
+  patches:
+    # Mostly taken from
+    # https://github.com/glfw/glfw/issues/2139
+    # To enable compilation with older libc
+    - patches_for_conda_forge.patch
+
+build:
+  # https://abi-laboratory.pro/index.php?view=timeline&l=glfw
+  number: 1
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - cmake
+    - if: win
+      then: m2-patch
+    - if: unix
+      then: pkg-config
+    - if: win
+      then: ninja
+    - if: unix
+      then: make
+  host:
+    - if: linux
+      then: xorg-xorgproto
+    - if: linux
+      then: xorg-libx11
+    - if: linux
+      then: xorg-libxrandr
+    - if: linux
+      then: xorg-libxinerama
+    - if: linux
+      then: xorg-libxcursor
+    - if: linux
+      then: xorg-libxi
+    - if: linux
+      then: libxkbcommon
+    - if: linux
+      then: wayland
+  run_exports:
+    - ${{ pin_subpackage('glfw', upper_bound='x') }}
+
+tests:
+  - script:
+      - if: unix
+        then: test -f $PREFIX/lib/libglfw${SHLIB_EXT}
+      - if: win
+        then: if not exist %PREFIX%/Library/lib/glfw3dll.lib exit 1
+      - if: win
+        then: if not exist %PREFIX%/Library/bin/glfw3.dll exit 1
+
+about:
+  license: Zlib
+  license_file: LICENSE.md
+  summary: Open Source, multi-platform library for OpenGL, OpenGL ES and Vulkan application development.
+  # The remaining entries in this section are optional, but recommended
+  description: |
+    GLFW is an Open Source, multi-platform library for OpenGL, OpenGL ES and
+    Vulkan application development. It provides a simple,
+    platform-independent API for creating windows, contexts and surfaces,
+    reading input, handling events, etc.
+
+    GLFW natively supports Windows, macOS and Linux and other Unix-like
+    systems.  An experimental implementation for the Wayland protocol is
+    available but not yet officially supported.
+
+  homepage: https://www.glfw.org/
+  repository: https://github.com/glfw/glfw
+  documentation: https://www.glfw.org/documentation.html
+
+extra:
+  recipe-maintainers:
+    - hmaarrfk
+    - kmuehlbauer
+    - hoechenberger
+    - ryanvolz
+    - traversaro
+

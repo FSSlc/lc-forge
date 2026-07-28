@@ -1,0 +1,73 @@
+{% set version = "3.4" %}
+
+package:
+  name: glfw
+  version: "{{ version }}"
+
+source:
+  url: https://github.com/glfw/glfw/archive/{{ version }}.tar.gz
+  sha256: c038d34200234d071fae9345bc455e4a8f2f544ab60150765d7704e08f3dac01
+  patches:
+    # Mostly taken from
+    # https://github.com/glfw/glfw/issues/2139
+    # To enable compilation with older libc
+    - patches_for_conda_forge.patch
+
+build:
+  number: 1
+  # https://abi-laboratory.pro/index.php?view=timeline&l=glfw
+  run_exports:
+    - {{ pin_subpackage('glfw', max_pin='x') }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+    - cmake
+    - m2-patch               # [win]
+    - pkg-config             # [unix]
+    - ninja                  # [win]
+    - make                   # [unix]
+  host:
+    - xorg-xorgproto         # [linux]
+    - xorg-libx11            # [linux]
+    - xorg-libxrandr         # [linux]
+    - xorg-libxinerama       # [linux]
+    - xorg-libxcursor        # [linux]
+    - xorg-libxi             # [linux]
+    - libxkbcommon           # [linux]
+    - wayland                # [linux]
+
+test:
+  commands:
+    - test -f $PREFIX/lib/libglfw${SHLIB_EXT}                # [unix]
+    - if not exist %PREFIX%/Library/lib/glfw3dll.lib exit 1  # [win]
+    - if not exist %PREFIX%/Library/bin/glfw3.dll exit 1     # [win]
+
+about:
+  home: https://www.glfw.org/
+  license: Zlib
+  license_file: LICENSE.md
+  summary: Open Source, multi-platform library for OpenGL, OpenGL ES and Vulkan application development.
+
+  # The remaining entries in this section are optional, but recommended
+  description: |
+    GLFW is an Open Source, multi-platform library for OpenGL, OpenGL ES and
+    Vulkan application development. It provides a simple,
+    platform-independent API for creating windows, contexts and surfaces,
+    reading input, handling events, etc.
+
+    GLFW natively supports Windows, macOS and Linux and other Unix-like
+    systems.  An experimental implementation for the Wayland protocol is
+    available but not yet officially supported.
+
+  doc_url: https://www.glfw.org/documentation.html
+  dev_url: https://github.com/glfw/glfw
+
+extra:
+  recipe-maintainers:
+    - hmaarrfk
+    - kmuehlbauer
+    - hoechenberger
+    - ryanvolz
+    - traversaro
