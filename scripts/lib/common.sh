@@ -53,11 +53,15 @@ fix_output_owner() {
 # Print channels from EXTRA_CHANNELS (space- and/or comma-separated).
 extra_channels_from_env() {
   local raw="${EXTRA_CHANNELS:-}"
-  local -a parts=()
   local part
 
-  # Normalize commas to spaces, then split via read to avoid glob expansion
+  # Normalize commas to spaces
   raw="${raw//,/ }"
+  # Short-circuit when empty to avoid unbound-variable issues with set -u
+  [[ -z "$raw" ]] && return 0
+
+  local -a parts=()
+  # Split via read to avoid glob expansion
   read -ra parts <<<"$raw"
   for part in "${parts[@]}"; do
     [[ -n "$part" ]] && printf '%s\n' "$part"
