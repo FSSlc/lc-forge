@@ -1,0 +1,43 @@
+schema_version: 1
+
+context:
+  name: xorg-xineramaproto
+  version: "1.2.1"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://xorg.freedesktop.org/archive/individual/proto/xineramaproto-${{ version }}.tar.bz2
+  sha256: 977574bb3dc192ecd9c55f59f991ec1dff340be3e31392c95deff423da52485b
+  patches:
+    - aarch64_config.patch
+
+build:
+  number: 1002
+
+requirements:
+  build:
+    - pkg-config
+    - gnuconfig
+    - make
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+  host:
+    - xorg-util-macros
+
+tests:
+  - script:
+      - test -f $PREFIX/include/X11/extensions/panoramiXproto.h
+
+about:
+  homepage: https://www.x.org/
+  license: MIT
+  license_file: COPYING
+  summary: Print extension headers
+
+extra:
+  recipe-maintainers:
+    - epruesse
+    - pkgw
