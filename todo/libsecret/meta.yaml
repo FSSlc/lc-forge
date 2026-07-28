@@ -1,0 +1,66 @@
+{% set name = "libsecret" %}
+{% set version = "0.21.7" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: http://ftp.gnome.org/pub/gnome/sources/libsecret/{{ '.'.join(version.split('.')[:2]) }}/libsecret-{{ version }}.tar.xz
+  sha256: 6b452e4750590a2b5617adc40026f28d2f4903de15f1250e1d1c40bfd68ed55e
+  patches:
+    # Disable test-only introspection data, doesn't build on osx.
+    - 0001-Disable-mock_service-introspection.patch
+
+build:
+  number: 0
+  skip: true  # [win]
+  run_exports:
+    #  https://abi-laboratory.pro/tracker/timeline/libsecret/
+    - {{ pin_subpackage('libsecret', max_pin='x.x') }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib('c') }}
+    - pkg-config
+    - gettext-tools
+    - meson
+    - ninja
+    - sed
+    - vala
+    - glib                   # [build_platform != target_platform]
+    - g-ir-build-tools       # [build_platform != target_platform]
+    - libgcrypt              # [build_platform != target_platform]
+    - gobject-introspection  # [build_platform != target_platform]
+  host:
+    - glib
+    - gobject-introspection
+    - libgcrypt
+    - libintl-devel  # [osx]
+    - zlib
+
+test:
+  commands:
+    - test -f $PREFIX/lib/libsecret-1$SHLIB_EXT
+    - test -f $PREFIX/lib/pkgconfig/libsecret-1.pc
+    - test -f $PREFIX/lib/girepository-1.0/Secret-1.typelib
+
+about:
+  home: https://wiki.gnome.org/Projects/Libsecret
+  license: LGPL-2.1-or-later
+  license_family: LGPL
+  license_file: COPYING
+  summary: 'GObject based library for accessing the Secret Service API.'
+  description: |
+    libsecret is a library for storing and retrieving passwords and other
+    secrets. It communicates with the "Secret Service" using D-Bus.
+    gnome-keyring and ksecretservice are both implementations of a Secret
+    Service. libsecret replaces libgnome-keyring.
+  doc_url: https://developer.gnome.org/libsecret/
+  dev_url: https://git.gnome.org/browse/libsecret/
+
+extra:
+  recipe-maintainers:
+    - nehaljwani
+    - pavelzw

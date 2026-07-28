@@ -1,0 +1,89 @@
+schema_version: 1
+
+context:
+  version: "1.0.22"
+
+package:
+  name: libsodium
+  version: ${{ version }}
+
+source:
+  url: https://download.libsodium.org/libsodium/releases/libsodium-${{ version }}.tar.gz
+  sha256: adbdd8f16149e81ac6078a03aca6fc03b592b89ef7b5ed83841c086191be3349
+  # patches:
+    # to regen stable branch patch list, see stable-patches/README.md
+
+
+build:
+  number: 1
+  script: build
+
+requirements:
+  build:
+    - ${{ compiler("c") }}
+    - ${{ stdlib("c") }}
+    - if: unix
+      then:
+        - libtool
+        - make
+  run_exports:
+    - ${{ pin_subpackage("libsodium", upper_bound="x.x.x") }}
+
+tests:
+  - package_contents:
+      lib:
+        - if: unix
+          then: sodium
+        - if: win
+          then: libsodium
+      include:
+        - sodium.h
+        - sodium/version.h
+      files:
+        not_exists:
+          - if: unix
+            then:
+              - lib/libsodium.a
+          - if: win
+            then:
+              - Library/lib/libsodium_static.lib
+  - script:
+      - if: unix
+        then:
+          - cmake -S test -B test/build $CMAKE_ARGS
+        else:
+          - cmake -G Ninja -S test -B test/build %CMAKE_ARGS%
+      - cmake --build test/build
+      - ctest --test-dir test/build --output-on-failure
+    files:
+      recipe:
+        - test/
+    requirements:
+      run:
+        - cmake
+        - ${{ compiler("c") }}
+        - ${{ stdlib("c") }}
+        - if: unix
+          then:
+            - make
+          else:
+            - ninja
+
+about:
+  license: ISC
+  license_file: LICENSE
+  summary: A modern and easy-to-use crypto library
+  description: |
+    Sodium is a new, easy-to-use software library for encryption, decryption,
+    signatures, password hashing and more. It is a portable, cross-compilable,
+    installable, packageable fork of NaCl, with a compatible API, and an
+    extended API to improve usability even further. Its goal is to provide all
+    of the core operations needed to build higher-level cryptographic tools.
+  homepage: https://libsodium.org
+  repository: https://github.com/jedisct1/libsodium
+  documentation: https://download.libsodium.org/doc
+
+extra:
+  recipe-maintainers:
+    - jakirkham
+    - minrk
