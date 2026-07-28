@@ -1,0 +1,58 @@
+schema_version: 1
+
+context:
+  version: "1.26.0"
+
+package:
+  name: wayland
+  version: ${{ version }}
+
+source:
+  url: https://gitlab.freedesktop.org/wayland/wayland/-/archive/${{ version }}/wayland-${{ version }}.tar.bz2
+  sha256: ebf5fff1c8b11c24ceec74ff3047aefdb07efee8ce09bf3b856975aba3540d15
+
+build:
+  number: 0
+  skip: not linux
+
+requirements:
+  build:
+    - pkg-config
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('cxx') }}
+    - meson
+    - ninja
+  host:
+    - expat
+    - libffi
+  run_exports:
+    - ${{ pin_subpackage('wayland', upper_bound='x') }}
+
+tests:
+  - script:
+      - wayland-scanner --help
+      - test -f ${PREFIX}/lib/libwayland-egl.so
+      - test -f ${PREFIX}/lib/libwayland-client.so
+      - test -f ${PREFIX}/lib/libwayland-cursor.so
+      - test -f ${PREFIX}/lib/libwayland-server.so
+      - test -f ${PREFIX}/lib/pkgconfig/wayland-egl.pc
+      - test -f ${PREFIX}/lib/pkgconfig/wayland-client.pc
+      - test -f ${PREFIX}/lib/pkgconfig/wayland-cursor.pc
+      - test -f ${PREFIX}/lib/pkgconfig/wayland-server.pc
+      - test -f ${PREFIX}/include/wayland-egl.h
+      - test -f ${PREFIX}/include/wayland-client.h
+      - test -f ${PREFIX}/include/wayland-cursor.h
+      - test -f ${PREFIX}/include/wayland-server.h
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: Base libraries for the Wayland rendering architecture
+  homepage: https://gitlab.freedesktop.org/wayland/wayland
+
+extra:
+  recipe-maintainers:
+    - hmaarrfk
+    - pkgw
+
