@@ -1,0 +1,85 @@
+schema_version: 1
+
+context:
+  version: "1.1.6"
+  xorg_category: lib
+  xorg_name: libXinerama
+  name: xorg-libXinerama
+  am_version: "1.16"  # keep synchronized with build.sh
+
+package:
+  name: ${{ name | lower }}
+  version: ${{ version }}
+
+source:
+  url: https://www.x.org/releases/individual/${{ xorg_category }}/${{ xorg_name }}-${{ version }}.tar.xz
+  sha256: d00fc1599c303dc5cbc122b8068bdc7405d6fcb19060f4597fc51bd3a8be51d7
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - if: win
+      then: m2-autoconf
+    - if: win
+      then: m2-automake${{ am_version }}
+    - if: win
+      then: m2-libtool
+    - if: unix
+      then: pkg-config
+    - if: win
+      then: m2-pkg-config
+    - if: unix
+      then: gnuconfig
+    - if: win
+      then: m2-base
+    - if: unix
+      then: make
+    - if: win
+      then: m2-make
+    - if: not win
+      then: ${{ compiler('c') }}
+    - if: not win
+      then: ${{ compiler('cxx') }}
+    - if: not win
+      then: ${{ stdlib('c') }}
+    - if: win
+      then: ${{ compiler('m2w64_c') }}
+    - if: win
+      then: ${{ compiler('m2w64_cxx') }}
+    - if: win
+      then: ${{ stdlib('m2w64_c') }}
+    - if: not win
+      then: autoconf
+    - if: not win or not win
+      then: automake 1.16.*
+    - if: not win
+      then: libtool
+  host:
+    - xorg-util-macros
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-xorgproto
+  run_exports:
+    - ${{ pin_subpackage('xorg-libxinerama', upper_bound='x.x') }}
+
+tests:
+  - script:
+      - if: unix
+        then: test -f $PREFIX/lib/libXinerama${SHLIB_EXT}
+      - if: win
+        then: if not exist %PREFIX%/Library/lib/libXinerama.dll.a exit /b 1
+      - if: win
+        then: if not exist %PREFIX%/Library/bin/msys-Xinerama-*.dll exit /b 1
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: Client library for the Xinerama extension to the X11 protocol.
+  homepage: https://gitlab.freedesktop.org/xorg/lib/libxinerama
+
+extra:
+  recipe-maintainers:
+    - hmaarrfk
+
