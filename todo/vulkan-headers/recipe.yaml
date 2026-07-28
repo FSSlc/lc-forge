@@ -1,0 +1,46 @@
+# For this repo, v**** tags exists, but apparently the stable tags (the one corresponding to versions
+# that are available for download at https://vulkan.lunarg.com/sdk/home) are the vulkan-sdk-*** ones
+# See https://github.com/KhronosGroup/Vulkan-Headers#version-tagging-scheme
+schema_version: 1
+
+context:
+  name: libvulkan-headers
+  version: "1.4.350.1"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/vulkan-sdk-${{ version }}.tar.gz
+  sha256: 6d1bb65e49520344cc0a48af3dc02e993781efff14c7ebdcb8ae9fa23ddf7e83
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - cmake
+    - ninja
+    # This is just required to make sure that ${CMAKE_ARGS} is defined
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib("c") }}
+
+tests:
+  - package_contents:
+      include:
+        - vulkan/vk_icd.h
+
+about:
+  license: Apache-2.0 OR MIT
+  license_file:
+    - LICENSES/Apache-2.0.txt
+    - LICENSES/MIT.txt
+  summary: Vulkan Header files and API registry.
+  homepage: https://github.com/KhronosGroup/Vulkan-Headers
+
+extra:
+  feedstock-name: vulkan-headers
+  recipe-maintainers:
+    - JarrettSJohnson
+    - traversaro
