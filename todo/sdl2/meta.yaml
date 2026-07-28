@@ -1,0 +1,78 @@
+{% set version = "2.30.10" %}
+
+package:
+  name: sdl2
+  version: {{ version }}
+
+source:
+  url: https://github.com/libsdl-org/SDL/releases/download/release-{{ version }}/SDL2-{{ version }}.tar.gz
+  sha256: f59adf36a0fcf4c94198e7d3d776c1b3824211ab7aeebeb31fe19836661196aa
+
+build:
+  number: 0
+  run_exports:
+    - {{ pin_subpackage("sdl2", max_pin='x') }}
+
+requirements:
+  build:
+    - cmake  # [win]
+    - make  # [unix]
+    - autoconf  # [not win]
+    - gnuconfig   # [unix]
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+    - {{ compiler('cxx') }}
+    - {{ cdt('mesa-libgl-devel') }}  # [linux]
+    - {{ cdt('mesa-dri-drivers') }}  # [linux]
+    - {{ cdt('libselinux') }}  # [linux]
+    - {{ cdt('libxdamage') }}  # [linux]
+    - {{ cdt('libxxf86vm') }}  # [linux]
+    - xorg-libx11  # [linux]
+    - xorg-libxext  # [linux]
+    - {{ cdt('libx11-devel') }}          # [linux]
+    - {{ cdt('libxext-devel') }}         # [linux]
+    - {{ cdt('libxrender-devel') }}      # [linux]
+    - {{ cdt('xorg-x11-proto-devel') }}  # [linux]
+    - pulseaudio  # [linux]
+  host:
+    - xorg-libx11  # [linux]
+    - xorg-libxext  # [linux]
+    - xorg-libxfixes  # [linux]
+    - pulseaudio  # [linux]
+  run:
+    - xorg-libx11  # [linux]
+    - xorg-libxext  # [linux]
+
+test:
+  requires:
+    - {{ compiler('c') }}
+    - cmake
+    - ninja
+    - pkg-config
+  files:
+    - cmake_test/
+    - test_version.sh
+    - test_version.bat
+  commands:
+    - sdl2-config --version  # [not win]
+
+    # test that version is baked in correctly
+    - ./test_version.sh      # [unix]
+    - ./test_version.bat     # [win]
+
+about:
+  home: https://www.libsdl.org/index.php
+  license: Zlib
+  license_file: LICENSE.txt
+  summary: Low-level access to audio, keyboard, mouse, joystick, and graphics
+  description: |
+    Simple DirectMedia Layer is a cross-platform development library designed to
+    provide low level access to audio, keyboard, mouse, joystick, and graphics
+    hardware via OpenGL and Direct3D.
+  doc_url: https://wiki.libsdl.org/FrontPage
+  dev_url: http://hg.libsdl.org/SDL
+
+extra:
+  recipe-maintainers:
+    - dschreij
+    - matham

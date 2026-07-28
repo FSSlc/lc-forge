@@ -1,0 +1,65 @@
+schema_version: 1
+
+context:
+  name: libvulkan-loader
+  version: "1.4.350.1"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+# For this repo, v**** tags exists, but apparently the stable tags (the one corresponding to versions
+# that are available for download at https://vulkan.lunarg.com/sdk/home) are the vulkan-sdk-*** ones
+# See https://github.com/KhronosGroup/Vulkan-Headers#version-tagging-scheme
+source:
+  url: https://github.com/KhronosGroup/Vulkan-Loader/archive/refs/tags/vulkan-sdk-${{ version }}.tar.gz
+  sha256: 602984a71000981e25e4feb419e6cdd70b18ffe2b8004f60f591706027bca468
+  patches:
+    - disable_macos_framework.patch
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - cmake
+    - ninja
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib("c") }}
+    - python *
+    - pkg-config
+  host:
+    - libvulkan-headers =${{ version }}
+    - if: linux
+      then:
+        - libxcb
+        - xorg-libx11
+        - xorg-libxrandr
+        - xorg-xorgproto
+  run_constraints:
+    - libvulkan-headers =${{ version }}
+  run_exports:
+    - ${{ pin_subpackage(name, upper_bound="x") }}
+  ignore_run_exports:
+    from_package:
+       # only the headers are used by the feedstock
+      - libxcb
+
+tests:
+  - package_contents:
+      lib:
+        - if: win
+          then: vulkan-1
+          else: vulkan
+
+about:
+  license: Apache-2.0
+  license_file: LICENSE.txt
+  summary: Khronos official Vulkan ICD desktop loader for Windows, Linux, and MacOS.
+  homepage: https://github.com/KhronosGroup/Vulkan-Loader
+
+extra:
+  feedstock-name: vulkan-loader
+  recipe-maintainers:
+    - JarrettSJohnson
+    - traversaro

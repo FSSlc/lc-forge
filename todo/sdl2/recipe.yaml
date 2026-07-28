@@ -1,0 +1,107 @@
+schema_version: 1
+
+context:
+  version: "2.30.10"
+
+package:
+  name: sdl2
+  version: ${{ version }}
+
+source:
+  url: https://github.com/libsdl-org/SDL/releases/download/release-${{ version }}/SDL2-${{ version }}.tar.gz
+  sha256: f59adf36a0fcf4c94198e7d3d776c1b3824211ab7aeebeb31fe19836661196aa
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - if: win
+      then: cmake
+    - if: unix
+      then: make
+    - if: not win
+      then: autoconf
+    - if: unix
+      then: gnuconfig
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+    - if: linux
+      then: ${{ cdt('mesa-libgl-devel') }}
+    - if: linux
+      then: ${{ cdt('mesa-dri-drivers') }}
+    - if: linux
+      then: ${{ cdt('libselinux') }}
+    - if: linux
+      then: ${{ cdt('libxdamage') }}
+    - if: linux
+      then: ${{ cdt('libxxf86vm') }}
+    - if: linux
+      then: xorg-libx11
+    - if: linux
+      then: xorg-libxext
+    - if: linux
+      then: ${{ cdt('libx11-devel') }}
+    - if: linux
+      then: ${{ cdt('libxext-devel') }}
+    - if: linux
+      then: ${{ cdt('libxrender-devel') }}
+    - if: linux
+      then: ${{ cdt('xorg-x11-proto-devel') }}
+    - if: linux
+      then: pulseaudio
+  host:
+    - if: linux
+      then: xorg-libx11
+    - if: linux
+      then: xorg-libxext
+    - if: linux
+      then: xorg-libxfixes
+    - if: linux
+      then: pulseaudio
+  run:
+    - if: linux
+      then: xorg-libx11
+    - if: linux
+      then: xorg-libxext
+  run_exports:
+    - ${{ pin_subpackage("sdl2", upper_bound='x') }}
+
+tests:
+  - files:
+      recipe:
+        - cmake_test/
+        - test_version.sh
+        - test_version.bat
+    requirements:
+      run:
+        - ${{ compiler('c') }}
+        - cmake
+        - ninja
+        - pkg-config
+    script:
+      - if: not win
+        then: sdl2-config --version
+      - if: unix
+        then: ./test_version.sh
+      - if: win
+        then: ./test_version.bat
+
+about:
+  license: Zlib
+  license_file: LICENSE.txt
+  summary: Low-level access to audio, keyboard, mouse, joystick, and graphics
+  description: |
+    Simple DirectMedia Layer is a cross-platform development library designed to
+    provide low level access to audio, keyboard, mouse, joystick, and graphics
+    hardware via OpenGL and Direct3D.
+  homepage: https://www.libsdl.org/index.php
+  repository: http://hg.libsdl.org/SDL
+  documentation: https://wiki.libsdl.org/FrontPage
+
+extra:
+  recipe-maintainers:
+    - dschreij
+    - matham
+
