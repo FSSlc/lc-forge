@@ -1,0 +1,52 @@
+schema_version: 1
+
+context:
+  version: "0.4.8"
+
+package:
+  name: iris
+  version: ${{ version }}
+
+source:
+  url: https://github.com/versenilvis/iris/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 4b17ba748ecd1c5444f3594589c5b0557f6f640d9d0c1c47ad026e0d6515ad20
+  target_directory: src
+
+build:
+  number: 0
+  script:
+    - cd src
+    - go-licenses save ./cmd/iris --save_path ../library_licenses
+    - if: unix
+      then: go build -buildvcs=false -v -ldflags="-s -w -X github.com/versenilvis/iris/root.Version=${{ version }}" -trimpath -o $PREFIX/bin/iris ./cmd/iris
+      else: go build -buildvcs=false -v -ldflags="-s -w -X github.com/versenilvis/iris/root.Version=${{ version }}" -trimpath -o %LIBRARY_BIN%\iris.exe ./cmd/iris
+
+requirements:
+  build:
+    - ${{ compiler('go') }}
+    - go-licenses
+
+tests:
+  - script:
+      - iris version
+  - package_contents:
+      bin:
+        - iris
+
+about:
+  license: 0BSD
+  license_file:
+    - src/LICENSE
+    - library_licenses/
+  summary: Intelligent Real-time Input Suggestion - a shell auto-completion tool
+  description: |
+    IRIS (Intelligent Real-time Input Suggestion) is a shell auto-completion
+    tool that works like code editor's IntelliSense. It runs purely on TTY
+    with a single native Go binary — no GUI, no Electron, no accounts.
+  homepage: https://github.com/versenilvis/iris
+  repository: https://github.com/versenilvis/iris
+  documentation: https://github.com/versenilvis/iris/blob/main/docs/README.md
+
+extra:
+  recipe-maintainers:
+    - fsslc
