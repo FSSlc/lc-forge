@@ -1,0 +1,47 @@
+schema_version: 1
+
+context:
+  version: "0.2.29"
+
+package:
+  name: xvfbwrapper
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/x/xvfbwrapper/xvfbwrapper-${{ version }}.tar.gz
+  sha256: 5fca91867376eee6c324bdfdc6d58ee45fa6296bb6ce98815614089342418243
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python ${{ python_min }}
+    - pip
+    - setuptools
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - xvfbwrapper
+      pip_check: false
+      python_version: ${{ python_min }}
+  - requirements:
+      run:
+        - python ${{ python_min }}
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: run headless display inside X virtual framebuffer (Xvfb)
+  homepage: https://github.com/cgoldberg/xvfbwrapper
+
+extra:
+  recipe-maintainers:
+    - satra
+    - ryanvolz
+
