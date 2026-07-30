@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  name: hicolor-icon-theme
+  version: "0.17"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://icon-theme.freedesktop.org/releases/${{ name }}-${{ version }}.tar.xz
+  sha256: 317484352271d18cbbcfac3868eab798d67fff1b8402e740baa6ff41d588a9d8
+
+build:
+  # it would be nice if this were noarch: generic because it just installs some files,
+  # but we want them in $PREFIX on Unix and %LIBRARY_PREFIX% on Windows
+  # noarch: generic
+  number: 3
+
+requirements:
+  build:
+    - if: unix
+      then: make
+
+tests:
+  - script:
+      - if: unix
+        then: test -f $PREFIX/share/icons/hicolor/index.theme
+      - if: win
+        then: if not exist %PREFIX%\Library\share\icons\hicolor\index.theme exit 1
+
+about:
+  license: GPL-2.0-or-later
+  license_file: COPYING
+  summary: Fallback theme for FreeDesktop.org icon themes
+  description: |
+    This is the default fallback theme used by implementations of the icon
+    theme specification.
+
+    The specification is availible at:
+    http://www.freedesktop.org/standards/icon-theme-spec/
+  homepage: https://wiki.freedesktop.org/www/Software/icon-theme/
+  repository: https://gitlab.freedesktop.org/xdg/default-icon-theme
+
+extra:
+  recipe-maintainers:
+    - ryanvolz
+    - stuarteberg
+    - tschoonj
+
