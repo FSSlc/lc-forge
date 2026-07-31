@@ -78,7 +78,17 @@ elif ! container_exists; then
   run_container "$img_tag"
 else
   if [[ "$(container_status)" == Exited* ]]; then
-    docker start "$CONTAINER_NAME"
+    if docker start "$CONTAINER_NAME" >/dev/null 2>&1; then
+      docker exec -ti "$CONTAINER_NAME" bash
+      exit $?
+    fi
+    echo "Failed to start existing container ($(container_status)); removing stale container and recreating." >&2
+    docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || {
+      echo "Failed to remove stale container. Try: docker rm -f $CONTAINER_NAME" >&2
+      exit 1
+    }
+    run_container "$img_tag"
+    exit $?
   fi
   docker exec -ti "$CONTAINER_NAME" bash
 fi
