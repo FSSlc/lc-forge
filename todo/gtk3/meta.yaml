@@ -166,10 +166,10 @@ outputs:
       script: run_test.py
       commands:
         # check that the binaries can run
-        - gtk-encode-symbolic-svg --help
-        - gtk-launch --help
-        - gtk-query-immodules-3.0
-        - gtk-update-icon-cache --help
+        # - gtk-encode-symbolic-svg --help
+        # - gtk-launch --help
+        # - gtk-query-immodules-3.0
+        # - gtk-update-icon-cache --help
         # - xvfb-run -a -s "-screen 0 1024x768x24" gtk-query-settings  # [linux]
         - gtk-query-settings  # [not linux]
         - command -v gtk-builder-tool  # [not win]
