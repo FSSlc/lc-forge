@@ -35,20 +35,15 @@ requirements:
     - icu
     - libpng
     - if: linux
-      then: libxcb
+      then: 
+        - libxcb
+        - xorg-libice
+        - xorg-libsm
+        - xorg-libx11
+        - xorg-libxext
+        - xorg-libxrender
+        - xorg-xorgproto
     - pixman
-    - if: linux
-      then: xorg-libice
-    - if: linux
-      then: xorg-libsm
-    - if: linux
-      then: xorg-libx11
-    - if: linux
-      then: xorg-libxext
-    - if: linux
-      then: xorg-libxrender
-    - if: linux
-      then: xorg-xorgproto
     - zlib
   run_exports:
     - ${{ pin_subpackage('cairo') }}

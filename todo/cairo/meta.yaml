@@ -83,9 +83,9 @@ test:
 
     - export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig   # [not win]
     - set "PKG_CONFIG_PATH=%LIBRARY_LIB%\pkgconfig"  # [win]
-    # - pkg-config --cflags cairo
-    # - pkg-config --cflags cairo-fc
-    # - pkg-config --cflags cairo-gobject
+    - pkg-config --cflags cairo
+    - pkg-config --cflags cairo-fc
+    - pkg-config --cflags cairo-gobject
 
 about:
   home: http://cairographics.org/
