@@ -1,0 +1,117 @@
+schema_version: 1
+
+context:
+  version: "1.18.4"
+
+package:
+  name: cairo
+  version: ${{ version }}
+
+source:
+  url: http://cairographics.org/releases/cairo-${{ version }}.tar.xz
+  sha256: 445ed8208a6e4823de1226a74ca319d3600e83f6369f99b14265006599c32ccb
+  patches:
+    - meson-darwin-versions.patch
+    - if: win
+      then: windows-soversion-continuity.patch
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('cxx') }}
+    - meson
+    - ninja
+    - pkg-config
+    - xz-tools
+  host:
+    - expat
+    - freetype
+    - fontconfig
+    - glib
+    - icu
+    - libpng
+    - if: linux
+      then: libxcb
+    - pixman
+    - if: linux
+      then: xorg-libice
+    - if: linux
+      then: xorg-libsm
+    - if: linux
+      then: xorg-libx11
+    - if: linux
+      then: xorg-libxext
+    - if: linux
+      then: xorg-libxrender
+    - if: linux
+      then: xorg-xorgproto
+    - zlib
+  run_exports:
+    - ${{ pin_subpackage('cairo') }}
+
+tests:
+  - requirements:
+      run:
+        - pkg-config
+        - expat
+        - glib
+        - zlib
+        - if: linux
+          then: xorg-xorgproto
+    script:
+      - if: unix and build_platform == target_platform
+        then: cairo-trace --help
+      - if: not win
+        then: test -f $PREFIX/lib/libcairo.a
+      - if: osx
+        then: test -f $PREFIX/lib/libcairo.dylib
+      - if: linux
+        then: test -f $PREFIX/lib/libcairo.so
+      - if: win
+        then: if not exist %LIBRARY_BIN%\cairo.dll exit /b 1
+      - if: win
+        then: if not exist %LIBRARY_LIB%\cairo.lib exit /b 1
+      - if: win
+        then: if not exist %LIBRARY_LIB%\cairo-static.lib exit /b 1
+      - if: osx
+        then: test -f $PREFIX/lib/pkgconfig/cairo-quartz.pc
+      - if: linux
+        then: test -f $PREFIX/lib/pkgconfig/cairo-xlib.pc
+      - if: win
+        then: if not exist %LIBRARY_LIB%\pkgconfig\cairo-win32.pc exit /b 1
+      - if: unix
+        then: test -f $PREFIX/include/cairo/cairo.h
+      - if: win
+        then: if not exist %LIBRARY_INC%\cairo\cairo.h exit /b 1
+      - if: unix
+        then: grep -q "CAIRO_HAS_FC_FONT 1" $PREFIX/include/cairo/cairo-features.h
+      - if: not win
+        then: export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
+      - if: win
+        then: set "PKG_CONFIG_PATH=%LIBRARY_LIB%\pkgconfig"
+      - pkg-config --cflags cairo
+      - pkg-config --cflags cairo-fc
+      - pkg-config --cflags cairo-gobject
+
+about:
+  license: LGPL-2.1-only or MPL-1.1
+  license_file:
+    - COPYING
+    - COPYING-LGPL-2.1
+    - COPYING-MPL-1.1
+  summary: Cairo is a 2D graphics library with support for multiple output devices.
+  homepage: http://cairographics.org/
+  repository: https://gitlab.freedesktop.org/cairo/cairo
+  documentation: https://www.cairographics.org/documentation/
+
+extra:
+  recipe-maintainers:
+    - jakirkham
+    - ocefpaf
+    - pkgw
+    - tschoonj
+
