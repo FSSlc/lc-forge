@@ -3,7 +3,7 @@ schema_version: 1
 context:
   name: adwaita-icon-theme
   version: "49.0"
-  major_version: ${{ version.split('.')[0] }}
+  major_version: "49"
 
 package:
   name: ${{ name|lower }}
@@ -15,7 +15,6 @@ source:
 
 build:
   number: 0
-  string: ${{ 'win_${{ PKG_BUILDNUM }}' if win else 'unix_${{ PKG_BUILDNUM }}' if unix else '' }}
   noarch: generic
   merge_build_and_host_envs: false
 
