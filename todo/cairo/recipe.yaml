@@ -34,8 +34,13 @@ requirements:
     - glib
     - icu
     - libpng
+    - pixman
+    - zlib
+  run_exports:
+    - ${{ pin_subpackage('cairo') }}
+  run:
     - if: linux
-      then: 
+      then:
         - libxcb
         - xorg-libice
         - xorg-libsm
@@ -43,10 +48,6 @@ requirements:
         - xorg-libxext
         - xorg-libxrender
         - xorg-xorgproto
-    - pixman
-    - zlib
-  run_exports:
-    - ${{ pin_subpackage('cairo') }}
 
 tests:
   - requirements:
