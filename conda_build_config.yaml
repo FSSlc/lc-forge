@@ -159,7 +159,7 @@ bzip2:
 c_ares:
   - 1
 cairo:
-  - 1
+  - 1.18
 capnproto:
   - 0.10.2
 ccr:

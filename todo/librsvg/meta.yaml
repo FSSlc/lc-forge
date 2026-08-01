@@ -56,6 +56,8 @@ requirements:
     - liblzma-devel   # [build_platform != target_platform]
     - xorg-xorgproto  # [build_platform != target_platform]
     - zlib            # [build_platform != target_platform]
+    # Needed to find the compiler on windows for pythran 0.17.0
+    - setuptools <76
   host:
     - glib
     - libxml2-devel
@@ -69,7 +71,7 @@ requirements:
     - expat
     - liblzma-devel
     - xorg-xorgproto
-    - zlib
+    - zlib 
 
 test:
   requires:
