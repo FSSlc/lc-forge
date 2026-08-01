@@ -1,0 +1,52 @@
+
+context:
+  version: "0.2.113"
+
+package:
+  name: hyper-grok-build
+  version: ${{ version }}
+
+source:
+  - if: linux and x86_64
+    then:
+      url: https://github.com/DaviRain-Su/hyper-grok-build/releases/download/v${{ version }}/hyper-${{ version }}-x86_64-unknown-linux-gnu.tar.gz
+      sha256: 8a11e25d96f789b571ba7b639f35d7969906d7c949c3fae6044de3ab3efa45d7
+  - if: linux and aarch64
+    then:
+      url: https://github.com/DaviRain-Su/hyper-grok-build/releases/download/v${{ version }}/hyper-${{ version }}-aarch64-unknown-linux-gnu.tar.gz
+      sha256: 17314efdf524a6c8f46f77e6d199851a9cbbe33efae65ba0162bd94f2de1a36e
+
+build:
+  number: 0
+  skip:
+    - win
+    - osx
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    - install -Dm 755 hyper "${PREFIX}/bin/hyper"
+    - install -Dm 644 LICENSE "${PREFIX}/share/licenses/hyper/LICENSE"
+    - install -Dm 644 NOTICE "${PREFIX}/share/licenses/hyper/NOTICE"
+    - install -Dm 644 THIRD-PARTY-NOTICES "${PREFIX}/share/licenses/hyper/THIRD-PARTY-NOTICES"
+
+tests:
+  - script:
+      - hyper --help
+
+about:
+  homepage: https://github.com/DaviRain-Su/hyper-grok-build
+  repository: https://github.com/DaviRain-Su/hyper-grok-build
+  license: Apache-2.0
+  license_file:
+    - LICENSE
+    - NOTICE
+    - THIRD-PARTY-NOTICES
+  summary: Unofficial multi-provider community build of Grok Build
+  description: |
+    Hyper is an unofficial multi-provider community build of Grok Build
+    by xAI, supporting multiple AI providers including Grok, OpenAI,
+    Anthropic Claude, Google Gemini, and more.
+
+extra:
+  recipe-maintainers:
+    - FSSlc
