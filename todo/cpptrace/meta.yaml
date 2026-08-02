@@ -40,6 +40,7 @@ test:
   requires:
     - cmake
     - {{ compiler("cxx") }}
+    - {{ stdlib("c") }}
     - ninja                 # [unix]
   files:
     - test
