@@ -303,6 +303,47 @@ jobs:
             --target-platform="$TARGET_PLATFORM" \
             --token="$PREFIX_DEV_TOKEN"
 
+      - name: Fix output/logs ownership for the runner
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # Container builds write root-owned files into the bind mount.
+          # import_recipe.py already chowns via HOST_UID/HOST_GID on EXIT, but
+          # if the container step aborts early (or chown is skipped) the runner
+          # still cannot zip artifacts. Re-fix here as root via docker/sudo.
+          uid="$(id -u)"
+          gid="$(id -g)"
+          echo "Restoring ownership of output/ and logs/ to ${uid}:${gid}"
+
+          if docker ps --filter "name=^/pixi$" --format '{{.Names}}' | grep -Fxq pixi; then
+            docker exec \
+              -e HOST_UID="$uid" \
+              -e HOST_GID="$gid" \
+              pixi bash -lc '
+                set -Eeuo pipefail
+                for d in output logs; do
+                  [[ -e "$d" ]] || continue
+                  chown -Rh "${HOST_UID}:${HOST_GID}" "$d" || true
+                done
+              ' || true
+          fi
+
+          # Host-side fallback (GHA runners typically allow passwordless sudo).
+          if [[ -d output ]] || [[ -d logs ]]; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo chown -Rh "${uid}:${gid}" output logs 2>/dev/null || true
+            else
+              chown -Rh "${uid}:${gid}" output logs 2>/dev/null || true
+            fi
+          fi
+
+          # Sanity: runner must be able to read at least one artifact path.
+          if [[ -d output ]]; then
+            find output -name '*.conda' -print -quit | head -n 1 || true
+            ls -la output || true
+          fi
+
       - name: Summarize failure
         if: failure()
         shell: bash

@@ -785,8 +785,31 @@ def container_build_and_upload(
                 f"Did prepare step upload the todo/ artifact?"
             )
 
+    # rattler-build runs as root inside the pixi container and writes
+    # root-owned files under the bind-mounted workspace. Always chown back to
+    # HOST_UID/HOST_GID (injected by start_img.sh) so the GHA runner can read
+    # logs/ and zip output/**/*.conda for upload-artifact.
+    fix_owner_snippet = r"""
+fix_workspace_owner() {
+  local uid="${HOST_UID:-}"
+  local gid="${HOST_GID:-}"
+  if [[ -z "$uid" || -z "$gid" ]]; then
+    echo "Warning: HOST_UID/HOST_GID unset; leaving root-owned build outputs" >&2
+    return 0
+  fi
+  # -h: do not follow symlinks out of these trees
+  for d in output logs todo/.import-stage; do
+    if [[ -e "$d" ]]; then
+      chown -Rh "${uid}:${gid}" "$d" || true
+    fi
+  done
+}
+trap fix_workspace_owner EXIT
+"""
+
     build_script_parts = [
         "set -Eeuo pipefail",
+        fix_owner_snippet,
         "mkdir -p logs output",
         f"rm -rf {shlex.quote(stage_rel)}",
         f"mkdir -p {shlex.quote(stage_rel)}",
@@ -851,6 +874,7 @@ def container_build_and_upload(
 
     upload_parts = [
         "set -Eeuo pipefail",
+        fix_owner_snippet,
         "shopt -s nullglob globstar",
         "files=(output/**/*.conda)",
         'if [[ ${#files[@]} -eq 0 ]]; then echo "No .conda files to upload"; exit 0; fi',
