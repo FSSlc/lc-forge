@@ -1,0 +1,48 @@
+{% set name = "unrar" %}
+{% set version = "0.4" %}
+
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/unrar-{{ version }}.tar.gz
+  sha256: b24447a5b93024be600ef8255668ba23a30f451176577b691559ea1359f7d164
+
+build:
+  number: 2
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - pip
+    - setuptools
+    - python {{ python_min }}
+  run:
+    - python >={{ python_min }}
+    - libunrar
+
+test:
+  imports:
+    - unrar
+    - unrar.tests
+  commands:
+    - pip check
+  requires:
+    - pip
+    - python {{ python_min }}
+
+about:
+  home: http://github.com/matiasb/python-unrar
+  summary: Wrapper for UnRAR library, ctypes-based.
+  license: GPL-3.0-only
+  license_file: LICENSE.txt
+  doc_url: https://python-unrar.readthedocs.io/en/latest/
+  dev_url: https://github.com/matiasb/python-unrar
+
+extra:
+  recipe-maintainers:
+    - kellend-git
+    - sshockwave

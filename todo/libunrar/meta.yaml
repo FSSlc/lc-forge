@@ -1,0 +1,49 @@
+{% set name = "libunrar" %}
+{% set version = "7.2.7" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://www.rarlab.com/rar/unrarsrc-{{ version }}.tar.gz
+  sha256: 01d903a7dcf413cb2925696d7796e48e38d471f79bfe7ef3ad2aebf6c12dbefd
+  patches:
+    - 0001-REMOVE-HARDCODED-MAKEFILE-ENV.patch  # [unix]
+    - 0002-REMOVE-INSTALL-OPTION.patch  # [osx]
+    - 0003-CHANGE-DYLIB-EXTENSION.patch  # [osx]
+
+build:
+  run_exports:
+    - {{ pin_subpackage('libunrar', max_pin='x.x.x') }}
+  number: 0
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - {{ stdlib("c") }}
+    - make  # [unix]
+
+test:
+  commands:
+    - unrar
+    - test -f $PREFIX/lib/libunrar.so                 # [linux]
+    - test -f $PREFIX/lib/libunrar.dylib              # [osx]
+    - if not exist %LIBRARY_LIB%\UnRAR.lib exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\unrar.dll exit 1  # [win]
+    - test -f $PREFIX/include/unrar/headers.hpp  # [unix]
+    - if not exist %LIBRARY_INC%\unrar\headers.hpp exit 1  # [win]
+    # CFEP-18
+    - test ! -f ${PREFIX}/lib/libunrar.a  # [unix]
+
+about:
+  home: https://www.rarlab.com/
+  summary: Free utility for RAR archives
+  description: ''
+  license: LicenseRef-UnRAR
+  license_file: license.txt
+  dev_url: https://www.rarlab.com/rar_add.htm
+
+extra:
+  recipe-maintainers:
+    - sshockwave
