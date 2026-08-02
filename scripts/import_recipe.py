@@ -866,12 +866,36 @@ def container_build_and_upload(
     )
 
 
+# Non-hidden name so actions/upload-artifact includes it by default
+# (hidden/dotfiles are excluded unless include-hidden-files: true).
+MANIFEST_NAME = "import-manifest.json"
+MANIFEST_NAME_LEGACY = ".import-manifest.json"
+
+
+def manifest_path(root: Path) -> Path:
+    """Return the import manifest path, preferring the non-hidden name."""
+    primary = root / "todo" / MANIFEST_NAME
+    if primary.is_file():
+        return primary
+    legacy = root / "todo" / MANIFEST_NAME_LEGACY
+    if legacy.is_file():
+        return legacy
+    return primary
+
+
 def load_manifest(root: Path) -> dict[str, Any]:
-    path = root / "todo" / ".import-manifest.json"
+    path = manifest_path(root)
     if not path.is_file():
+        todo = root / "todo"
+        listing = "(todo/ missing)"
+        if todo.is_dir():
+            entries = sorted(p.name for p in todo.iterdir())
+            listing = ", ".join(entries) if entries else "(empty)"
         raise ImportError_(
-            f"Missing {path}. Run without --build-only first, or ensure the "
-            f"prepare artifact was downloaded."
+            f"Missing {root / 'todo' / MANIFEST_NAME} "
+            f"(also checked legacy {MANIFEST_NAME_LEGACY}). "
+            f"Run without --build-only first, or ensure the prepare artifact "
+            f"was downloaded. todo/ contains: {listing}"
         )
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -917,7 +941,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Skip resolve/prep; build+upload feedstocks listed in "
-            "todo/.import-manifest.json (used by CI build matrix jobs)"
+            "todo/import-manifest.json (used by CI build matrix jobs)"
         ),
     )
     p.add_argument(
@@ -949,10 +973,31 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # ----- build-only path (CI matrix jobs) -----
         if args.build_only:
-            manifest = load_manifest(root)
-            feedstocks = list(manifest.get("feedstocks") or [])
+            feedstocks: list[str] = []
+            root_name = pkg
+            # Prefer manifest file; fall back to IMPORT_FEEDSTOCKS env
+            # (set from prepare job outputs) when the artifact omitted the file.
+            try:
+                manifest = load_manifest(root)
+                feedstocks = list(manifest.get("feedstocks") or [])
+                root_name = str(manifest.get("root_package") or pkg)
+            except ImportError_ as manifest_err:
+                env_fs = os.environ.get("IMPORT_FEEDSTOCKS", "").strip()
+                if not env_fs:
+                    raise manifest_err
+                feedstocks = [f.strip() for f in env_fs.split(",") if f.strip()]
+                print(
+                    f"Warning: {manifest_err}\n"
+                    f"Falling back to IMPORT_FEEDSTOCKS={env_fs!r}",
+                    flush=True,
+                )
+            if not feedstocks:
+                raise ImportError_(
+                    "Build-only mode needs feedstocks from "
+                    f"todo/{MANIFEST_NAME} or IMPORT_FEEDSTOCKS."
+                )
             print(
-                f"==> Build-only for root {manifest.get('root_package')!r} "
+                f"==> Build-only for root {root_name!r} "
                 f"on {args.target_platform}: {', '.join(feedstocks)}",
                 flush=True,
             )
@@ -1010,11 +1055,15 @@ def main(argv: list[str] | None = None) -> int:
             "reasons": state.prepared,
             "target_platform": args.target_platform,
         }
-        manifest_path = root / "todo" / ".import-manifest.json"
-        manifest_path.write_text(
-            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-        )
-        print(f"Wrote {manifest_path}", flush=True)
+        # Non-hidden path: GitHub upload-artifact drops dotfiles by default.
+        out_path = root / "todo" / MANIFEST_NAME
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        # Remove legacy hidden name if present so only one source of truth.
+        legacy = root / "todo" / MANIFEST_NAME_LEGACY
+        if legacy.is_file():
+            legacy.unlink()
+        print(f"Wrote {out_path}", flush=True)
 
         if args.prepare_only:
             print("Prepare-only mode: skipping build/upload.", flush=True)

@@ -93,7 +93,12 @@ jobs:
             exit "$rc"
           fi
 
-          manifest="todo/.import-manifest.json"
+          # Non-hidden name so upload-artifact includes it by default.
+          manifest="todo/import-manifest.json"
+          if [[ ! -f "$manifest" && -f "todo/.import-manifest.json" ]]; then
+            mv "todo/.import-manifest.json" "$manifest"
+          fi
+
           if [[ ! -f "$manifest" ]]; then
             # Package already on scns → script exits 0 without a manifest.
             echo "already_on_scns=true" >> "$GITHUB_OUTPUT"
@@ -110,6 +115,8 @@ jobs:
           feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1]))["feedstocks"]))' "$manifest")
           echo "feedstocks=$feedstocks" >> "$GITHUB_OUTPUT"
           echo "Prepared feedstocks: $feedstocks"
+          echo "Manifest contents:"
+          cat "$manifest"
 
           {
             echo "## Prepared feedstocks"
@@ -126,13 +133,58 @@ jobs:
           ' "$manifest"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Stage artifact payload
+        if: steps.import.outputs.already_on_scns != 'true'
+        shell: bash
+        env:
+          FEEDSTOCKS: ${{ steps.import.outputs.feedstocks }}
+        run: |
+          set -Eeuo pipefail
+
+          # Build a clean staging dir with only the prepared recipes + manifest.
+          # Avoid uploading the entire pre-existing todo/ tree from the repo.
+          rm -rf .import-artifact
+          mkdir -p .import-artifact/todo
+
+          if [[ ! -f todo/import-manifest.json ]]; then
+            echo "Error: todo/import-manifest.json missing before artifact upload" >&2
+            ls -la todo/ >&2 || true
+            exit 1
+          fi
+          cp -a todo/import-manifest.json .import-artifact/todo/import-manifest.json
+
+          IFS=',' read -ra FS_LIST <<< "$FEEDSTOCKS"
+          for fs in "${FS_LIST[@]}"; do
+            fs="${fs#"${fs%%[![:space:]]*}"}"
+            fs="${fs%"${fs##*[![:space:]]}"}"
+            [[ -z "$fs" ]] && continue
+            if [[ ! -d "todo/$fs" ]]; then
+              echo "Error: prepared feedstock dir missing: todo/$fs" >&2
+              exit 1
+            fi
+            if [[ ! -f "todo/$fs/recipe.yaml" ]]; then
+              echo "Error: todo/$fs/recipe.yaml missing" >&2
+              exit 1
+            fi
+            cp -a "todo/$fs" ".import-artifact/todo/$fs"
+          done
+
+          if [[ -f only-meta.txt ]]; then
+            cp -a only-meta.txt .import-artifact/only-meta.txt
+          fi
+
+          echo "Artifact staging tree:"
+          find .import-artifact -maxdepth 3 -print | sort
+          echo "--- manifest ---"
+          cat .import-artifact/todo/import-manifest.json
+
       - uses: actions/upload-artifact@v7
         if: steps.import.outputs.already_on_scns != 'true'
         with:
           name: prepared-recipes
-          path: |
-            todo/
-            only-meta.txt
+          path: .import-artifact/
+          # Belt-and-suspenders if any hidden files appear later.
+          include-hidden-files: true
           if-no-files-found: error
 
   # -------------------------------------------------------------------------
@@ -157,6 +209,73 @@ jobs:
           name: prepared-recipes
           path: ${{ github.workspace }}
 
+      - name: Verify prepared artifact
+        shell: bash
+        env:
+          FEEDSTOCKS: ${{ needs.prepare.outputs.feedstocks }}
+          RECIPE: ${{ needs.prepare.outputs.recipe }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "Workspace after artifact download:"
+          ls -la
+          echo "todo/ after download:"
+          ls -la todo/ 2>/dev/null || echo "(no todo/)"
+
+          # download-artifact may place files at workspace root or under a
+          # nested .import-artifact/ depending on how the archive was rooted.
+          if [[ ! -f todo/import-manifest.json ]]; then
+            if [[ -f .import-artifact/todo/import-manifest.json ]]; then
+              echo "Flattening nested .import-artifact/ layout"
+              cp -a .import-artifact/todo/. todo/
+              if [[ -f .import-artifact/only-meta.txt ]]; then
+                cp -a .import-artifact/only-meta.txt only-meta.txt
+              fi
+            fi
+          fi
+
+          if [[ ! -f todo/import-manifest.json ]]; then
+            # Last resort: synthesize manifest from prepare job outputs so
+            # build can still proceed if only the recipes were transferred.
+            if [[ -n "${FEEDSTOCKS:-}" ]]; then
+              echo "Synthesizing todo/import-manifest.json from job outputs"
+              mkdir -p todo
+              python3 -c '
+          import json, os
+          from pathlib import Path
+          feedstocks = [f.strip() for f in os.environ["FEEDSTOCKS"].split(",") if f.strip()]
+          root_pkg = os.environ.get("RECIPE", feedstocks[0] if feedstocks else "")
+          data = {
+              "root_package": root_pkg,
+              "feedstocks": feedstocks,
+              "reasons": {fs: "from prepare job outputs" for fs in feedstocks},
+              "target_platform": os.environ.get("TARGET_PLATFORM", "linux-64"),
+          }
+          Path("todo/import-manifest.json").write_text(json.dumps(data, indent=2) + "\n")
+          print(json.dumps(data, indent=2))
+          '
+            else
+              echo "Error: todo/import-manifest.json missing after artifact download" >&2
+              find . \( -name 'import-manifest.json' -o -name '.import-manifest.json' \) 2>/dev/null || true
+              exit 1
+            fi
+          fi
+
+          echo "--- todo/import-manifest.json ---"
+          cat todo/import-manifest.json
+
+          IFS=',' read -ra FS_LIST <<< "$FEEDSTOCKS"
+          for fs in "${FS_LIST[@]}"; do
+            fs="${fs#"${fs%%[![:space:]]*}"}"
+            fs="${fs%"${fs##*[![:space:]]}"}"
+            [[ -z "$fs" ]] && continue
+            if [[ ! -f "todo/$fs/recipe.yaml" ]]; then
+              echo "Error: missing todo/$fs/recipe.yaml after artifact download" >&2
+              exit 1
+            fi
+            echo "OK todo/$fs/recipe.yaml"
+          done
+
       - name: Build & upload in pixi container
         id: build
         shell: bash
@@ -164,6 +283,7 @@ jobs:
           PREFIX_DEV_TOKEN: ${{ secrets.PREFIX_DEV_TOKEN }}
           TARGET_PLATFORM: ${{ matrix.target }}
           RECIPE: ${{ needs.prepare.outputs.recipe }}
+          IMPORT_FEEDSTOCKS: ${{ needs.prepare.outputs.feedstocks }}
         run: |
           set -Eeuo pipefail
 
@@ -176,8 +296,8 @@ jobs:
           mkdir -p logs output
           docker --version
 
-          # Build-only: read todo/.import-manifest.json, start pixi via
-          # start_img.sh --run, rattler-build, then upload to scns.
+          # Build-only: read todo/import-manifest.json (or IMPORT_FEEDSTOCKS),
+          # start pixi via start_img.sh --run, rattler-build, then upload to scns.
           python3 scripts/import_recipe.py "$RECIPE" \
             --build-only \
             --target-platform="$TARGET_PLATFORM" \
@@ -249,6 +369,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # Flatten nested artifact layout if needed.
+          if [[ ! -d todo ]] && [[ -d .import-artifact/todo ]]; then
+            cp -a .import-artifact/todo todo
+          elif [[ -d .import-artifact/todo ]]; then
+            cp -a .import-artifact/todo/. todo/ 2>/dev/null || true
+          fi
+
           mkdir -p recipes
           IFS=',' read -ra FS_LIST <<< "$FEEDSTOCKS"
           archived=()
@@ -264,8 +391,8 @@ jobs:
           done
 
           # Drop import bookkeeping if present.
-          rm -f todo/.import-manifest.json
-          rm -rf todo/.import-stage
+          rm -f todo/import-manifest.json todo/.import-manifest.json
+          rm -rf todo/.import-stage .import-artifact
 
           if [[ ${#archived[@]} -eq 0 ]]; then
             echo "No feedstocks to archive."
