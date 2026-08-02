@@ -1,0 +1,42 @@
+diff --git a/src/libbson/src/bson/bson-memory.c b/src/libbson/src/bson/bson-memory.c
+index 8eb8f17757..58556646b1 100644
+--- a/src/libbson/src/bson/bson-memory.c
++++ b/src/libbson/src/bson/bson-memory.c
+@@ -33,26 +33,26 @@ BSON_STATIC_ASSERT2 (bson_mem_vtable_t,
+ // For compatibility with C standards prior to C11.
+ static void *
+ _aligned_alloc_impl (size_t alignment, size_t num_bytes)
+-#if __STDC_VERSION__ >= 201112L
+-{
+-   return aligned_alloc (alignment, num_bytes);
+-}
+-#elif defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L
++//#if __STDC_VERSION__ >= 201112L
++//{
++//   return aligned_alloc (alignment, num_bytes);
++//}
++//#elif defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L
+ {
+    void *mem = NULL;
+    (void) posix_memalign (&mem, alignment, num_bytes);
+    return mem;
+ }
+-#else
+-{
++//#else
++//{
+    // Fallback to simple malloc even if it does not satisfy alignment
+    // requirements. Note: Visual C++ _aligned_malloc requires using
+    // _aligned_free instead of free and modifies errno on failure, both of which
+    // breaks symmetry with C11 aligned_alloc, so it is deliberately not used.
+-   BSON_UNUSED (alignment);
+-   return malloc (num_bytes);
+-}
+-#endif
++//   BSON_UNUSED (alignment);
++//   return malloc (num_bytes);
++//}
++//#endif
+ 
+ 
+ static bson_mem_vtable_t gMemVtable = {.malloc = malloc,
