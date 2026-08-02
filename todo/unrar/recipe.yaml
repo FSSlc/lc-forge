@@ -21,7 +21,7 @@ requirements:
   host:
     - pip
     - setuptools
-    - python ${{ python_min }}
+    - python ${{ python_min }}.*
   run:
     - python >=${{ python_min }}
     - libunrar
@@ -32,7 +32,7 @@ tests:
         - unrar
         - unrar.tests
       pip_check: true
-      python_version: ${{ python_min }}
+      python_version: ${{ python_min }}.*
 
 about:
   summary: Wrapper for UnRAR library, ctypes-based.
