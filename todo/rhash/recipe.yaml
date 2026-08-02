@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  name: rhash
+  version: "1.4.6"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/rhash/RHash/archive/v${{ version }}.tar.gz
+  sha256: 9f6019cfeeae8ace7067ad22da4e4f857bb2cfa6c2deaa2258f55b2227ec937a
+  patches:
+    # https://github.com/rhash/RHash/pull/285
+    - 0001-Fix-install_name-on-OSX.patch
+
+build:
+  number: 1
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - if: unix
+      then: make
+  run_exports:
+    - ${{ pin_subpackage("rhash", upper_bound="x") }}
+
+tests:
+  - requirements:
+      run:
+        - if: osx
+          then: cctools
+    script:
+      - test -f "$PREFIX/include/rhash.h"
+      - if: unix
+        then: test -f "$PREFIX/lib/librhash${SHLIB_EXT}"
+      - if: linux
+        then: test -f "$PREFIX/lib/librhash.so.1"
+      - if: osx
+        then: test -f "$PREFIX/lib/librhash.1.dylib"
+      - if: osx
+        then: otool -l $PREFIX/lib/librhash.${{ version }}.dylib | grep name | grep librhash.1.dylib
+      - rhash --version
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: Great utility for computing hash sums
+  description: |
+    RHash is a console utility for computing and verifying hash sums of files. It supports CRC32, MD4, MD5, SHA1, SHA256, SHA512, SHA3, Tiger, TTH, Torrent BTIH, AICH, ED2K, GOST R 34.11-94, RIPEMD-160, HAS-160, EDON-R 256/512, WHIRLPOOL and SNEFRU hash sums.
+  homepage: http://rhash.anz.ru/
+  repository: https://github.com/rhash/RHash
+  documentation: http://rhash.anz.ru/manpage.php
+
+extra:
+  recipe-maintainers:
+    - isuruf
+

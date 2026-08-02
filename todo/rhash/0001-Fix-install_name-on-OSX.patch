@@ -1,0 +1,22 @@
+From 6a9a1edebdf509b7bd2dffd3f060a463ec44a0b5 Mon Sep 17 00:00:00 2001
+From: "Uwe L. Korn" <uwe.korn@quantco.com>
+Date: Wed, 14 May 2025 11:41:24 +0200
+Subject: [PATCH] Fix install_name on OSX
+
+---
+ configure | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure b/configure
+index 37393d6..11c2905 100755
+--- a/configure
++++ b/configure
+@@ -829,7 +829,7 @@ if win32; then
+   LIBRHASH_EXPORTS_SKIP="__NO_SKIP__"
+ elif darwin; then
+   LIBRHASH_SH_CFLAGS="-fpic"
+-  LIBRHASH_SH_LDFLAGS='-dynamiclib -Wl,-install_name,$(LIBDIR)/$@'
++  LIBRHASH_SH_LDFLAGS='-dynamiclib -Wl,-install_name,$(LIBDIR)/$(LIBRHASH_SO_MAJ)'
+ else
+   LIBRHASH_SH_CFLAGS="-fpic"
+   LIBRHASH_SH_LDFLAGS="-shared -Wl${SHARED_VSCRIPT},-soname,\$(LIBRHASH_SO_MAJ)"
