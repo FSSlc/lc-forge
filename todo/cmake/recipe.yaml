@@ -39,6 +39,10 @@ requirements:
     - if: unix
       then: rhash
     - zstd
+  run:
+    - libuv
+    - rhash
+    - ncurses
   ignore_run_exports:
     by_name:
       - vc
