@@ -127,15 +127,23 @@ class ChannelIndex:
     channel: str
     subdirs: tuple[str, ...] = ("linux-64", "linux-aarch64", "noarch")
     _names: set[str] | None = field(default=None, init=False, repr=False)
+    _negative: set[str] = field(default_factory=set, init=False, repr=False)
 
     def _load_via_conda_search(self, name: str) -> bool:
-        """Point query via `conda search` (handles prefix.dev auth/HMAC)."""
+        """Exact point query via `conda search --json` (prefix.dev auth/HMAC).
+
+        Do **not** trust bare exit codes: some conda versions treat the query as
+        a glob and/or return 0 with an empty result. Require an exact key match
+        for `name` in the JSON payload.
+        """
         cmd = [
             "conda",
             "search",
             "-c",
             self.channel,
             "--override-channels",
+            "--json",
+            # Anchor as a MatchSpec name only (no glob).
             name,
         ]
         try:
@@ -154,33 +162,49 @@ class ChannelIndex:
             raise ImportError_(
                 f"Timed out querying {self.channel} for package {name!r}"
             ) from e
-        return proc.returncode == 0
+
+        raw = (proc.stdout or "").strip() or (proc.stderr or "").strip()
+        if not raw:
+            return False
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            # Fall back to exit code only when JSON is unavailable, but still
+            # require stdout to look like a hit table containing the name.
+            if proc.returncode != 0:
+                return False
+            return bool(re.search(rf"(?m)^\s*{re.escape(name)}\s+", proc.stdout or ""))
+
+        if not isinstance(data, dict):
+            return False
+        if data.get("error") or data.get("exception_name"):
+            return False
+        # conda search --json → { "pkgname": [ {...}, ... ], ... }
+        hits = data.get(name)
+        if isinstance(hits, list) and len(hits) > 0:
+            return True
+        return False
 
     def _try_bulk_load(self) -> set[str] | None:
         """Best-effort bulk load; returns None if repodata is not directly fetchable."""
         names: set[str] = set()
         loaded_any = False
+        # Prefer the public channel URL (HMAC redirect). Direct packages.prefix.dev
+        # without a signed URL returns 403.
         for subdir in self.subdirs:
-            for base in (
-                self.channel.rstrip("/"),
-                self.channel.rstrip("/").replace(
-                    "https://prefix.dev/", "https://packages.prefix.dev/"
-                ),
-            ):
-                url = f"{base}/{subdir}/repodata.json"
-                code, body = http_get_text(url, timeout=120)
-                if code != 200:
-                    continue
-                try:
-                    data = json.loads(body)
-                except json.JSONDecodeError:
-                    continue
-                for key in ("packages", "packages.conda"):
-                    for meta in (data.get(key) or {}).values():
-                        if isinstance(meta, dict) and "name" in meta:
-                            names.add(meta["name"])
-                loaded_any = True
-                break
+            url = f"{self.channel.rstrip('/')}/{subdir}/repodata.json"
+            code, body = http_get_text(url, timeout=120)
+            if code != 200:
+                continue
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError:
+                continue
+            for key in ("packages", "packages.conda"):
+                for meta in (data.get(key) or {}).values():
+                    if isinstance(meta, dict) and "name" in meta:
+                        names.add(meta["name"])
+            loaded_any = True
         return names if loaded_any else None
 
     def ensure_loaded(self) -> None:
@@ -193,13 +217,15 @@ class ChannelIndex:
     def has(self, name: str) -> bool:
         self.ensure_loaded()
         assert self._names is not None
+        if name in self._negative:
+            return False
         if name in self._names:
             return True
-        # Point query (and cache positive hits). Always query when bulk load
-        # failed or name was not in the bulk set (bulk may be partial).
+        # Point query (cache both positive and negative hits).
         if self._load_via_conda_search(name):
             self._names.add(name)
             return True
+        self._negative.add(name)
         return False
 
 
@@ -602,6 +628,8 @@ class PrepareState:
     prepared: dict[str, str] = field(default_factory=dict)
     # package names known to be on scns (including ones we will build locally)
     satisfied: set[str] = field(default_factory=set)
+    # Root package name that must be built even if scns already has it (--force).
+    force_packages: set[str] = field(default_factory=set)
     visiting: set[str] = field(default_factory=set)
     order: list[str] = field(default_factory=list)  # feedstock prep order
 
@@ -634,7 +662,11 @@ def prep_feedstock(state: PrepareState, feedstock: str) -> Path:
 
 def ensure_package(state: PrepareState, pkg: str, *, via: str) -> None:
     """Make sure package `pkg` is on scns or will be built from a todo recipe."""
-    if pkg in state.satisfied or state.scns.has(pkg):
+    # Packages listed in force_packages must still be prepared/built even when
+    # scns already has them (used for the root package under --force).
+    if pkg in state.satisfied:
+        return
+    if pkg not in state.force_packages and state.scns.has(pkg):
         state.satisfied.add(pkg)
         return
 
@@ -832,7 +864,10 @@ trap fix_workspace_owner EXIT
         "set +e",
         (
             "rattler-build build --continue-on-failure --experimental "
-            f"-m ./conda_build_config.yaml --skip-existing=all "
+            # local only: prepared recipes must actually build even if a stale
+            # scns entry exists or channel detection disagreed. Upload still
+            # uses --skip-existing against the remote channel.
+            f"-m ./conda_build_config.yaml --skip-existing=local "
             f"--target-platform={shlex.quote(target_platform)} "
             f"-c {shlex.quote(scns_channel)} "
             f"-c ./output "
@@ -890,10 +925,11 @@ trap fix_workspace_owner EXIT
     )
 
 
-# Non-hidden name so actions/upload-artifact includes it by default
+# Non-hidden names so actions/upload-artifact includes them by default
 # (hidden/dotfiles are excluded unless include-hidden-files: true).
 MANIFEST_NAME = "import-manifest.json"
 MANIFEST_NAME_LEGACY = ".import-manifest.json"
+STATUS_NAME = "import-status.json"
 
 
 def manifest_path(root: Path) -> Path:
@@ -905,6 +941,19 @@ def manifest_path(root: Path) -> Path:
     if legacy.is_file():
         return legacy
     return primary
+
+
+def status_path(root: Path) -> Path:
+    return root / "todo" / STATUS_NAME
+
+
+def write_status(root: Path, payload: dict[str, Any]) -> Path:
+    """Always write a non-hidden status file for the workflow to read."""
+    path = status_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    print(f"Wrote {path}: {json.dumps(payload, sort_keys=True)}", flush=True)
+    return path
 
 
 def load_manifest(root: Path) -> dict[str, Any]:
@@ -966,6 +1015,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Skip resolve/prep; build+upload feedstocks listed in "
             "todo/import-manifest.json (used by CI build matrix jobs)"
+        ),
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Prepare/build even if the package already exists on scns "
+            "(ignore the early 'already on scns' exit)"
         ),
     )
     p.add_argument(
@@ -1048,36 +1105,81 @@ def main(argv: list[str] | None = None) -> int:
         print(f"    found: {detail}", flush=True)
 
         print(f"==> Checking scns ({scns_channel}) for {pkg!r}", flush=True)
-        if state.scns.has(pkg):
+        on_scns = state.scns.has(pkg)
+        print(f"    scns.has({pkg!r}) = {on_scns}", flush=True)
+        if on_scns and not args.force:
+            write_status(
+                root,
+                {
+                    "root_package": pkg,
+                    "already_on_scns": True,
+                    "should_build": False,
+                    "feedstocks": [],
+                    "reason": f"already exists on {scns_channel}",
+                },
+            )
             print(
-                f"Package {pkg!r} already exists on {scns_channel}. Nothing to do.",
+                f"Package {pkg!r} already exists on {scns_channel}. Nothing to do. "
+                f"(Pass --force to prepare/build anyway.)",
                 flush=True,
             )
             return 0
-        print("    not on scns; will import.", flush=True)
+        if on_scns and args.force:
+            print(
+                f"    --force: ignoring existing scns package, will import/build.",
+                flush=True,
+            )
+        else:
+            print("    not on scns; will import and build.", flush=True)
 
         print(f"==> Preparing {pkg!r} and missing dependencies", flush=True)
+        if args.force:
+            state.force_packages.add(pkg)
         ensure_package(state, pkg, via="(root)")
         if not state.prepared:
             fs = resolve_feedstock(pkg)
+            print(
+                f"Root package was not recorded during ensure_package; "
+                f"forcing prep of feedstock {fs!r}",
+                flush=True,
+            )
             prep_feedstock(state, fs)
             state.prepared[fs] = "root package"
-            state.order.append(fs)
+            if fs not in state.order:
+                state.order.append(fs)
             deps = extract_deps_from_recipe(state.todo_dir(fs) / "recipe.yaml")
             for dep in sorted(deps):
                 ensure_package(state, dep, via=fs)
+
+        # Guarantees: the root feedstock is always first in the build list.
+        root_fs = resolve_feedstock(pkg)
+        if root_fs not in state.order:
+            # ensure_package may have short-circuited if scns.has flipped; force.
+            if root_fs not in state.prepared:
+                if not (state.todo_dir(root_fs) / "recipe.yaml").is_file():
+                    prep_feedstock(state, root_fs)
+                state.prepared[root_fs] = "root package (forced into build list)"
+            state.order.insert(0, root_fs)
+
+        if not state.order:
+            raise ImportError_(
+                f"Nothing to build for {pkg!r}: prepared feedstock list is empty. "
+                f"This is a resolver bug — expected at least feedstock {root_fs!r}."
+            )
 
         verify_all_deps_resolvable(state)
 
         print("==> Prepared feedstocks (build order):", flush=True)
         for fs in state.order:
-            print(f"    - {fs}: {state.prepared[fs]}", flush=True)
+            print(f"    - {fs}: {state.prepared.get(fs, '')}", flush=True)
 
         manifest = {
             "root_package": pkg,
             "feedstocks": state.order,
             "reasons": state.prepared,
             "target_platform": args.target_platform,
+            "should_build": True,
+            "already_on_scns": False,
         }
         # Non-hidden path: GitHub upload-artifact drops dotfiles by default.
         out_path = root / "todo" / MANIFEST_NAME
@@ -1089,8 +1191,23 @@ def main(argv: list[str] | None = None) -> int:
             legacy.unlink()
         print(f"Wrote {out_path}", flush=True)
 
+        write_status(
+            root,
+            {
+                "root_package": pkg,
+                "already_on_scns": False,
+                "should_build": True,
+                "feedstocks": state.order,
+                "reason": f"prepared {len(state.order)} feedstock(s) for build",
+            },
+        )
+
         if args.prepare_only:
-            print("Prepare-only mode: skipping build/upload.", flush=True)
+            print(
+                "Prepare-only mode: skipping build/upload. "
+                f"CI build job should build: {', '.join(state.order)}",
+                flush=True,
+            )
             return 0
 
         print(

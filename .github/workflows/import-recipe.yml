@@ -1,6 +1,6 @@
 name: Import recipe from conda-forge
 
-# Manually import a package (and any missing deps) from conda-forge into todo/,
+# Manually import a package (and missing deps) from conda-forge into todo/,
 # convert to recipe.yaml, build inside the pixi container for linux-64 and
 # linux-aarch64, then upload artifacts to https://prefix.dev/scns.
 #
@@ -11,11 +11,16 @@ on:
   workflow_dispatch:
     inputs:
       recipe:
-        description: 'Package name (conda-forge output or feedstock), e.g. yaml-cpp'
+        description: 'Package name (conda-forge output or feedstock), e.g. flatbuffers'
         required: true
         type: string
       prepare_only:
         description: 'Only resolve/prep recipes into todo/ (skip build & upload)'
+        required: false
+        type: boolean
+        default: false
+      force:
+        description: 'Prepare/build even if the package already exists on scns'
         required: false
         type: boolean
         default: false
@@ -37,6 +42,7 @@ jobs:
       recipe: ${{ steps.normalize.outputs.recipe }}
       feedstocks: ${{ steps.import.outputs.feedstocks }}
       already_on_scns: ${{ steps.import.outputs.already_on_scns }}
+      should_build: ${{ steps.import.outputs.should_build }}
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -78,13 +84,23 @@ jobs:
         shell: bash
         env:
           RECIPE: ${{ steps.normalize.outputs.recipe }}
+          # workflow_dispatch booleans arrive as the strings 'true'/'false'
+          FORCE: ${{ inputs.force }}
         run: |
           set -Eeuo pipefail
           export PATH="$HOME/.pixi/bin:$PATH"
 
-          # prepare-only: build happens per-arch in the next job inside pixi.
+          # Clear any stale status/manifest from a previous local run in the
+          # workspace (should not exist on a fresh checkout, but be safe).
+          rm -f todo/import-manifest.json todo/.import-manifest.json todo/import-status.json
+
+          force_args=()
+          if [[ "${FORCE}" == "true" ]]; then
+            force_args+=(--force)
+          fi
+
           set +e
-          python3 scripts/import_recipe.py "$RECIPE" --prepare-only
+          python3 scripts/import_recipe.py "$RECIPE" --prepare-only "${force_args[@]}"
           rc=$?
           set -e
 
@@ -93,48 +109,75 @@ jobs:
             exit "$rc"
           fi
 
-          # Non-hidden name so upload-artifact includes it by default.
+          status="todo/import-status.json"
           manifest="todo/import-manifest.json"
           if [[ ! -f "$manifest" && -f "todo/.import-manifest.json" ]]; then
             mv "todo/.import-manifest.json" "$manifest"
           fi
 
-          if [[ ! -f "$manifest" ]]; then
-            # Package already on scns → script exits 0 without a manifest.
-            echo "already_on_scns=true" >> "$GITHUB_OUTPUT"
-            echo "feedstocks=" >> "$GITHUB_OUTPUT"
-            {
-              echo "## Package already on scns"
-              echo
-              echo "Package \`$RECIPE\` is already present on https://prefix.dev/scns. No import needed."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+          # Prefer the explicit status file written by import_recipe.py on every
+          # successful exit path (including "already on scns").
+          already=false
+          should_build=false
+          feedstocks=""
+
+          if [[ -f "$status" ]]; then
+            echo "--- import-status.json ---"
+            cat "$status"
+            already=$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1])).get("already_on_scns", False)).lower())' "$status")
+            should_build=$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1])).get("should_build", False)).lower())' "$status")
+            feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1])).get("feedstocks") or []))' "$status")
+          elif [[ -f "$manifest" ]]; then
+            echo "--- import-manifest.json (no status file; infer should_build) ---"
+            cat "$manifest"
+            already=false
+            should_build=true
+            feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1])).get("feedstocks") or []))' "$manifest")
+          else
+            # No status and no manifest → treat as already present / nothing to do.
+            already=true
+            should_build=false
+            feedstocks=""
           fi
 
-          echo "already_on_scns=false" >> "$GITHUB_OUTPUT"
-          feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1]))["feedstocks"]))' "$manifest")
+          # If we claim we should build, a non-empty feedstock list is required.
+          if [[ "$should_build" == "true" && -z "$feedstocks" && -f "$manifest" ]]; then
+            feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1])).get("feedstocks") or []))' "$manifest")
+          fi
+          if [[ "$should_build" == "true" && -z "$feedstocks" ]]; then
+            echo "::error::should_build=true but feedstock list is empty for '$RECIPE'" >&2
+            ls -la todo/ >&2 || true
+            exit 1
+          fi
+          if [[ "$should_build" == "true" && ! -f "$manifest" ]]; then
+            echo "::error::should_build=true but todo/import-manifest.json is missing" >&2
+            exit 1
+          fi
+
+          echo "already_on_scns=$already" >> "$GITHUB_OUTPUT"
+          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
           echo "feedstocks=$feedstocks" >> "$GITHUB_OUTPUT"
-          echo "Prepared feedstocks: $feedstocks"
-          echo "Manifest contents:"
-          cat "$manifest"
+          echo "Decision: already_on_scns=$already should_build=$should_build feedstocks=$feedstocks"
 
           {
-            echo "## Prepared feedstocks"
+            echo "## Import decision"
             echo
-            python3 -c '
-          import json,sys
-          m=json.load(open(sys.argv[1]))
-          print("Root package: `{}`".format(m["root_package"]))
-          print()
-          print("| Feedstock | Reason |")
-          print("| --- | --- |")
-          for fs in m["feedstocks"]:
-              print("| `{}` | {} |".format(fs, m["reasons"].get(fs, "")))
-          ' "$manifest"
+            echo "- Package: \`$RECIPE\`"
+            echo "- already_on_scns: \`$already\`"
+            echo "- should_build: \`$should_build\`"
+            echo "- feedstocks: \`$feedstocks\`"
+            if [[ -f "$manifest" ]]; then
+              echo
+              echo "### Manifest"
+              echo
+              echo '```json'
+              cat "$manifest"
+              echo '```'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stage artifact payload
-        if: steps.import.outputs.already_on_scns != 'true'
+        if: steps.import.outputs.should_build == 'true'
         shell: bash
         env:
           FEEDSTOCKS: ${{ steps.import.outputs.feedstocks }}
@@ -152,6 +195,9 @@ jobs:
             exit 1
           fi
           cp -a todo/import-manifest.json .import-artifact/todo/import-manifest.json
+          if [[ -f todo/import-status.json ]]; then
+            cp -a todo/import-status.json .import-artifact/todo/import-status.json
+          fi
 
           IFS=',' read -ra FS_LIST <<< "$FEEDSTOCKS"
           for fs in "${FS_LIST[@]}"; do
@@ -179,11 +225,10 @@ jobs:
           cat .import-artifact/todo/import-manifest.json
 
       - uses: actions/upload-artifact@v7
-        if: steps.import.outputs.already_on_scns != 'true'
+        if: steps.import.outputs.should_build == 'true'
         with:
           name: prepared-recipes
           path: .import-artifact/
-          # Belt-and-suspenders if any hidden files appear later.
           include-hidden-files: true
           if-no-files-found: error
 
@@ -193,7 +238,12 @@ jobs:
   build:
     name: Build ${{ matrix.target }}
     needs: prepare
-    if: needs.prepare.outputs.already_on_scns != 'true' && inputs.prepare_only == false
+    # Use should_build (explicit) rather than "not already_on_scns".
+    # Compare prepare_only as string: workflow_dispatch booleans are strings.
+    if: |
+      needs.prepare.outputs.should_build == 'true'
+      && inputs.prepare_only != true
+      && inputs.prepare_only != 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -227,6 +277,7 @@ jobs:
           if [[ ! -f todo/import-manifest.json ]]; then
             if [[ -f .import-artifact/todo/import-manifest.json ]]; then
               echo "Flattening nested .import-artifact/ layout"
+              mkdir -p todo
               cp -a .import-artifact/todo/. todo/
               if [[ -f .import-artifact/only-meta.txt ]]; then
                 cp -a .import-artifact/only-meta.txt only-meta.txt
@@ -235,8 +286,6 @@ jobs:
           fi
 
           if [[ ! -f todo/import-manifest.json ]]; then
-            # Last resort: synthesize manifest from prepare job outputs so
-            # build can still proceed if only the recipes were transferred.
             if [[ -n "${FEEDSTOCKS:-}" ]]; then
               echo "Synthesizing todo/import-manifest.json from job outputs"
               mkdir -p todo
@@ -250,6 +299,8 @@ jobs:
               "feedstocks": feedstocks,
               "reasons": {fs: "from prepare job outputs" for fs in feedstocks},
               "target_platform": os.environ.get("TARGET_PLATFORM", "linux-64"),
+              "should_build": True,
+              "already_on_scns": False,
           }
           Path("todo/import-manifest.json").write_text(json.dumps(data, indent=2) + "\n")
           print(json.dumps(data, indent=2))
@@ -296,8 +347,7 @@ jobs:
           mkdir -p logs output
           docker --version
 
-          # Build-only: read todo/import-manifest.json (or IMPORT_FEEDSTOCKS),
-          # start pixi via start_img.sh --run, rattler-build, then upload to scns.
+          echo "Building feedstocks: ${IMPORT_FEEDSTOCKS}"
           python3 scripts/import_recipe.py "$RECIPE" \
             --build-only \
             --target-platform="$TARGET_PLATFORM" \
@@ -308,10 +358,6 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          # Container builds write root-owned files into the bind mount.
-          # import_recipe.py already chowns via HOST_UID/HOST_GID on EXIT, but
-          # if the container step aborts early (or chown is skipped) the runner
-          # still cannot zip artifacts. Re-fix here as root via docker/sudo.
           uid="$(id -u)"
           gid="$(id -g)"
           echo "Restoring ownership of output/ and logs/ to ${uid}:${gid}"
@@ -329,7 +375,6 @@ jobs:
               ' || true
           fi
 
-          # Host-side fallback (GHA runners typically allow passwordless sudo).
           if [[ -d output ]] || [[ -d logs ]]; then
             if command -v sudo >/dev/null 2>&1; then
               sudo chown -Rh "${uid}:${gid}" output logs 2>/dev/null || true
@@ -338,9 +383,8 @@ jobs:
             fi
           fi
 
-          # Sanity: runner must be able to read at least one artifact path.
           if [[ -d output ]]; then
-            find output -name '*.conda' -print -quit | head -n 1 || true
+            find output -name '*.conda' -print 2>/dev/null | head -n 20 || true
             ls -la output || true
           fi
 
@@ -382,10 +426,9 @@ jobs:
     needs:
       - prepare
       - build
-    # Only archive after a real multi-arch build+upload success.
     if: |
       always()
-      && needs.prepare.outputs.already_on_scns != 'true'
+      && needs.prepare.outputs.should_build == 'true'
       && needs.prepare.result == 'success'
       && needs.build.result == 'success'
     runs-on: ubuntu-22.04
@@ -410,10 +453,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Flatten nested artifact layout if needed.
           if [[ ! -d todo ]] && [[ -d .import-artifact/todo ]]; then
             cp -a .import-artifact/todo todo
           elif [[ -d .import-artifact/todo ]]; then
+            mkdir -p todo
             cp -a .import-artifact/todo/. todo/ 2>/dev/null || true
           fi
 
@@ -431,8 +474,7 @@ jobs:
             fi
           done
 
-          # Drop import bookkeeping if present.
-          rm -f todo/import-manifest.json todo/.import-manifest.json
+          rm -f todo/import-manifest.json todo/.import-manifest.json todo/import-status.json
           rm -rf todo/.import-stage .import-artifact
 
           if [[ ${#archived[@]} -eq 0 ]]; then
