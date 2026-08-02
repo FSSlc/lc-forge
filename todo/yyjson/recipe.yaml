@@ -1,0 +1,67 @@
+schema_version: 1
+
+context:
+  name: yyjson
+  version: "0.12.0"
+  sha256: b16246f617b2a136c78d73e5e2647c6f1de1313e46678062985bdcf1f40bb75d
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/ibireme/${{ name }}/archive/refs/tags/${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip:
+    - win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+  run_exports:
+    # The shared library uses SOVERSION 0, so pin on major.minor.
+    - ${{ pin_subpackage('yyjson', upper_bound='x.x') }}
+
+tests:
+  - package_contents:
+      include:
+        - yyjson.h
+      lib:
+        - yyjson
+      files:
+        - lib/cmake/yyjson/yyjson-config.cmake
+        - lib/pkgconfig/yyjson.pc
+  - files:
+      recipe:
+        - test
+    requirements:
+      run:
+        - cmake
+        - ninja
+        - ${{ compiler('c') }}
+        - ${{ stdlib('c') }}
+    script:
+      - cmake -S test -B build-test -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PREFIX
+      - cmake --build build-test
+      - ./build-test/test_yyjson
+
+about:
+  homepage: https://github.com/ibireme/yyjson
+  license: MIT
+  license_file: LICENSE
+  summary: The fastest JSON library in C
+  description: |
+    yyjson is a high performance JSON library written in C. It can parse and
+    generate JSON with 2x to 4x speed of other common C libraries.
+  documentation: https://github.com/ibireme/yyjson
+  repository: https://github.com/ibireme/yyjson
+
+extra:
+  recipe-maintainers:
+    - fsslc
