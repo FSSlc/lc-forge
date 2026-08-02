@@ -1,0 +1,46 @@
+schema_version: 1
+
+context:
+  name: tomlplusplus
+  version: "3.3.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/marzer/tomlplusplus/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: fc1a5eb410f3c67e90e5ad1264a1386d020067cfb01b633cc8c0441789aa6cf2
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ninja
+    - cmake
+
+tests:
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/include/toml++/toml.h
+      - if: not win
+        then: test -f ${PREFIX}/lib/cmake/tomlplusplus/tomlplusplusConfig.cmake
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\toml++\toml.h exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\lib\\cmake\\tomlplusplus\\tomlplusplusConfig.cmake exit 1
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: Header-only TOML config file parser and serializer for C++17 (and later!).
+  homepage: https://github.com/marzer/tomlplusplus
+
+extra:
+  recipe-maintainers:
+    - traversaro
+    - h-vetinari
+
