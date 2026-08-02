@@ -8,17 +8,35 @@ cd "$REPO_ROOT" || exit 1
 PACKAGE_NAME_PATTERN='^[A-Za-z0-9_.-]+$'
 
 usage() {
-  echo "Usage: $0 <package_name>"
+  echo "Usage: $0 [--strict] <package_name>"
   echo "  Clone conda-forge feedstock and copy recipe into todo/<package_name>."
-  echo "  -h  Show this help"
+  echo "  --strict  Fail hard if meta.yaml cannot be converted to recipe.yaml"
+  echo "            (do not append to only-meta.txt)."
+  echo "  -h        Show this help"
   exit "${1:-1}"
 }
 
-case "${1:-}" in
-  -h|--help) usage 0 ;;
-esac
+strict=0
+pkgname=""
 
-pkgname="${1:-}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage 0 ;;
+    --strict) strict=1; shift ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      usage
+      ;;
+    *)
+      if [[ -n "$pkgname" ]]; then
+        echo "Unexpected argument: $1" >&2
+        usage
+      fi
+      pkgname="$1"
+      shift
+      ;;
+  esac
+done
 
 if [[ -z "$pkgname" ]]; then
   usage
@@ -60,13 +78,22 @@ if [[ ! -f "$todo_recipe_dir/recipe.yaml" ]]; then
   fi
 
   if ! crm_convert "$todo_recipe_dir/meta.yaml" "$todo_recipe_dir/recipe.yaml"; then
-    echo "Failed to convert meta.yaml to recipe.yaml" >&2
+    echo "Failed to convert meta.yaml to recipe.yaml for ${pkgname}" >&2
+    rm -f "$todo_recipe_dir/recipe.yaml"
+    if [[ "$strict" -eq 1 ]]; then
+      echo "Strict mode: refusing to fall back to meta.yaml-only build." >&2
+      exit 1
+    fi
     echo "add ${pkgname} to only-meta.txt" >&2
     only_meta="$REPO_ROOT/only-meta.txt"
     touch "$only_meta"
     if ! grep -Fxq "$pkgname" "$only_meta"; then
       printf '%s\n' "$pkgname" >>"$only_meta"
     fi
-    rm -f "$todo_recipe_dir/recipe.yaml"
   fi
+fi
+
+if [[ "$strict" -eq 1 && ! -f "$todo_recipe_dir/recipe.yaml" ]]; then
+  echo "Strict mode: recipe.yaml missing after prep for ${pkgname}" >&2
+  exit 1
 fi
