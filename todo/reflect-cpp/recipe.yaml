@@ -1,0 +1,77 @@
+schema_version: 1
+
+context:
+  name: reflect-cpp
+  version: "0.25.0"
+  sha256: de74d3793fd3dde9105ebe0f40bffb28df7009d59e0714389e4d29fcb46a1a3f
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/getml/${{ name }}/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip:
+    - win
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+  host:
+    - yaml-cpp
+  run:
+    - yaml-cpp
+  run_exports:
+    # The shared library SOVERSION equals the full project version and the
+    # CMake package is configured with SameMinorVersion compatibility.
+    - ${{ pin_subpackage('reflect-cpp', upper_bound='x.x') }}
+
+tests:
+  - package_contents:
+      include:
+        - rfl.hpp
+        - rfl/json.hpp
+      lib:
+        - reflectcpp
+      files:
+        - lib/cmake/reflectcpp/reflectcpp-config.cmake
+        - lib/cmake/reflectcpp/reflectcpp-version.cmake
+        - lib/cmake/reflectcpp/reflectcpp-exports.cmake
+  - files:
+      recipe:
+        - test
+    requirements:
+      run:
+        - cmake
+        - ninja
+        - ${{ compiler('cxx') }}
+        - ${{ stdlib('c') }}
+    script:
+      - cmake -S test -B build-test -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PREFIX
+      - cmake --build build-test
+      - ./build-test/rfl_test
+
+about:
+  homepage: https://github.com/getml/reflect-cpp
+  license: MIT
+  license_file: LICENSE
+  summary: A C++20 library for fast serialization, deserialization and validation using reflection
+  description: |
+    reflect-cpp is a C++-20 library for fast serialization, deserialization and
+    validation using reflection, similar to pydantic in Python, serde in Rust or
+    aeson in Haskell. It ships with JSON (built on the bundled yyjson, CTRE and
+    enchantum) and YAML support and can be extended to Avro, BSON, Cap'n Proto,
+    CBOR, Cereal, CSV, flexbuffers, msgpack, parquet, TOML, UBJSON, XML and yas.
+  documentation: https://rfl.getml.com
+  repository: https://github.com/getml/reflect-cpp
+
+extra:
+  recipe-maintainers:
+    - fsslc

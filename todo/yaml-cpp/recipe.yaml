@@ -1,0 +1,63 @@
+schema_version: 1
+
+context:
+  name: yaml-cpp
+  version: "0.8.0"
+  sha256: fbe74bbdcee21d656715688706da3c8becfd946d92cd44705cc6098bb23b3a16
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/jbeder/${{ name }}/archive/refs/tags/${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip:
+    - win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+  run_exports:
+    - ${{ pin_subpackage('yaml-cpp', upper_bound='x.x') }}
+
+tests:
+  - package_contents:
+      lib:
+        - yaml-cpp
+      files:
+        - "**/cmake/yaml-cpp/yaml-cpp-config.cmake"
+        - "**/cmake/yaml-cpp/yaml-cpp-targets.cmake"
+  - files:
+      recipe:
+        - test
+    requirements:
+      run:
+        - cmake
+        - ninja
+        - ${{ compiler('c') }}
+        - ${{ compiler('cxx') }}
+        - ${{ stdlib('c') }}
+    script:
+      - cmake -G Ninja -S test/ -B build-test/
+      - cmake --build build-test/
+      - ./build-test/test-yaml-cpp
+
+about:
+  homepage: https://github.com/jbeder/yaml-cpp
+  license: MIT
+  license_file: LICENSE
+  summary: yaml-cpp is a YAML parser and emitter in C++ matching the YAML 1.2 spec.
+  documentation: https://github.com/jbeder/yaml-cpp/wiki/Tutorial
+  repository: https://github.com/jbeder/yaml-cpp
+
+extra:
+  recipe-maintainers:
+    - fsslc
