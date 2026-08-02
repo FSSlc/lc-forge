@@ -7,6 +7,12 @@ on:
     paths:
       - 'todo/**'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Skip todo/ change detection and always build everything under todo/'
+        required: false
+        type: boolean
+        default: false
   pull_request:
     branches:
       - main
@@ -20,6 +26,7 @@ jobs:
     outputs:
       has-only-meta: ${{ steps.todo.outputs.has-only-meta }}
       should-build: ${{ steps.todo.outputs.should-build }}
+      force: ${{ steps.todo.outputs.force }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -27,6 +34,10 @@ jobs:
 
       - id: todo
         shell: bash
+        env:
+          # workflow_dispatch booleans arrive as the strings 'true' / 'false'
+          FORCE_INPUT: ${{ inputs.force }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -Eeuo pipefail
 
@@ -36,12 +47,28 @@ jobs:
           fi
           echo "has-only-meta=$has_only_meta" >> "$GITHUB_OUTPUT"
 
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          force=false
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$FORCE_INPUT" == "true" ]]; then
+            force=true
+          fi
+          echo "force=$force" >> "$GITHUB_OUTPUT"
+
+          # force (manual): skip todo/ path diff; always build.
+          if [[ "$force" == true ]]; then
+            echo "force=true: skipping todo/ change detection; should-build=true"
             echo "should-build=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # Manual dispatch without force: still build the current todo/ tree
+          # (same as historical behavior for workflow_dispatch).
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "workflow_dispatch: should-build=true"
+            echo "should-build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
             base="${{ github.event.pull_request.base.sha }}"
             head="${{ github.event.pull_request.head.sha }}"
           else
