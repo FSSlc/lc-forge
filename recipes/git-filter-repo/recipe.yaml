@@ -1,0 +1,53 @@
+schema_version: 1
+
+context:
+  name: git-filter-repo
+  version: 2.47.0
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name | replace('-', '_') }}-${{ version }}.tar.gz
+  sha256: 411b27e68a080c07a69c233cb526dbc2d848b09a72f10477f4444dd0822cf290
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+  python:
+    entry_points:
+      - git-filter-repo = git_filter_repo:main
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}.*
+    - setuptools
+    - setuptools_scm
+  run:
+    - git >=2.26.0
+    - python >=${{ python_min }}
+
+tests:
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - python -m pip check
+      - python -m pip show git-filter-repo
+      - git-filter-repo --version
+      - git filter-repo --version
+
+about:
+  summary: Quickly rewrite git repository history
+  license: MIT
+  license_file: COPYING.mit
+  homepage: https://github.com/newren/git-filter-repo
+  repository: https://github.com/newren/git-filter-repo
+
+extra:
+  recipe-maintainers:
+    - duncanmmacleod
