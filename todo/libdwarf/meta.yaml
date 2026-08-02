@@ -1,0 +1,223 @@
+{% set version = "2.1.0" %}
+
+package:
+  name: libdwarf-split
+  version: {{ version }}
+
+source:
+  url: https://github.com/davea42/libdwarf-code/releases/download/v{{ version }}/libdwarf-{{ version }}.tar.xz
+  sha256: 461bd29cbb9a41c26a25b0e527c3736c772bb7a89f6260d1edb39ab105226e06
+  patches:
+    - patches/0001-add-enable_libdwarf-and-enable_dwarfdump-to-configur.patch
+    - patches/0002-use-PATH-resolution-when-testing-dwarfdump.patch
+
+build:
+  number: 1
+  skip: true  # [win]
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - {{ stdlib("c") }}
+    - cmake
+    - ninja       # [unix]
+    - pkg-config  # [unix]
+    - git  # for better patch application
+    - python >=3  # for test scripts
+  host:
+    - zlib
+    - zstd
+  run:
+
+outputs:
+  - name: dwarfdump
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ stdlib("c") }}
+      host:
+        - zlib
+        - zstd
+        - {{ pin_subpackage('libdwarf', exact=True) }}
+      run:
+        - {{ pin_subpackage('libdwarf') }}
+    files:
+      - bin/dwarfdump
+      - share/dwarfdump/dwarfdump.conf
+      - man/man1/dwarfdump.1
+    test:
+      requires:
+        - zlib
+        - zstd
+        - {{ pin_subpackage('libdwarf', exact=True) }}
+      commands:
+        - dwarfdump --version
+    about:
+      home: https://www.prevanders.net/dwarf.html
+      summary: utility dumping DWARF Debugging Information Format to text
+      description: |
+        The DWARF Debugging Information Format is of interest to programmers working on compilers and
+        debuggers (and anyone interested in reading or writing DWARF information). It was developed by a
+        committee (known as the PLSIG at the time) starting around 1991. Starting around 1991 SGI got
+        involved with the committee and then developed the libdwarf and dwarfdump tools for SGI-internal
+        use and as part of SGI IRIX developer tools. From around 1993 dwarfdump and libdwarf were
+        shipped (as an executable and archive respectively, not source) with every release of the SGI
+        MIPS/IRIX C compiler. In 1994 (I think the correct year) SGI agreed (at my request) to
+        open-source libdwarf (and in 1999 to open-source dwarfdump) so anyone could use them.
+      #  libdwarf is LGPL-2.1 and dwarfdump is GPL-2.0
+      #  There are some files under less-restrictive licenses but there you have it
+      license: GPL-2.0-only
+      license_family: GPL
+      license_file:
+        - COPYING
+        - src/bin/dwarfdump/COPYING
+        - src/bin/dwarfdump/DWARFDUMPCOPYRIGHT
+        - src/bin/dwarfdump/GPL.txt
+      doc_url: https://www.prevanders.net/libdwarfdoc/
+      dev_url: https://github.com/davea42/libdwarf-code
+  - name: libdwarf-dev
+    build:
+      run_exports:
+        # he seems to understand semantic versioning https://www.prevanders.net/dwarf.html#nfuture
+        # abi lab isn't up to date with latest releases but I emailed libdwarf-list at linuxmail dot org
+        # to ask him to request that abilab update to look at GH instead of sourceforge
+        - {{ pin_subpackage('libdwarf') }}
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ stdlib("c") }}
+      host:
+        - zlib
+        - zstd
+      run:
+        - {{ pin_subpackage('libdwarf', exact=True) }}
+    files:
+      - include/libdwarf.h
+      - include/dwarf.h
+      - lib/pkgconfig/libdwarf*
+      - lib/cmake/libdwarf
+    test:
+      requires:
+        - zlib
+        - zstd
+        - pkg-config
+        - cmake
+        - ninja
+        - {{ compiler('c') }}
+        - {{ stdlib("c") }}
+      files:
+        - test
+      commands:
+        - pkg-config --print-provides libdwarf
+        - pkg-config --print-errors --exact-version="$PKG_VERSION" libdwarf
+        - test -f $PREFIX/include/libdwarf.h
+        - test -f $PREFIX/include/dwarf.h
+        - test -f $PREFIX/lib/libdwarf${SHLIB_EXT}
+        - test -f $PREFIX/lib/cmake/libdwarf/libdwarfConfig.cmake
+        - cd test
+        - cmake . -GNinja -DCMAKE_BUILD_TYPE=Release
+        - cmake --build . --config Release
+        - ./program
+
+    about:
+      home: https://www.prevanders.net/dwarf.html
+      summary: a library for manipulating DWARF Debugging Information Format (headers & dev stuff)
+      description: |
+        The DWARF Debugging Information Format is of interest to programmers working on compilers and
+        debuggers (and anyone interested in reading or writing DWARF information). It was developed by a
+        committee (known as the PLSIG at the time) starting around 1991. Starting around 1991 SGI got
+        involved with the committee and then developed the libdwarf and dwarfdump tools for SGI-internal
+        use and as part of SGI IRIX developer tools. From around 1993 dwarfdump and libdwarf were
+        shipped (as an executable and archive respectively, not source) with every release of the SGI
+        MIPS/IRIX C compiler. In 1994 (I think the correct year) SGI agreed (at my request) to
+        open-source libdwarf (and in 1999 to open-source dwarfdump) so anyone could use them.
+      #  libdwarf is LGPL-2.1 and dwarfdump is GPL-2.0
+      #  There are some files under less-restrictive licenses but there you have it
+      license: LGPL-2.1-only
+      license_family: GPL
+      license_file:
+        - COPYING
+        - src/lib/libdwarf/LIBDWARFCOPYRIGHT
+        - src/lib/libdwarf/LGPL.txt
+        - src/lib/libdwarf/COPYING
+      doc_url: https://www.prevanders.net/libdwarfdoc/
+      dev_url: https://github.com/davea42/libdwarf-code
+  - name: libdwarf
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ stdlib("c") }}
+      host:
+        - zlib
+        - libzlib
+        - zstd
+      run:
+    files:
+      - lib/libdwarf.so          # [linux]
+      - lib/libdwarf.so.*        # [linux]
+      - lib/libdwarf.dylib       # [osx]
+      - lib/libdwarf.*.dylib     # [osx]
+    test:
+      commands:
+        - test ! -f $PREFIX/lib/libdwarf*.a
+        - test -f $PREFIX/lib/libdwarf.so       # [linux]
+        - test -f $PREFIX/lib/libdwarf.so.2     # [linux]
+        - test -f $PREFIX/lib/libdwarf.dylib    # [osx]
+        - test -f $PREFIX/lib/libdwarf.2.dylib  # [osx]
+    about:
+      home: https://www.prevanders.net/dwarf.html
+      summary: a library for manipulating DWARF Debugging Information Format (runtime .so)
+      description: |
+        The DWARF Debugging Information Format is of interest to programmers working on compilers and
+        debuggers (and anyone interested in reading or writing DWARF information). It was developed by a
+        committee (known as the PLSIG at the time) starting around 1991. Starting around 1991 SGI got
+        involved with the committee and then developed the libdwarf and dwarfdump tools for SGI-internal
+        use and as part of SGI IRIX developer tools. From around 1993 dwarfdump and libdwarf were
+        shipped (as an executable and archive respectively, not source) with every release of the SGI
+        MIPS/IRIX C compiler. In 1994 (I think the correct year) SGI agreed (at my request) to
+        open-source libdwarf (and in 1999 to open-source dwarfdump) so anyone could use them.
+      #  libdwarf is LGPL-2.1 and dwarfdump is GPL-2.0
+      #  There are some files under less-restrictive licenses but there you have it
+      license: LGPL-2.1-only
+      license_family: GPL
+      license_file:
+        - COPYING
+        - src/lib/libdwarf/LIBDWARFCOPYRIGHT
+        - src/lib/libdwarf/LGPL.txt
+        - src/lib/libdwarf/COPYING
+      doc_url: https://www.prevanders.net/libdwarfdoc/
+      dev_url: https://github.com/davea42/libdwarf-code
+
+about:
+  home: https://www.prevanders.net/dwarf.html
+  summary: library and utility for manipulating DWARF Debugging Information Format
+  description: |
+    The DWARF Debugging Information Format is of interest to programmers working on compilers and
+    debuggers (and anyone interested in reading or writing DWARF information). It was developed by a
+    committee (known as the PLSIG at the time) starting around 1991. Starting around 1991 SGI got
+    involved with the committee and then developed the libdwarf and dwarfdump tools for SGI-internal
+    use and as part of SGI IRIX developer tools. From around 1993 dwarfdump and libdwarf were
+    shipped (as an executable and archive respectively, not source) with every release of the SGI
+    MIPS/IRIX C compiler. In 1994 (I think the correct year) SGI agreed (at my request) to
+    open-source libdwarf (and in 1999 to open-source dwarfdump) so anyone could use them.
+  #  libdwarf is LGPL-2.1 and dwarfdump is GPL-2.0
+  #  There are some files under less-restrictive licenses but there you have it
+  license: LGPL-2.1-only AND GPL-2.0-only
+  license_family: GPL
+  license_file:
+    - COPYING
+    - src/lib/libdwarf/LIBDWARFCOPYRIGHT
+    - src/lib/libdwarf/LGPL.txt
+    - src/lib/libdwarf/COPYING
+    - src/bin/dwarfdump/COPYING
+    - src/bin/dwarfdump/DWARFDUMPCOPYRIGHT
+    - src/bin/dwarfdump/GPL.txt
+  doc_url: https://www.prevanders.net/libdwarfdoc/
+  dev_url: https://github.com/davea42/libdwarf-code
+
+extra:
+  recipe-maintainers:
+    - timsnyder
+    - jeremy-rifkin
+  feedstock-name: libdwarf

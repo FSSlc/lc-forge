@@ -1,0 +1,82 @@
+{% set name = "cpptrace" %}
+{% set version = "1.0.4" %}
+
+{% set build = 0 %}
+
+{% if unwind_backend == "default" %}
+{% set build = build + 100 %}
+{% endif %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/jeremy-rifkin/cpptrace/archive/v{{ version }}.tar.gz
+  sha256: 5c9f5b301e903714a4d01f1057b9543fa540f7bfcc5e3f8bd1748e652e24f9ea
+
+build:
+  number: {{ build }}
+  string: {{ unwind_backend }}_h{{ PKG_HASH }}_{{ build }}
+
+  run_exports:
+    - {{ pin_subpackage('cpptrace', max_pin='x.x.x') }}
+
+requirements:
+  build:
+    - {{ compiler("c") }}
+    - {{ stdlib("c") }}
+    - {{ compiler("cxx") }}
+    - cmake
+    - ninja         # [unix]
+    - pkg-config    # [unix]
+  host:
+    - libdwarf      # [unix]
+    - libdwarf-dev  # [unix]
+    - zlib          # [unix]
+    - libunwind     # [unix and unwind_backend == "libunwind"]
+
+test:
+  requires:
+    - cmake
+    - {{ compiler("cxx") }}
+    - ninja                 # [unix]
+  files:
+    - test
+  commands:
+    - test -f $PREFIX/lib/libcpptrace${SHLIB_EXT}  # [unix]
+    - test -f $PREFIX/include/cpptrace/cpptrace.hpp  # [unix]
+    - test -f $PREFIX/include/cpptrace/basic.hpp  # [unix]
+    - test -f $PREFIX/include/cpptrace/version.hpp  # [unix]
+    - test -f $PREFIX/lib/cmake/cpptrace/cpptrace-targets.cmake  # [unix]
+    - cd test  # [unix]
+    - cmake . -GNinja -DCMAKE_BUILD_TYPE=Debug  # [unix and unwind_backend != "libunwind"]
+    - cmake . -GNinja -DCMAKE_BUILD_TYPE=Debug -DTEST_LIBUNWIND=ON  # [unix and unwind_backend == "libunwind"]
+    - cmake --build . --config Debug  # [unix]
+    - ./program  # [unix]
+
+
+    - "if not exist %LIBRARY_PREFIX%\\lib\\cpptrace.lib (echo Not found: %LIBRARY_PREFIX%\\lib\\cpptrace.lib & exit 1)"  # [win]
+    - "if not exist %LIBRARY_PREFIX%\\bin\\cpptrace.dll (echo Not found: %LIBRARY_PREFIX%\\bin\\cpptrace.dll & exit 1)"  # [win]
+    - "if not exist %LIBRARY_PREFIX%\\include\\cpptrace\\cpptrace.hpp (echo Not found: %LIBRARY_PREFIX%\\include\\cpptrace\\cpptrace.hpp & exit 1)"  # [win]
+    - "if not exist %LIBRARY_PREFIX%\\include\\cpptrace\\basic.hpp (echo Not found: %LIBRARY_PREFIX%\\include\\cpptrace\\basic.hpp & exit 1)"  # [win]
+    - "if not exist %LIBRARY_PREFIX%\\include\\cpptrace\\version.hpp (echo Not found: %LIBRARY_PREFIX%\\include\\cpptrace\\version.hpp & exit 1)"  # [win]
+    - "if not exist %LIBRARY_PREFIX%\\lib\\cmake\\cpptrace\\cpptrace-targets.cmake (echo Not found: %LIBRARY_PREFIX%\\lib\\cmake\\cpptrace\\cpptrace-targets.cmake & exit 1)"  # [win]
+    - cd test  # [win]
+    - cmake .  # [win]
+    - cmake --build . --config Debug  # [win]
+    - .\\Debug\\program.exe  # [win]
+
+about:
+  home: https://github.com/jeremy-rifkin/cpptrace
+  summary: 'Simple, portable, and self-contained stacktrace library for C++11 and newer'
+  description: |
+    Cpptrace is a simple, portable, and self-contained C++ stacktrace library supporting C++11 and greater on Linux, macOS, and
+    Windows including MinGW and Cygwin environments. The goal: Make stack traces simple for once.
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - jeremy-rifkin

@@ -1,0 +1,32 @@
+From aa711bb347da06af12be0e707248fdf5713ad499 Mon Sep 17 00:00:00 2001
+From: EC2 Default User <ec2-user@ip-172-31-18-50.ec2.internal>
+Date: Mon, 26 Feb 2024 01:43:38 +0000
+Subject: [PATCH] use PATH to find dwarfdump when testing
+
+enables use of the dwarfdump test on installed dwarfdump
+---
+ test/test_dwarfdumpsetup.sh | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/test/test_dwarfdumpsetup.sh b/test/test_dwarfdumpsetup.sh
+index 47ffa9e7..a39aab4d 100755
+--- a/test/test_dwarfdumpsetup.sh
++++ b/test/test_dwarfdumpsetup.sh
+@@ -70,7 +70,13 @@ then
+   fi
+   bldx=
+ else
+-  dd=$top_blddir/src/bin/dwarfdump/dwarfdump
++  # Enable testing installed dwarfdump by prefixing
++  # the the build bindir on PATH. Then, if we --disable_dwarfdump
++  # in configure, we can use this script to test the installed
++  # dwarfdump
++  export PATH=$top_blddir/src/bin/dwarfdump:$PATH
++  dd=dwarfdump
++  echo -n "Testing dwarfdump @ "; which dwarfdump
+ fi
+ 
+ # Delete what follows 'last time 0x0'
+-- 
+2.40.1
+
