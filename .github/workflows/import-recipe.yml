@@ -353,6 +353,70 @@ jobs:
             --target-platform="$TARGET_PLATFORM" \
             --token="$PREFIX_DEV_TOKEN"
 
+      - name: Check build artifacts
+        id: check-artifacts
+        if: success()
+        shell: bash
+        env:
+          RECIPE: ${{ needs.prepare.outputs.recipe }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -Eeuo pipefail
+
+          # Count .conda artifacts produced by the build.
+          conda_files=()
+          if [[ -d output ]]; then
+            shopt -s nullglob globstar
+            conda_files=(output/**/*.conda)
+            shopt -u nullglob globstar
+          fi
+
+          if [[ ${#conda_files[@]} -gt 0 ]]; then
+            echo "Found ${#conda_files[@]} .conda artifact(s) for ${TARGET}:"
+            printf '  %s\n' "${conda_files[@]}"
+            echo "true" > "output/.build-status-${TARGET}"
+            exit 0
+          fi
+
+          echo "Warning: no .conda artifacts under output/ for ${TARGET}."
+          echo "All packages may have been skipped as existing."
+
+          # Check whether the package is already available on scns.
+          echo "Checking scns channel for ${RECIPE}..."
+          found_on_scns=false
+          for arch in noarch linux-64; do
+            url="https://prefix.dev/scns/${arch}/repodata.json"
+            echo "  Querying ${url} ..."
+            if python3 -c "
+import json, sys, urllib.request
+pkg = sys.argv[1]
+url = sys.argv[2]
+try:
+    req = urllib.request.Request(url)
+    with urllib.request.urlopen(req, timeout=60) as f:
+        data = json.load(f)
+    for pkg_name in data.get('packages', {}):
+        if pkg_name.startswith(pkg + '-'):
+            print(f'FOUND:{pkg_name}')
+            sys.exit(0)
+    sys.exit(1)
+except Exception as e:
+    print(f'ERROR:{e}', file=sys.stderr)
+    sys.exit(2)
+" "$RECIPE" "$url"; then
+              found_on_scns=true
+              break
+            fi
+          done
+
+          if [[ "$found_on_scns" == "true" ]]; then
+            echo "Package ${RECIPE} already exists on scns — no build needed."
+            echo "false" > "output/.build-status-${TARGET}"
+          else
+            echo "::error::No .conda artifacts for ${RECIPE} (${TARGET}) and package not found on scns. Build may have failed."
+            exit 1
+          fi
+
       - name: Fix output/logs ownership for the runner
         if: always()
         shell: bash
@@ -416,6 +480,7 @@ jobs:
           path: |
             logs/build-${{ matrix.target }}.log
             output/**/*.conda
+            output/.build-status-*
           if-no-files-found: ignore
 
   # -------------------------------------------------------------------------
@@ -442,7 +507,52 @@ jobs:
           name: prepared-recipes
           path: ${{ github.workspace }}
 
+      - name: Download build-log artifacts
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          pattern: build-log-*
+          path: ${{ github.workspace }}/.build-logs
+          merge-multiple: true
+
+      - name: Check whether any target produced .conda artifacts
+        id: build-gate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          any_artifacts=false
+          if [[ -d .build-logs/output ]]; then
+            shopt -s nullglob
+            status_files=(.build-logs/output/.build-status-*)
+            shopt -u nullglob
+
+            for sf in "${status_files[@]}"; do
+              echo "Status file: $(basename "$sf") = $(cat "$sf")"
+              if [[ "$(cat "$sf")" == "true" ]]; then
+                any_artifacts=true
+              fi
+            done
+
+            # Also check for actual .conda files as a fallback
+            shopt -s nullglob globstar
+            conda_files=(.build-logs/output/**/*.conda)
+            shopt -u nullglob globstar
+            if [[ ${#conda_files[@]} -gt 0 ]]; then
+              echo "Found ${#conda_files[@]} .conda file(s) in build logs."
+              any_artifacts=true
+            fi
+          fi
+
+          if [[ "$any_artifacts" == "true" ]]; then
+            echo "At least one target produced .conda artifacts — proceeding to commit."
+          else
+            echo "No target produced .conda artifacts — skipping commit."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Archive prepared feedstocks into recipes/
+        if: steps.build-gate.outputs.skipped != 'true'
         shell: bash
         env:
           FEEDSTOCKS: ${{ needs.prepare.outputs.feedstocks }}
