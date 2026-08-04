@@ -110,55 +110,275 @@ jobs:
           - { target: linux-aarch64, os: ubuntu-22.04-arm }
       fail-fast: false
 
-    name: ${{ matrix.target }}
+    name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
-      - uses: kohlerdominik/docker-run-action@v2.1.0
+      # ---- 1. build packages listed in only-meta.txt via conda build ----
+      - name: Build only-meta recipes with conda
         if: needs.changes.outputs.has-only-meta == 'true'
+        uses: kohlerdominik/docker-run-action@v2.1.0
         with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
           shell: /bin/bash
           workdir: ${{ github.workspace }}
           run: |
+            set -Eeuo pipefail
+            mkdir -p .build-meta
+
             while IFS= read -r pkgname; do
               pkgname="${pkgname#"${pkgname%%[![:space:]]*}"}"
               pkgname="${pkgname%"${pkgname##*[![:space:]]}"}"
               [[ -z "$pkgname" ]] && continue
-              conda build --croot ./output/ -m ./conda_build_config.yaml \
-                --skip-existing -c https://prefix.dev/scns todo/"$pkgname"
+              if conda build --croot ./output/ -m ./conda_build_config.yaml \
+                --skip-existing -c https://prefix.dev/scns todo/"$pkgname"; then
+                echo "conda build ok: $pkgname"
+              else
+                echo "conda build failed: $pkgname"
+                echo "conda build failed: $pkgname" >> ".build-meta/reasons-${{ matrix.target }}.txt"
+              fi
             done < only-meta.txt
 
-            count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
-            if (( count > 0 )); then
-              for file in output/**/*.conda; do
-                rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
-              done
-            else
-              echo "nothing to do"
-            fi
+            while IFS= read -r -d '' file; do
+              rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
+            done < <(find ./output -type f -name '*.conda' -print0 2>/dev/null)
 
-      - uses: kohlerdominik/docker-run-action@v2.1.0
+      # ---- 2. build every recipe under todo/ with rattler-build ----
+      - name: Build todo recipes with rattler-build
+        uses: kohlerdominik/docker-run-action@v2.1.0
         with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
           shell: /bin/bash
           workdir: ${{ github.workspace }}
           run: |
-            rattler-build build --continue-on-failure --experimental \
+            set -Eeuo pipefail
+            mkdir -p .build-meta
+
+            if rattler-build build --continue-on-failure --experimental \
               -m ./conda_build_config.yaml --skip-existing=all \
               --target-platform=${{ matrix.target }} -c https://prefix.dev/scns \
-              --recipe-dir ./todo
-
-            count=$(find ./output/ -type f -name '*.conda' -print0 | grep -zc . || true)
-            if (( count > 0 )); then
-              for file in output/**/*.conda; do
-                rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
-              done
+              --recipe-dir ./todo > ".build-meta/rattler-${{ matrix.target }}.log" 2>&1; then
+              echo "rattler-build: all recipes processed (see .build-meta/rattler-${{ matrix.target }}.log)"
             else
-              echo "nothing to do"
+              echo "rattler-build: aborted (see .build-meta/rattler-${{ matrix.target }}.log)"
             fi
+
+            while IFS= read -r -d '' file; do
+              rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
+            done < <(find ./output -type f -name '*.conda' -print0 2>/dev/null)
+
+      # ---- 3. classify per-recipe results: BUILT / SKIPPED (already on channel) / FAILED ----
+      - name: Classify per-recipe build results
+        uses: kohlerdominik/docker-run-action@v2.1.0
+        with:
+          image: ghcr.io/fsslc/pixi:latest
+          volumes: ${{ github.workspace }}:${{ github.workspace }}
+          shell: /bin/bash
+          workdir: ${{ github.workspace }}
+          run: |
+            set -Eeuo pipefail
+            TARGET="${{ matrix.target }}"
+            mkdir -p .build-meta
+            : > ".build-meta/$TARGET.txt"
+
+            # Build a map: every .conda file belongs to the LONGEST matching
+            # recipe dir name (so 'foo' never claims 'foo-bar-<...>.conda').
+            declare -A claim
+            for d in todo/*/; do
+              [[ -d "$d" ]] || continue
+              name="${d%/}"; name="${name##*/}"
+              for f in output/*/"$name"-*.conda; do
+                [[ -e "$f" ]] || continue
+                if [[ -z "${claim[$f]:-}" || ${#claim[$f]} -lt ${#name} ]]; then
+                  claim[$f]="$name"
+                fi
+              done
+            done
+
+            for d in todo/*/; do
+              [[ -d "$d" ]] || continue
+              name="${d%/}"; name="${name##*/}"
+
+              built=false
+              for f in output/*/"$name"-*.conda; do
+                if [[ -e "$f" && "${claim[$f]:-}" == "$name" ]]; then
+                  built=true
+                  break
+                fi
+              done
+
+              if [[ "$built" == true ]]; then
+                echo "BUILT $name" >> ".build-meta/$TARGET.txt"
+              elif conda search --override-channels -c https://prefix.dev/scns --subdir "$TARGET" "$name" >/dev/null 2>&1 || \
+                   conda search --override-channels -c https://prefix.dev/scns --subdir noarch "$name" >/dev/null 2>&1; then
+                echo "SKIPPED $name" >> ".build-meta/$TARGET.txt"
+              else
+                echo "FAILED $name" >> ".build-meta/$TARGET.txt"
+              fi
+            done
+
+            # extract failure reasons from the rattler build log
+            : > ".build-meta/reasons-$TARGET.txt"
+            if [[ -f ".build-meta/rattler-$TARGET.log" ]]; then
+              grep -E "error Build failed for" ".build-meta/rattler-$TARGET.log" \
+                | sed 's/^.*Build failed for //' >> ".build-meta/reasons-$TARGET.txt" || true
+              grep -B1 -E "Failed to parse recipe" ".build-meta/rattler-$TARGET.log" \
+                | sed -n 's#^.*Processing recipe at path: .*/todo/\([^/]*\)/.*#\1: parse error#' \
+                | sort -u >> ".build-meta/reasons-$TARGET.txt" || true
+            fi
+
+            echo "== $TARGET =="
+            cat ".build-meta/$TARGET.txt"
+            echo "=== reasons ==="
+            cat ".build-meta/reasons-$TARGET.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-meta-${{ matrix.target }}
+          path: |
+            .build-meta/${{ matrix.target }}.txt
+            .build-meta/reasons-${{ matrix.target }}.txt
+            .build-meta/rattler-${{ matrix.target }}.log
+          if-no-files-found: error
+
+  finalize:
+    name: Archive built recipes
+    needs: [changes, build]
+    if: needs.changes.outputs.should-build == 'true' && !cancelled()
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: build-meta-*
+          path: .build-meta
+          merge-multiple: true
+
+      - name: Archive successful builds and report failures
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -Eeuo pipefail
+
+          # ---- aggregate per-platform classifications ----
+          declare -A built_any=() skipped_any=() failed_any=()
+          missing_legs=()
+
+          for t in linux-64 linux-aarch64; do
+            if [[ ! -f ".build-meta/$t.txt" ]]; then
+              missing_legs+=("$t")
+              continue
+            fi
+            while IFS=' ' read -r status name; do
+              [[ -z "$name" ]] && continue
+              case "$status" in
+                BUILT)   built_any[$name]=1 ;;
+                SKIPPED) skipped_any[$name]=1 ;;
+                FAILED)  failed_any[$name]=1 ;;
+              esac
+            done < ".build-meta/$t.txt"
+          done
+
+          # ---- move successfully built recipes to recipes/ ----
+          mkdir -p recipes
+          for name in "${!built_any[@]}"; do
+            [[ -d "todo/$name" ]] || continue
+            if [[ -e "recipes/$name" ]]; then
+              echo "WARN: recipes/$name already exists; leaving todo/$name"
+            else
+              git mv "todo/$name" "recipes/$name"
+              echo "archived: $name -> recipes/"
+            fi
+          done
+
+          # ---- drop conda-built packages from only-meta.txt ----
+          meta_changed=0
+          if [[ -f only-meta.txt ]]; then
+            tmp=$(mktemp)
+            while IFS= read -r p; do
+              p="${p#"${p%%[![:space:]]*}"}"
+              p="${p%"${p##*[![:space:]]}"}"
+              [[ -z "$p" ]] && continue
+              if [[ -n "${built_any[$p]:-}" ]]; then
+                echo "only-meta.txt: removed $p"
+                meta_changed=1
+              else
+                printf '%s\n' "$p" >> "$tmp"
+              fi
+            done < only-meta.txt
+            if (( meta_changed )); then
+              if [[ -s "$tmp" ]]; then
+                mv "$tmp" only-meta.txt
+                git add only-meta.txt
+              else
+                rm -f "$tmp"
+                git rm -q only-meta.txt
+              fi
+            else
+              rm -f "$tmp"
+            fi
+          fi
+
+          git add -A recipes
+
+          # ---- commit + push the archive ----
+          if ! git diff --cached --quiet; then
+            git -c user.name="github-actions[bot]" \
+                -c user.email="github-actions[bot]@users.noreply.github.com" \
+                commit -m "ci: archive built recipes to recipes/ [skip ci]"
+            branch="$TARGET_BRANCH"
+            git push origin "HEAD:$branch"
+            echo "pushed archive to $branch"
+          else
+            echo "no recipe archives to commit"
+          fi
+
+          # ---- report failures: nothing built AND package missing from the channel ----
+          errors=0
+
+          for t in "${missing_legs[@]}"; do
+            echo "::error::$t leg produced no build results (leg job failed); its recipes cannot be verified"
+            errors=1
+          done
+
+          for name in "${!failed_any[@]}"; do
+            if [[ -n "${built_any[$name]:-}" || -n "${skipped_any[$name]:-}" ]]; then
+              continue
+            fi
+            echo "::error::recipe '$name' produced no .conda on any platform and is missing from https://prefix.dev/scns"
+            for t in linux-64 linux-aarch64; do
+              [[ -f ".build-meta/$t.txt" ]] || continue
+              grep -q "^FAILED $name$" ".build-meta/$t.txt" || continue
+              echo "::error::  - $t: no .conda produced; package not found on channel"
+              if [[ -f ".build-meta/reasons-$t.txt" ]]; then
+                while IFS= read -r r; do
+                  case "$r" in
+                    "$name-"*|"$name:"*|"conda build failed: $name")
+                      echo "::error::      reason: $r"
+                      ;;
+                  esac
+                done < ".build-meta/reasons-$t.txt"
+              fi
+            done
+            errors=1
+          done
+
+          echo "=== summary ==="
+          echo "built:   ${!built_any[*]}"
+          echo "skipped: ${!skipped_any[*]}"
+          echo "failed:  ${!failed_any[*]}"
+
+          exit "$errors"
