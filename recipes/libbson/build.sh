@@ -5,6 +5,7 @@ cd build
 
 cmake ${CMAKE_ARGS} .. \
       -G "Ninja" \
+      -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
       -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF \
       -DENABLE_MONGOC=OFF \
       -DENABLE_STATIC=DONT_INSTALL \
