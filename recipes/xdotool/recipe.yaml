@@ -1,0 +1,46 @@
+schema_version: 1
+
+context:
+  version: "4.20260303.1"
+
+package:
+  name: xdotool
+  version: ${{ version }}
+
+source:
+  url: https://github.com/jordansissel/xdotool/archive/v${{ version }}.tar.gz
+  sha256: c1f971a384da588eb99ca0755fc4300316d49c1e612537e3f1de52215e104fa3
+
+build:
+  number: 0
+  skip: not linux
+
+requirements:
+  build:
+    - ${{ stdlib('c') }}
+    - ${{ compiler('c') }}
+    - make
+    - pkg-config
+  host:
+    - xorg-libx11
+    - xorg-libxi
+    - xorg-libxtst
+    - xorg-libxinerama
+    - xorg-xorgproto
+    - libxkbcommon
+
+tests:
+  - script:
+      - xdotool --version
+
+about:
+  license: BSD-3-Clause
+  license_file: COPYRIGHT
+  summary: Fake keyboard/mouse input, window management, and more with X11
+  homepage: https://github.com/jordansissel/xdotool
+  repository: https://github.com/jordansissel/xdotool
+
+extra:
+  recipe-maintainers:
+    - ehfd
+
