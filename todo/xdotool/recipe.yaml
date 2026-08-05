@@ -28,6 +28,12 @@ requirements:
     - xorg-libxinerama
     - xorg-xorgproto
     - libxkbcommon
+  run:
+    - xorg-libx11
+    - xorg-libxi
+    - xorg-libxtst
+    - xorg-libxinerama
+    - libxkbcommon
 
 tests:
   - script:
