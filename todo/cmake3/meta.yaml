@@ -1,0 +1,69 @@
+{% set version = "3.31.8" %}
+
+package:
+  name: cmake
+  version: {{ version }}
+
+source:
+  url: https://github.com/Kitware/CMake/releases/download/v{{ version }}/cmake-{{ version }}.tar.gz
+  sha256: e3cde3ca83dc2d3212105326b8f1b565116be808394384007e7ef1c253af6caa
+
+build:
+  number: 0
+  ignore_run_exports:
+    - vc
+
+requirements:
+  build:
+    - {{ stdlib('c') }}
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - cmake-no-system  # [unix]
+    - ninja
+    - 7za  # [win]
+
+  host:
+    - bzip2
+    - libcurl
+    - expat
+    - ncurses  # [unix]
+    - liblzma-devel
+    - zlib
+    - libuv
+    - rhash  # [unix]
+    - zstd
+
+test:
+  commands:
+    - cmake --version
+    - ctest --version
+    - cpack --version
+    - ccmake --version
+
+about:
+  home: http://www.cmake.org/
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file:
+    - Copyright.txt
+    - Utilities/cmlibrhash/COPYING      # [win]
+    - Utilities/cmpdcurses/README.md    # [win]
+    - Utilities/cmpdcurses/wincon/README.md  # [win]
+    - Utilities/cmcppdap/LICENSE
+    - Utilities/cmlibarchive/COPYING
+    - Utilities/cmjsoncpp/LICENSE
+  summary: CMake is an extensible, open-source system that manages the build process
+  doc_url: https://cmake.org/documentation
+  dev_url: https://gitlab.kitware.com/cmake/cmake
+
+extra:
+  recipe-maintainers:
+    - blowekamp
+    - groutr
+    - jakirkham
+    - jschueller
+    - ocefpaf
+    - msarahan
+    - scopatz
+    - tadeu
+    - marcelotrevisani
