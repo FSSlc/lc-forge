@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: tinycc
+  version: "0.9.27"
+  sha256: de23af78fca90ce32dff2dd45b3432b2334740bb9bb7b05bf60fdbfc396ceb9c
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://mirror.csclub.uwaterloo.ca/nongnu/tinycc/tcc-${{ version }}.tar.bz2
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip:
+    - win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - make
+    - texinfo
+    - perl  # texi2pod.pl / pod2man for tcc.1
+
+tests:
+  - package_contents:
+      bin:
+        - tcc
+      include:
+        - libtcc.h
+      lib:
+        - tcc
+      files:
+        - lib/tcc/libtcc1.a
+        - lib/tcc/include/stddef.h
+        - lib/tcc/crt1.o
+        - lib/tcc/libc.so.6
+  - script:
+      - tcc -v
+      - test -x "${PREFIX}/bin/tcc"
+      - test -f "${PREFIX}/lib/libtcc${SHLIB_EXT}"
+      - test -f "${PREFIX}/include/libtcc.h"
+      - printf '%s\n' 'int main(void){return 0;}' > /tmp/tcc_hello.c
+      - tcc -o /tmp/tcc_hello /tmp/tcc_hello.c
+      - /tmp/tcc_hello
+      - printf '%s\n' '#include <math.h>' 'int main(void){return sqrt(9.0)==3.0?0:1;}' > /tmp/tcc_math.c
+      - tcc -o /tmp/tcc_math /tmp/tcc_math.c -lm
+      - /tmp/tcc_math
+
+about:
+  homepage: https://github.com/TinyCC/tinycc
+  repository: https://github.com/TinyCC/tinycc
+  documentation: https://bellard.org/tcc/
+  license: LGPL-2.1-or-later
+  license_file:
+    - COPYING
+    - glibc-COPYING.LIB
+  summary: Tiny C Compiler - C Scripting Everywhere - The Smallest ANSI C compiler
+  description: |
+    TCC (Tiny C Compiler) is a small and fast C compiler that can also compile
+    and run C code in one step (tcc -run). This recipe packages the 0.9.27
+    release as shared libtcc plus the tcc driver, matching the historical scns
+    tinycc package while modernizing the build for multi-arch CI.
+
+    The package is self-contained: the crt objects, glibc headers and glibc
+    runtime libraries are bundled into `lib/tcc`, which tcc searches at
+    runtime, so no build-time sysroot path is baked into the binaries.
+
+extra:
+  recipe-maintainers:
+    - fsslc
