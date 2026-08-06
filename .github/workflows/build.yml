@@ -200,6 +200,24 @@ jobs:
               done
             done
 
+            # Scan the build log for test failures. rattler-build --continue-on-failure
+            # may exit 0 even when tests fail, so check the log explicitly.
+            declare -A test_failed=()
+            if [[ -f ".build-meta/rattler-$TARGET.log" ]]; then
+              current_recipe=""
+              while IFS= read -r line; do
+                if [[ "$line" =~ Processing\ recipe\ at\ path:.*/todo/([^/]+)/ ]]; then
+                  current_recipe="${BASH_REMATCH[1]}"
+                fi
+                if [[ "$line" == *"× error Script failed with status"* ]] || \
+                   [[ "$line" == *"× error Script execution failed"* ]]; then
+                  if [[ -n "$current_recipe" ]]; then
+                    test_failed[$current_recipe]=1
+                  fi
+                fi
+              done < ".build-meta/rattler-$TARGET.log"
+            fi
+
             for d in todo/*/; do
               [[ -d "$d" ]] || continue
               name="${d%/}"; name="${name##*/}"
@@ -213,7 +231,11 @@ jobs:
               done
 
               if [[ "$built" == true ]]; then
-                echo "BUILT $name" >> ".build-meta/$TARGET.txt"
+                if [[ -n "${test_failed[$name]:-}" ]]; then
+                  echo "FAILED $name" >> ".build-meta/$TARGET.txt"
+                else
+                  echo "BUILT $name" >> ".build-meta/$TARGET.txt"
+                fi
               elif conda search --override-channels -c https://prefix.dev/scns --subdir "$TARGET" "$name" >/dev/null 2>&1 || \
                    conda search --override-channels -c https://prefix.dev/scns --subdir noarch "$name" >/dev/null 2>&1; then
                 echo "SKIPPED $name" >> ".build-meta/$TARGET.txt"
@@ -230,6 +252,9 @@ jobs:
               grep -B1 -E "Failed to parse recipe" ".build-meta/rattler-$TARGET.log" \
                 | sed -n 's#^.*Processing recipe at path: .*/todo/\([^/]*\)/.*#\1: parse error#' \
                 | sort -u >> ".build-meta/reasons-$TARGET.txt" || true
+              for name in "${!test_failed[@]}"; do
+                echo "$name: test failure" >> ".build-meta/reasons-$TARGET.txt"
+              done
             fi
 
             echo "== $TARGET =="
@@ -290,6 +315,12 @@ jobs:
                 FAILED)  failed_any[$name]=1 ;;
               esac
             done < ".build-meta/$t.txt"
+          done
+
+          # If a recipe FAILED on any platform (including test failures), it must
+          # not be archived even if it BUILT on another platform.
+          for name in "${!failed_any[@]}"; do
+            unset "built_any[$name]"
           done
 
           # ---- move successfully built recipes to recipes/ ----
@@ -358,21 +389,46 @@ jobs:
             if [[ -n "${built_any[$name]:-}" || -n "${skipped_any[$name]:-}" ]]; then
               continue
             fi
-            echo "::error::recipe '$name' produced no .conda on any platform and is missing from https://prefix.dev/scns"
+
+            # Check whether any platform reported a test failure for this recipe.
+            is_test_failure=false
             for t in linux-64 linux-aarch64; do
-              [[ -f ".build-meta/$t.txt" ]] || continue
-              grep -q "^FAILED $name$" ".build-meta/$t.txt" || continue
-              echo "::error::  - $t: no .conda produced; package not found on channel"
-              if [[ -f ".build-meta/reasons-$t.txt" ]]; then
-                while IFS= read -r r; do
-                  case "$r" in
-                    "$name-"*|"$name:"*|"conda build failed: $name")
-                      echo "::error::      reason: $r"
-                      ;;
-                  esac
-                done < ".build-meta/reasons-$t.txt"
+              if [[ -f ".build-meta/reasons-$t.txt" ]] && \
+                 grep -qFx "$name: test failure" ".build-meta/reasons-$t.txt"; then
+                is_test_failure=true
+                break
               fi
             done
+
+            if [[ "$is_test_failure" == true ]]; then
+              echo "::error::recipe '$name' built but had test failures"
+              for t in linux-64 linux-aarch64; do
+                [[ -f ".build-meta/$t.txt" ]] || continue
+                grep -q "^FAILED $name$" ".build-meta/$t.txt" || continue
+                if [[ -f ".build-meta/reasons-$t.txt" ]] && \
+                   grep -qFx "$name: test failure" ".build-meta/reasons-$t.txt"; then
+                  echo "::error::  - $t: test failure (package was built but tests did not pass)"
+                else
+                  echo "::error::  - $t: no .conda produced; package not found on channel"
+                fi
+              done
+            else
+              echo "::error::recipe '$name' produced no .conda on any platform and is missing from https://prefix.dev/scns"
+              for t in linux-64 linux-aarch64; do
+                [[ -f ".build-meta/$t.txt" ]] || continue
+                grep -q "^FAILED $name$" ".build-meta/$t.txt" || continue
+                echo "::error::  - $t: no .conda produced; package not found on channel"
+                if [[ -f ".build-meta/reasons-$t.txt" ]]; then
+                  while IFS= read -r r; do
+                    case "$r" in
+                      "$name-"*|"$name:"*|"conda build failed: $name")
+                        echo "::error::      reason: $r"
+                        ;;
+                    esac
+                  done < ".build-meta/reasons-$t.txt"
+                fi
+              done
+            fi
             errors=1
           done
 

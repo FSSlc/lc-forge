@@ -363,6 +363,17 @@ jobs:
         run: |
           set -Eeuo pipefail
 
+          # Scan the build log for test failures. rattler-build --continue-on-failure
+          # may exit 0 even when tests fail, so check the log explicitly.
+          log="logs/build-${TARGET}.log"
+          if [[ -f "$log" ]]; then
+            if grep -qE '× error Script failed with status|× error Script execution failed' "$log"; then
+              echo "::error::Test failures detected in build log for ${TARGET}:"
+              grep -E '× error Script failed with status|× error Script execution failed' "$log" || true
+              exit 1
+            fi
+          fi
+
           # Count .conda artifacts produced by the build.
           conda_files=()
           if [[ -d output ]]; then
