@@ -7,18 +7,6 @@ set -Eeuo pipefail
 # broken example targets ("bsoncxx-", "mongocxx-mongodb.com-"). Strip them.
 find mongo-cxx-driver-r* -type f -name '._*' -delete
 
-# The mongo-c-driver package bakes its own build-env sysroot paths into the
-# installed pkg-config and CMake configs (e.g. bson2.pc Libs:
-# "-L<old-build-env>/x86_64-scns-linux-gnu/sysroot/usr/lib -lrt", and the
-# mongo::detail::c_platform INTERFACE_LINK_LIBRARIES lists absolute
-# librt.so/libm.so paths). Those paths never exist in a fresh build env, so
-# rewrite them to plain -lrt / rt / m.
-find "${PREFIX}" -type f \( -name "*.pc" -o -name "*.cmake" \) -print0 \
-  | xargs -0 -r sed -i \
-      -e 's|-L[^ ]*x86_64-[^/]*linux-gnu/sysroot/usr/lib||g' \
-      -e 's|[^ ";]*x86_64-[^/]*linux-gnu/sysroot/usr/lib/librt\.so|rt|g' \
-      -e 's|[^ ";]*x86_64-[^/]*linux-gnu/sysroot/usr/lib/libm\.so|m|g'
-
 mkdir -p build
 cd build
 
@@ -53,3 +41,5 @@ rm -rf \
   "${PREFIX}/lib/cmake/mongocxx-static"* \
   "${PREFIX}/lib/pkgconfig/bsoncxx-static.pc" \
   "${PREFIX}/lib/pkgconfig/mongocxx-static.pc"
+
+find "${PREFIX}/lib/cmake" -type f -name "*.cmake" -exec sed -i "s#${BUILD_PREFIX}#${PREFIX}#g" {} +

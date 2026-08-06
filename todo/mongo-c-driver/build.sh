@@ -41,3 +41,5 @@ rm -rf \
   "${PREFIX}/lib/cmake/mongoc-static-"* \
   "${PREFIX}/lib/pkgconfig/bson"*-static.pc \
   "${PREFIX}/lib/pkgconfig/mongoc"*-static.pc
+
+find "${PREFIX}/lib/cmake" -type f -name "*.cmake" -exec sed -i "s#${BUILD_PREFIX}#${PREFIX}#g" {} +

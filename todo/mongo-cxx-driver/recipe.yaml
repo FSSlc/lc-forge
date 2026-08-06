@@ -27,6 +27,7 @@ requirements:
     - ninja
     - pkg-config
   host:
+    - ${{ stdlib('c') }}
     - openssl
     - zlib
     - zstd
@@ -67,13 +68,11 @@ about:
   documentation: https://www.mongodb.com/docs/languages/cpp/cpp-driver/current/
   license: Apache-2.0
   license_file:
-    - LICENSE
-    - THIRD-PARTY-NOTICES
+    - ${{ name }}-r${{ version }}/LICENSE
+    - ${{ name }}-r${{ version }}/THIRD-PARTY-NOTICES
   summary: MongoDB C++ Driver (bsoncxx + mongocxx)
   description: |
     The MongoDB C++ Driver is a client library written in C++ for MongoDB.
-    This package builds the full 4.4.1 release, installing both libbsoncxx
-    and libmongocxx (shared libraries, headers, pkg-config and CMake packages).
 
 extra:
   recipe-maintainers:
