@@ -162,7 +162,7 @@ jobs:
             if rattler-build build --continue-on-failure --experimental \
               -m ./conda_build_config.yaml --skip-existing=all \
               --target-platform=${{ matrix.target }} -c https://prefix.dev/scns \
-              --recipe-dir ./todo > ".build-meta/rattler-${{ matrix.target }}.log" 2>&1; then
+              --recipe-dir ./todo |& tee ".build-meta/rattler-${{ matrix.target }}.log"; then
               echo "rattler-build: all recipes processed (see .build-meta/rattler-${{ matrix.target }}.log)"
             else
               echo "rattler-build: aborted (see .build-meta/rattler-${{ matrix.target }}.log)"
