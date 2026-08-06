@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: mongo-cxx-driver
+  version: "4.4.1"
+  sha256: 8775b338b28e3a7ed57bc0dc8d5442a43e94edd0d4853c0575fb7082bcae7c9c
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/mongodb/mongo-cxx-driver/releases/download/r${{ version }}/mongo-cxx-driver-r${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip:
+    - win
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+    - pkg-config
+  host:
+    - openssl
+    - zlib
+    - zstd
+    - mongo-c-driver >=2.3.3,<3
+  run_exports:
+    - ${{ pin_subpackage('mongo-cxx-driver', upper_bound='x') }}
+
+tests:
+  - package_contents:
+      include:
+        - bsoncxx/v_noabi/bsoncxx/builder/basic/document.hpp
+        - mongocxx/v_noabi/mongocxx/client.hpp
+      lib:
+        - bsoncxx1
+        - mongocxx1
+      files:
+        # 4.4.x uses SOVERSION=1 → libbsoncxx1 / libmongocxx1 and matching .pc names.
+        - lib/pkgconfig/libbsoncxx1.pc
+        - lib/pkgconfig/libmongocxx1.pc
+        - lib/cmake/bsoncxx-${{ version }}/bsoncxxConfig.cmake
+        - lib/cmake/mongocxx-${{ version }}/mongocxxConfig.cmake
+  - requirements:
+      run:
+        - pkg-config
+    script:
+      - pkg-config --exists libbsoncxx1
+      - pkg-config --exists libmongocxx1
+      - pkg-config --modversion libbsoncxx1 | grep -F "${PKG_VERSION}"
+      - pkg-config --modversion libmongocxx1 | grep -F "${PKG_VERSION}"
+      - test -f "${PREFIX}/lib/libbsoncxx1${SHLIB_EXT}"
+      - test -f "${PREFIX}/lib/libmongocxx1${SHLIB_EXT}"
+      - test ! -f "${PREFIX}/lib/libbsoncxx1.a"
+      - test ! -f "${PREFIX}/lib/libmongocxx1.a"
+
+about:
+  homepage: https://www.mongodb.com/docs/languages/cpp/cpp-driver/current/
+  repository: https://github.com/mongodb/mongo-cxx-driver
+  documentation: https://www.mongodb.com/docs/languages/cpp/cpp-driver/current/
+  license: Apache-2.0
+  license_file:
+    - LICENSE
+    - THIRD-PARTY-NOTICES
+  summary: MongoDB C++ Driver (bsoncxx + mongocxx)
+  description: |
+    The MongoDB C++ Driver is a client library written in C++ for MongoDB.
+    This package builds the full 4.4.1 release, installing both libbsoncxx
+    and libmongocxx (shared libraries, headers, pkg-config and CMake packages).
+
+extra:
+  recipe-maintainers:
+    - fsslc
