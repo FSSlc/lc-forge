@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: mongo-c-driver
+  version: "2.3.3"
+  sha256: 798109524c633b5136978bbdc6229e4b0af0a4c6ba2d17b8b8fb39855c55258e
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/mongodb/mongo-c-driver/releases/download/${{ version }}/mongo-c-driver-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  # CI currently targets linux-*; Windows needs a separate MSVC path.
+  skip:
+    - win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+    - pkg-config
+  host:
+    - openssl
+    - zlib
+    - zstd
+    - snappy
+  run_exports:
+    # Shared library SOVERSION is the major version (libbson2 / libmongoc2).
+    - ${{ pin_subpackage('mongo-c-driver', upper_bound='x') }}
+
+tests:
+  - package_contents:
+      include:
+        - bson-${{ version }}/bson/bson.h
+        - mongoc-${{ version }}/mongoc/mongoc.h
+      lib:
+        - bson2
+        - mongoc2
+      files:
+        - lib/pkgconfig/bson2.pc
+        - lib/pkgconfig/mongoc2.pc
+        - lib/cmake/bson-${{ version }}/bsonConfig.cmake
+        - lib/cmake/mongoc-${{ version }}/mongocConfig.cmake
+  - requirements:
+      run:
+        - pkg-config
+    script:
+      - pkg-config --exists bson2
+      - pkg-config --exists mongoc2
+      - pkg-config --modversion bson2 | grep -F "${PKG_VERSION}"
+      - pkg-config --modversion mongoc2 | grep -F "${PKG_VERSION}"
+      - test -f "${PREFIX}/lib/libbson2${SHLIB_EXT}"
+      - test -f "${PREFIX}/lib/libmongoc2${SHLIB_EXT}"
+      - test ! -f "${PREFIX}/lib/libbson2.a"
+      - test ! -f "${PREFIX}/lib/libmongoc2.a"
+
+about:
+  homepage: https://www.mongodb.com/docs/languages/c/c-driver/current/
+  repository: https://github.com/mongodb/mongo-c-driver
+  documentation: https://www.mongodb.com/docs/languages/c/c-driver/current/
+  license: Apache-2.0
+  license_file:
+    - COPYING
+    - THIRD_PARTY_NOTICES
+  summary: Client library written in C for MongoDB (libbson + libmongoc)
+  description: |
+    The MongoDB C Driver is a client library written in C for MongoDB.
+    This package builds the full 2.x release, installing both libbson2 and
+    libmongoc2 (shared libraries, headers, pkg-config and CMake packages).
+    TLS uses OpenSSL; compression uses system zlib and zstd. SASL/Kerberos
+    and client-side encryption (libmongocrypt) are disabled in this recipe.
+
+extra:
+  recipe-maintainers:
+    - fsslc
