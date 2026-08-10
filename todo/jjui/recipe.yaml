@@ -1,0 +1,47 @@
+context:
+  version: "0.10.9"
+
+package:
+  name: jjui
+  version: ${{ version }}
+
+source:
+  url: https://github.com/idursun/jjui/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 1e6f74b3e00bb652f533331a15e4e0b9d6139a0db6f3f0f1e5b348ce547f72d0
+
+build:
+  number: 0
+  script:
+    - go-licenses save ./cmd/jjui --save_path=license-files --ignore github.com/mattn/go-localereader
+    - if: unix
+      then: |
+        go build -buildvcs=false -v -ldflags="-s -w" -o $PREFIX/bin/jjui ./cmd/jjui
+        cp -r ${RECIPE_DIR}/license-files/* ${SRC_DIR}/license-files
+      else: |
+        go build -buildvcs=false -v -ldflags="-s" -o %LIBRARY_BIN%\jjui.exe .\cmd\jjui
+        xcopy /s %RECIPE_DIR%\license-files\* %SRC_DIR%\license-files
+
+requirements:
+  build:
+    - ${{ compiler('go-nocgo') }}
+    - go-licenses
+
+tests:
+  - script:
+      - jjui --version
+
+about:
+  homepage: https://idursun.github.io/jjui
+  repository: https://github.com/idursun/jjui
+  documentation: https://idursun.github.io/jjui
+  summary: TUI for Jujutsu (JJ) VCS
+  description: |
+    Terminal user interface for working with Jujutsu version control system.
+  license: MIT
+  license_file:
+    - LICENSE
+    - license-files/
+
+extra:
+  recipe-maintainers:
+    - VasanthakumarV

@@ -1,0 +1,43 @@
+context:
+  version: "0.44.0"
+
+package:
+  name: jj
+  version: ${{ version }}
+
+source:
+  url: https://github.com/martinvonz/jj/archive/v${{ version }}.tar.gz
+  sha256: cd72ac1040c93d474dcafd8dd7f8d91d7407f9358bc9ffd4a6b72f4017112eab
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - ${{ compiler('rust') }}
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - cargo-bundle-licenses
+    - pkg-config
+  host:
+    - if: win
+      then: libgit2
+    - openssl
+    - zlib
+
+tests:
+  - script:
+      - jj --help
+
+about:
+  license: Apache-2.0
+  license_file:
+    - LICENSE
+    - THIRDPARTY.yml
+  summary: Git-compatible distributed version control system
+  homepage: https://github.com/martinvonz/jj
+  repository: https://github.com/martinvonz/jj
+
+extra:
+  recipe-maintainers:
+    - danielnachun
