@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: pdsh
+  version: "2.36"
+  sha256: a661095ce51dd5fb05e398cf5d0e1d63157123958441f6d3512bcf1a7d25c517
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/chaos/pdsh/releases/download/${{ name }}-${{ version }}/${{ name }}-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip:
+    - win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - make
+    # autotools: configure is pre-generated in the release tarball
+  host:
+    - readline
+  run:
+    - readline
+    - perl  # dshbak is a Perl script
+
+tests:
+  - package_contents:
+      bin:
+        - pdsh
+        - pdcp
+        - dshbak
+        - rpdcp
+  - script:
+      - pdsh --version
+      - pdsh --help 2>&1 | grep -q "Usage:"
+      - pdcp --version
+      - dshbak --help 2>&1 | grep -q "Usage"
+      - test -f "${PREFIX}/bin/pdsh"
+      - test -f "${PREFIX}/bin/pdcp"
+      - test -f "${PREFIX}/bin/dshbak"
+
+about:
+  homepage: https://github.com/chaos/pdsh
+  repository: https://github.com/chaos/pdsh
+  license: GPL-2.0-or-later
+  license_file: COPYING
+  summary: A high performance, parallel remote shell utility
+  description: |
+    Pdsh is a multithreaded remote shell client which executes commands on
+    multiple remote hosts in parallel.  It includes pdcp (parallel remote copy),
+    rpdcp (reverse parallel remote copy), and dshbak (output formatter).
+    Modules are included for SSH, exec, machines, dshgroups, and netgroups.
+
+extra:
+  recipe-maintainers:
+    - fsslc
