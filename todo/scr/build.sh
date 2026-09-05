@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+cmake "${CMAKE_ARGS}" .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+  -DCMAKE_PREFIX_PATH="${PREFIX}" \
+  -DBUILD_SHARED_LIBS=ON \
+  -DSCR_RESOURCE_MANAGER=NONE \
+  -DENABLE_FORTRAN=ON \
+  -DENABLE_YOGRT=OFF \
+  -DENABLE_MYSQL=OFF \
+  -DENABLE_PDSH=OFF \
+  -DENABLE_TESTS=OFF \
+  -DENABLE_EXAMPLES=OFF \
+  -DENABLE_IBM_BBAPI=OFF \
+  -DENABLE_CRAY_DW=OFF \
+  -DSCR_LOG_ENABLE=1 \
+  -DSCR_CACHE_BASE=/tmp \
+  -DSCR_CNTL_BASE=/tmp \
+  -B build
+
+cmake --build build --target install -j${CPU_COUNT}

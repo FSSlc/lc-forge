@@ -1,0 +1,70 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: llnl-scr
+  version: "3.1.0"
+  sha256: 272cf5ae67a99a521d947516571466d28625bc733471468ebafa57a1c6cedb39
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  - url: https://github.com/llnl/scr/releases/download/v${{ version }}/scr-v${{ version }}.tar.gz
+    sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip:
+    - win
+    - osx  # Linux-only: /dev/shm, pthreads, FLOCK, syslog, SLURM
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('fortran') }}
+    - cmake
+    - make
+    - pkg-config
+  host:
+    - zlib
+    - ${{ mpi }}
+  run:
+    - ${{ mpi }}
+  run_exports:
+    - ${{ pin_subpackage('scr', upper_bound='x.x') }}
+
+tests:
+  - package_contents:
+      include:
+        - scr.h
+      lib:
+        - scr
+      files:
+        - share/scr/cmake/scrConfig.cmake
+  - script:
+      - test -f "${PREFIX}/include/scr.h"
+      - test -f "${PREFIX}/lib/libscr${SHLIB_EXT}"
+      - test -x "${PREFIX}/bin/scr_index"
+      - test -x "${PREFIX}/bin/scr_print"
+      - scr_index --help 2>&1 | grep -i "usage"
+
+about:
+  homepage: https://github.com/llnl/scr
+  repository: https://github.com/llnl/scr
+  documentation: https://scr.readthedocs.io/en/latest/
+  license: BSD-3-Clause
+  license_file: LICENSE.TXT
+  summary: Scalable Checkpoint / Restart (SCR) library for MPI applications
+  description: |
+    The Scalable Checkpoint / Restart (SCR) library enables MPI applications
+    to utilize distributed storage on Linux clusters to attain high file I/O
+    bandwidth for checkpointing, restarting, and output in large-scale jobs.
+    Bundles all ECP-VeloC dependencies (lwgrp, dtcmp, kvtree, axl, spath,
+    rankstr, redset, shuffile, er) via the upstream dist/ build system.
+
+extra:
+  recipe-maintainers:
+    - fsslc
