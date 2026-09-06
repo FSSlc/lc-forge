@@ -4,14 +4,14 @@ schema_version: 1
 context:
   name: llnl-scr
   version: "3.1.0"
-  sha256: 272cf5ae67a99a521d947516571466d28625bc733471468ebafa57a1c6cedb39
+  sha256: fb28487835ffbb944c10261dad093c308f9f2e1df977646755ccf78258297c91
 
 package:
   name: ${{ name }}
   version: ${{ version }}
 
 source:
-  - url: https://github.com/llnl/scr/releases/download/v${{ version }}/scr-v${{ version }}.tar.gz
+  - url: https://github.com/llnl/scr/releases/download/v${{ version }}/scr-top-v${{ version }}.tgz
     sha256: ${{ sha256 }}
 
 build:
@@ -22,19 +22,25 @@ build:
 
 requirements:
   build:
-    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
     - ${{ stdlib('c') }}
     - ${{ compiler('fortran') }}
-    - cmake
+    - m4
     - make
+    - cmake
+    - autoconf
+    - automake
+    - libtool
     - pkg-config
   host:
     - zlib
     - ${{ mpi }}
+    - pdsh
   run:
     - ${{ mpi }}
+    - pdsh
   run_exports:
-    - ${{ pin_subpackage('scr', upper_bound='x.x') }}
+    - ${{ pin_subpackage('llnl-scr', upper_bound='x.x') }}
 
 tests:
   - package_contents:
@@ -56,7 +62,7 @@ about:
   repository: https://github.com/llnl/scr
   documentation: https://scr.readthedocs.io/en/latest/
   license: BSD-3-Clause
-  license_file: LICENSE.TXT
+  license_file: scr/LICENSE.TXT
   summary: Scalable Checkpoint / Restart (SCR) library for MPI applications
   description: |
     The Scalable Checkpoint / Restart (SCR) library enables MPI applications

@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-cmake "${CMAKE_ARGS}" .. \
+cmake "${CMAKE_ARGS}" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_PREFIX_PATH="${PREFIX}" \
@@ -16,9 +16,9 @@ cmake "${CMAKE_ARGS}" .. \
   -DENABLE_EXAMPLES=OFF \
   -DENABLE_IBM_BBAPI=OFF \
   -DENABLE_CRAY_DW=OFF \
-  -DSCR_LOG_ENABLE=1 \
+  -DSCR_LOG_ENABLE=0 \
   -DSCR_CACHE_BASE=/tmp \
   -DSCR_CNTL_BASE=/tmp \
-  -B build
+  -B build -S .
 
 cmake --build build --target install -j${CPU_COUNT}
