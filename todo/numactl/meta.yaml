@@ -1,0 +1,89 @@
+{% set version = "2.0.18" %}
+
+package:
+  name: libnuma-split
+  version: {{ version }}
+
+source:
+  url: https://github.com/numactl/numactl/releases/download/v{{ version }}/numactl-{{ version }}.tar.gz
+  sha256: b4fc0956317680579992d7815bc43d0538960dc73aa1dd8ca7e3806e30bc1274
+  patches:
+    # These tests require NUMA topology that is unavailable in some CI environments.
+    # https://github.com/conda-forge/numactl-feedstock/pull/1#issuecomment-1425000697
+    # https://github.com/numactl/numactl/issues/163
+    # https://github.com/numactl/numactl/issues/164
+    - skip_failing_tests.patch  # [aarch64 or ppc64le or riscv64]
+    - fix_ppc64le_set_mempolicy_home_node.patch  # [ppc64le]
+
+build:
+  number: 4
+  skip: true  # [not linux]
+
+outputs:
+  - name: libnuma
+    script: install-libnuma.sh
+    build:
+      run_exports:
+        - {{ pin_subpackage('libnuma', max_pin='x') }}
+    requirements:
+      build:
+        - automake
+        - autoconf
+        - coreutils
+        - grep
+        - libtool
+        - sed
+        - {{ compiler('c') }}
+        - {{ stdlib('c') }}
+        - make
+    test:
+      commands:
+        - test -f $PREFIX/lib/libnuma.so
+        - test ! -f $PREFIX/lib/libnuma.a
+        - test -f $PREFIX/lib/pkgconfig/numa.pc
+
+  - name: numactl
+    build:
+      run_exports:
+        - {{ pin_subpackage('libnuma', max_pin='x') }}
+    script: install-numactl.sh
+    requirements:
+      build:
+        - automake
+        - autoconf
+        - coreutils
+        - grep
+        - libtool
+        - sed
+        - {{ compiler('c') }}
+        - {{ stdlib('c') }}
+        - make
+      host:
+        - libnuma
+      run:
+        - {{ pin_subpackage('libnuma', exact=True) }}
+    test:
+      commands:
+        - numactl --show  # [not aarch64 and not ppc64le and not riscv64]
+    about:
+      license: GPL-2.0-only
+      license_file: LICENSE.GPL2
+
+about:
+  home: https://github.com/numactl/numactl
+  summary: NUMA support for Linux
+  description: |
+    Simple NUMA policy support. It consists of a numactl program to run other
+    programs with a specific NUMA policy and a libnuma shared library
+    ("NUMA API") to set NUMA policy in applications.
+  license: LGPL-2.1-only
+  license_file: LICENSE.LGPL2.1
+  dev_url: https://github.com/numactl/numactl
+  doc_url: https://linux.die.net/man/8/numactl
+
+extra:
+  feedstock-name: numactl
+  recipe-maintainers:
+    - kkraus14
+    - chrisburr
+    - zklaus
