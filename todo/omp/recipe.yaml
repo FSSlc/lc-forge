@@ -1,0 +1,36 @@
+package:
+  name: omp
+  version: 17.2.12
+
+source:
+  url: https://github.com/can1357/oh-my-pi/releases/download/v17.2.12/omp-linux-${{ "x64" if x86_64 else "arm64" }}
+  sha256: ${{ "6c75331bf09d5a9e9433bd592b3ee993d751a15d5b7450c1a334cc0684996f30" if x86_64 else "f176edf8174db252abe1aa6e84df284e1b83b8dd7ef34ac7faf7884a5e172a4c" }}
+  file_name: omp
+
+build:
+  script:
+    - mkdir -p "$PREFIX/bin"
+    - install -m 0755 "$SRC_DIR/omp" "$PREFIX/bin/omp"
+  dynamic_linking:
+    binary_relocation: false
+  prefix_detection:
+    ignore:
+      - bin/omp
+
+tests:
+  - script:
+      - omp --version
+
+about:
+  homepage: https://github.com/can1357/oh-my-pi
+  license: MIT
+  license_file: LICENSE
+  summary: AI coding agent for the terminal
+  description: |
+    omp (oh-my-pi) is a coding agent with the IDE wired in. A fork of Pi,
+    rewritten as a coding-first surface: sessions, subagents, slash commands,
+    extensions — all TypeScript, all MIT.
+
+extra:
+  recipe-maintainers:
+    - FSSlc
