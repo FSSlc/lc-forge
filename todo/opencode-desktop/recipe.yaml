@@ -1,0 +1,78 @@
+schema_version: 1
+
+context:
+  version: "1.18.16"
+
+package:
+  name: opencode-desktop
+  version: ${{ version }}
+
+source:
+  - if: linux and x86_64
+    then:
+      - url: https://github.com/anomalyco/opencode/releases/download/v${{ version }}/opencode-desktop-linux-x86_64.AppImage
+        sha256: 401244cf5125aac8982b9872e11230b3db9e7c32193805126277acfb23f96f3a
+      - url: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_9.conda
+        sha256: c47299fe37aebb0fcf674b3be588e67e4afb86225be4b0d452c7eb75c086b851
+  - if: linux and aarch64
+    then:
+      - url: https://github.com/anomalyco/opencode/releases/download/v${{ version }}/opencode-desktop-linux-arm64.AppImage
+        sha256: cf4d2f4dfa20a501a1ef461ccab665ff3eaeea6aecc80c34cff0b23780733d6e
+      - url: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-aarch64-2.28-h05a177a_4.conda
+        sha256: a13fa3769baaf42121af19157885ed77755196108ab680c4fd39b45c0e9ba71b
+
+build:
+  number: 0
+  script: build.sh
+  dynamic_linking:
+    # Only the app executables must be relocatable (so conda rewrites their ELF
+    # interpreter at install time). The bundled glibc runtime under
+    # opencode-desktop/sysroot/* must stay byte-for-byte pristine; patchelf
+    # would otherwise inject an RPATH and corrupt the loader (it then dies in
+    # its own relocation inside _dl_start).
+    binary_relocation:
+      - opencode-desktop/ai.opencode.desktop
+      - opencode-desktop/chrome_crashpad_handler
+      - opencode-desktop/chrome-sandbox
+    rpath_allowlist:
+      - '*'
+    missing_dso_allowlist:
+      - '*'
+    overlinking_behavior: ignore
+    overdepending_behavior: ignore
+
+requirements:
+  build:
+    - patchelf
+    - libarchive
+  run:
+    - libstdcxx-ng
+    - nss
+    - nspr
+
+tests:
+  - requirements:
+      run:
+        - patchelf
+    script: test.sh
+
+about:
+  homepage: https://opencode.ai
+  repository: https://github.com/anomalyco/opencode
+  license: MIT
+  summary: OpenCode Desktop app (Electron) for Linux, bundled with a glibc 2.28 runtime
+  description: |
+    OpenCode is an open-source AI coding agent for your terminal and desktop.
+    This package repackages the official opencode-desktop AppImage for use on
+    legacy Linux distros (CentOS 7 / glibc 2.17). The Electron app requires
+    glibc 2.28, so a glibc 2.28 runtime is bundled under
+    `$PREFIX/opencode-desktop/sysroot` and the ELF interpreters of the app
+    binaries point at the bundled loader. Launch via `opencode-desktop`.
+
+    Note: the app still expects a desktop session (GTK3, X11/Wayland, desktop
+    fonts). Install `opencode-desktop` into an activated environment and run
+    `opencode-desktop`.
+
+extra:
+  recipe-maintainers:
+    - FSSlc
