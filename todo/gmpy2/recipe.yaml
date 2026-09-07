@@ -1,0 +1,71 @@
+schema_version: 1
+
+context:
+  version: "2.3.1"
+
+package:
+  name: gmpy2
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/g/gmpy2/gmpy2-${{ version }}.tar.gz
+  sha256: 313f35e9fe6b9ddf72759b14dac25166fe5757c970403e4bbf87a70ab2be07df
+
+build:
+  number: 0
+  script:
+    - ${{ PYTHON }} -m pip install . -vvv --no-deps --no-build-isolation
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then:
+        - python
+        - cross-python_${{ target_platform }}
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+  host:
+    - gmp
+    - mpfr
+    - mpc
+    - python
+    - pip
+    - setuptools >=77
+    - setuptools-scm >=6.0
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - gmpy2
+      pip_check: true
+  - script:
+      - python -c "import gmpy2; print('gmpy2.version():', gmpy2.version()); assert gmpy2.version() == '${{ version }}', f'Expected ${{ version }}, got {gmpy2.version()}'"
+      - python -c "import importlib.metadata; v = importlib.metadata.version('gmpy2'); print('metadata version:', v); assert v == '${{ version }}', f'Expected ${{ version }}, got {v}'"
+      - pytest -nauto
+    requirements:
+      run:
+        - hypothesis
+        - mpmath
+        - numpy
+        - pytest
+        - pytest-xdist
+    files:
+      source:
+        - test/
+
+about:
+  license: LGPL-3.0-or-later
+  license_file:
+    - COPYING
+    - COPYING.LESSER
+  summary: GMP/MPIR, MPFR, and MPC interface to Python
+  homepage: https://pypi.python.org/pypi/gmpy2
+  repository: https://github.com/gmpy2/gmpy2
+
+extra:
+  recipe-maintainers:
+    - isuruf
+    - saraedum
+    - mgorny

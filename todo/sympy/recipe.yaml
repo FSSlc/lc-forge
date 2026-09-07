@@ -1,0 +1,78 @@
+schema_version: 1
+
+context:
+  version: "1.14.0"
+  with_gmpy: true
+
+package:
+  name: sympy
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/s/sympy/sympy-${{ version }}.tar.gz
+  sha256: d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517
+  patches:
+    - patches/mpmath-pin.patch
+
+build:
+  number: ${{ build_num }}
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
+  python:
+    entry_points:
+      - isympy = isympy:main
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+  host:
+    - mpmath
+    - pip
+    - setuptools
+    - python ${{ python_min }}
+  run:
+    - mpmath >=1.1.0,<1.5
+    - python >=${{ python_min }}
+    - if: with_gmpy
+      then: gmpy2 >=2.0.8
+    - if: with_gmpy
+      then: __unix
+    - if: with_gmpy
+      then: cpython
+
+tests:
+  - python:
+      imports:
+        - sympy
+      pip_check: true
+      python_version: ${{ python_min }}
+  - requirements:
+      run:
+        - python ${{ python_min }}
+        - pip
+    script:
+      - isympy --help
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Python library for symbolic mathematics
+  description: |
+    SymPy is a Python library for symbolic mathematics. It aims to become a
+    full-featured computer algebra system (CAS) while keeping the code as
+    simple as possible in order to be comprehensible and easily extensible.
+  homepage: https://sympy.org
+  repository: https://github.com/sympy/sympy
+  documentation: https://docs.sympy.org/latest/index.html
+
+extra:
+  recipe-maintainers:
+    - oscarbenjamin
+    - asmeurer
+    - msarahan
+    - scopatz
+    - isuruf
+
