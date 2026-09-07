@@ -1,0 +1,52 @@
+{% set version = "1.4.0" %}
+{% set posix = "m2-" if build_platform.startswith("win-") else '' %}
+
+package:
+  name: mpc
+  version: {{ version }}
+
+source:
+  url: https://ftp.gnu.org/gnu/mpc/mpc-{{ version }}.tar.xz
+  sha256: 3210b3a546b1cb00c296ca360891d7740ee6ff06deb02a27a35b20cd3c0bb1a5
+
+build:
+  number: 1
+  run_exports:
+    - {{ pin_subpackage("mpc") }}
+
+requirements:
+  build:
+    - libtool         # [unix]
+    - m4              # [unix]
+    - gnuconfig
+    - {{ posix }}make
+    - {{ posix }}base             # [build_platform.startswith("win-")]
+    - {{ posix }}diffutils        # [build_platform.startswith("win-")]
+    - {{ compiler('c') }}         # [unix]
+    - {{ stdlib('c') }}           # [unix]
+    - {{ compiler('m2w64_c') }}   # [win]
+    - {{ stdlib('m2w64_c') }}     # [win]
+  host:
+    - gmp
+    - mpfr
+
+test:
+  commands:
+    - if not exist %LIBRARY_INC%\\mpc.h exit 1                  # [win]
+    - if not exist %LIBRARY_LIB%\\mpc.lib exit 1                # [win]
+    - if not exist %LIBRARY_BIN%\\libmpc-3.dll exit 1           # [win]
+    - test -f ${PREFIX}/include/mpc.h                           # [unix]
+    - test -f ${PREFIX}/lib/libmpc.dylib                        # [osx]
+    - test -f ${PREFIX}/lib/libmpc.so                           # [linux]
+
+about:
+  home: http://www.multiprecision.org/
+  license: LGPL-3.0-or-later
+  license_file: COPYING.LESSER
+  summary: A C library for the arithmetic of complex numbers with arbitrarily high precision.
+
+extra:
+  recipe-maintainers:
+    - isuruf
+    - jakirkham
+    - saraedum

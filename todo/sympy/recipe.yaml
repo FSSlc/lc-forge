@@ -2,7 +2,6 @@ schema_version: 1
 
 context:
   version: "1.14.0"
-  with_gmpy: true
 
 package:
   name: sympy
@@ -15,7 +14,7 @@ source:
     - patches/mpmath-pin.patch
 
 build:
-  number: ${{ build_num }}
+  number: ${{ 106 if with_gmpy else 6 }}
   noarch: python
   script: ${{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
   python:
