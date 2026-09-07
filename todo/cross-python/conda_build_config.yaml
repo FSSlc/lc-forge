@@ -1,0 +1,15 @@
+version:
+  - 3.10        # [not riscv64]
+py_impl:
+  - cpython     # [not riscv64]
+freethreading:
+  - no          # [not riscv64]
+
+cross_target_platform:
+  - "linux-64"
+  - "linux-aarch64"
+zip_keys:
+  - - version
+    - py_impl
+    - channel_sources
+    - freethreading

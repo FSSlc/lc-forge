@@ -1,0 +1,20 @@
+From 49b1cae251a5466479749ee08e5e82fa984db7d5 Mon Sep 17 00:00:00 2001
+From: Isuru Fernando <isuruf@gmail.com>
+Date: Thu, 10 Oct 2024 08:45:06 -0500
+Subject: [PATCH] Fix _linux_platforms
+
+---
+ crossenv/scripts/packaging-tags-patch.py.tmpl | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/crossenv/scripts/packaging-tags-patch.py.tmpl b/crossenv/scripts/packaging-tags-patch.py.tmpl
+index 8a737a4..235e193 100644
+--- a/crossenv/scripts/packaging-tags-patch.py.tmpl
++++ b/crossenv/scripts/packaging-tags-patch.py.tmpl
+@@ -5,4 +5,5 @@ def _linux_platforms():
+     yield from {{repr(self.platform_tags)}}
+     arch = _normalize_string({{repr(self.host_machine)}})
+     archs = {"armv8l": ["armv8l", "armv7l"]}.get(arch, [arch])
+-    yield from archs
++    for arch in archs:
++        yield f"linux_{arch}"

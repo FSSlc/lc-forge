@@ -1,0 +1,11 @@
+--- ./crossenv/scripts/sysconfig-patch.py.tmpl	2021-12-27 12:22:09.000000000 -0800
++++ ./crossenv/scripts/sysconfig-patch.py.tmpl	2021-12-27 12:22:14.000000000 -0800
+@@ -11,7 +11,7 @@
+ def get_makefile_filename():
+     return {{repr(self.host_makefile)}}
+ 
+-def _get_sysconfigdata_name():
++def _get_sysconfigdata_name(*args):
+     return {{repr(sysconfig_name)}}
+ 
+ def get_platform():

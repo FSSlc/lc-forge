@@ -1,0 +1,52 @@
+schema_version: 1
+
+context:
+  name: crossenv
+  version: 1.5.0
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/crossenv-${{ version }}.tar.gz
+  sha256: 5d9c5fe581f793f32659718115f8c93054fe1fea6e541b6e2c845e038a1b3d39
+  patches:
+    - patches/0002-Fix-py38-support.patch
+    - patches/gh121.patch
+    # - patches/gh130.patch
+
+build:
+  number: 3
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}.*
+    - setuptools
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - crossenv
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - pip check
+
+about:
+  summary: A cross-compiling tool for Python extension modules
+  license: MIT
+  license_file: LICENSE.txt
+  homepage: https://github.com/benfogle/crossenv
+
+extra:
+  recipe-maintainers:
+    - chrisburr
+    - isuruf
