@@ -30,9 +30,6 @@ tests:
         - appdirs
       pip_check: false
       python_version: ${{ python_min }}.*
-  - requirements:
-      run:
-        - python ${{ python_min }}.*
 
 about:
   license: MIT
