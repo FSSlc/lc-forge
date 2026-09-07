@@ -1,99 +1,99 @@
 # lc-forge
 
-个人维护的 conda/rattler-build recipe 仓库，用于收集、改造和构建软件包。
+A personally maintained conda/rattler-build recipe repository for collecting, adapting, and building software packages.
 
-主要内容：
+Main contents:
 
-- `recipes/`：已通过构建验证的 recipe。
-- `todo/`：待构建或待修复的 recipe，GitHub Actions 主要监听此目录。
-- `scripts/`：本地准备、转换、渲染和构建脚本。
-- `conda_build_config.yaml`：全局构建矩阵、pinning 和默认配置。
-- `output/`：本地构建输出，已忽略提交。
+- `recipes/`: Recipes that have passed build validation.
+- `todo/`: Recipes waiting to be built or fixed; GitHub Actions primarily monitors this directory.
+- `scripts/`: Local preparation, conversion, rendering, and build scripts.
+- `conda_build_config.yaml`: Global build matrix, pinning, and default configuration.
+- `output/`: Local build output, ignored by Git.
 
-默认依赖 channel 为 `https://prefix.dev/scns`。当前 CI 构建 `linux-64` 和 `linux-aarch64`，默认使用 gcc 11.2.0 与 CentOS 7.9 环境，以尽量保持 glibc 2.17 兼容性。
+The default dependency channel is `https://prefix.dev/scns`. CI currently builds for `linux-64` and `linux-aarch64`, using GCC 11.2.0 and a CentOS 7.9 environment by default to preserve glibc 2.17 compatibility as much as possible.
 
-## 环境准备
+## Environment Setup
 
-推荐使用 pixi 安装构建工具：
+Using pixi to install the build tools is recommended:
 
 ```bash
 ./scripts/setup_pixi.sh
 ```
 
-如需使用预置 Docker 镜像：
+To use the prebuilt Docker image:
 
 ```bash
 ./scripts/start_img.sh [--force] [tag]
 ```
 
-容器启动时会自动注入 `HOST_UID` / `HOST_GID`，与 `cbuild.sh` / `rbuild.sh` 中的 `fix_output_owner` 配合，确保 `output/` 目录属主与宿主机一致。可用 `IMAGE_REPO` 和 `CONTAINER_NAME` 环境变量覆盖默认镜像和容器名。
+When the container starts, it automatically injects `HOST_UID` / `HOST_GID`. Together with `fix_output_owner` in `cbuild.sh` / `rbuild.sh`, this keeps the owner of the `output/` directory consistent with the host user. The default image and container name can be overridden with the `IMAGE_REPO` and `CONTAINER_NAME` environment variables.
 
-## Recipe 工作流
+## Recipe Workflow
 
-准备新 recipe：
+Prepare a new recipe:
 
 ```bash
 ./scripts/prep.sh <package_name>
 ```
 
-该脚本会从 conda-forge feedstock 复制 recipe 到 `todo/<package_name>`，并在可用时尝试把 `meta.yaml` 转为 `recipe.yaml`。
+The script copies the recipe from the conda-forge feedstock to `todo/<package_name>` and, when available, attempts to convert `meta.yaml` to `recipe.yaml`.
 
-提交 `todo/<package_name>` 后由 GitHub Actions 构建。构建失败时继续修改 `todo/` 下的 recipe；构建成功后再归档到 `recipes/`：
+After `todo/<package_name>` is committed, GitHub Actions builds it. If the build fails, continue modifying the recipe under `todo/`; after a successful build, archive it under `recipes/`:
 
 ```bash
 mkdir -p recipes
 git mv todo/<package_name> recipes/<package_name>
 ```
 
-## 常用命令
+## Common Commands
 
-转换旧格式 recipe：
+Convert a legacy-format recipe:
 
 ```bash
 ./scripts/crm.sh -r todo/<package>
 ```
 
-渲染 recipe：
+Render a recipe:
 
 ```bash
 ./scripts/crender.sh -r todo/<package>
 ./scripts/rrender.sh -r todo/<package>
 ```
 
-本地构建 recipe：
+Build a recipe locally:
 
 ```bash
 ./scripts/rbuild.sh -r todo/<package>
 ./scripts/cbuild.sh -r todo/<package>
 ```
 
-所有 recipe 脚本统一用 `-r <recipe_dir>` 指定 recipe 目录。强制重建可追加 `-f`，额外 channel 可追加 `-c <channel>`，也可用环境变量 `EXTRA_CHANNELS`（空格或逗号分隔）统一附加 channel。`--` 之后的参数会透传给底层工具。构建输出默认写入 `output/`（可用 `OUTPUT_DIR` 覆盖），正式结果以 GitHub Actions 为准。
+All recipe scripts use `-r <recipe_dir>` to specify the recipe directory. Append `-f` to force a rebuild, or `-c <channel>` to add an extra channel. You can also use the `EXTRA_CHANNELS` environment variable (space- or comma-separated) to add channels consistently. Arguments after `--` are passed through to the underlying tool. Build output is written to `output/` by default (override with `OUTPUT_DIR`); GitHub Actions remains the authority for official results.
 
 ```bash
 ./scripts/rbuild.sh -r todo/<package> -c conda-forge -- --verbose
 EXTRA_CHANNELS="conda-forge,bioconda" ./scripts/rrender.sh -r todo/<package>
 ```
 
-## 脚本速查
+## Script Reference
 
-| 脚本 | 用途 |
+| Script | Purpose |
 | --- | --- |
-| `setup_pixi.sh` | 安装 pixi 和常用构建工具（可重复执行）。 |
-| `start_img.sh` | 启动 `ghcr.io/fsslc/pixi:<tag>` 容器。 |
-| `prep.sh` | 从 conda-forge feedstock 准备 recipe。 |
-| `crm.sh` | 转换 `meta.yaml` 为 `recipe.yaml`。 |
-| `crender.sh` | 使用 `conda render` 渲染 recipe。 |
-| `rrender.sh` | 使用 `rattler-build --render-only` 渲染 recipe。 |
-| `cbuild.sh` | 使用 `conda build` 构建 recipe。 |
-| `rbuild.sh` | 使用 `rattler-build` 构建 recipe。 |
-| `lib/common.sh` | 脚本共享逻辑（路径解析、channel、crm convert 等）。 |
+| `setup_pixi.sh` | Install pixi and common build tools; safe to run repeatedly. |
+| `start_img.sh` | Start the `ghcr.io/fsslc/pixi:<tag>` container. |
+| `prep.sh` | Prepare a recipe from a conda-forge feedstock. |
+| `crm.sh` | Convert `meta.yaml` to `recipe.yaml`. |
+| `crender.sh` | Render a recipe with `conda render`. |
+| `rrender.sh` | Render a recipe with `rattler-build --render-only`. |
+| `cbuild.sh` | Build a recipe with `conda build`. |
+| `rbuild.sh` | Build a recipe with `rattler-build`. |
+| `lib/common.sh` | Shared script logic, including path resolution, channels, and CRM conversion. |
 
-## 维护提醒
+## Maintenance Notes
 
-- 提交前检查 source、license、test、run_exports 和 pinning。
-- `scripts/prep.sh` 会访问网络，并可能覆盖已有 `todo/<package_name>`。
-- `scripts/setup_pixi.sh` 会更新当前用户的 `~/.bashrc` / `~/.zshrc`（PATH 与 completion）。
-- 修改脚本后可运行语法检查：
+- Before committing, check the source, license, tests, run exports, and pinning.
+- `scripts/prep.sh` accesses the network and may overwrite an existing `todo/<package_name>`.
+- `scripts/setup_pixi.sh` updates the current user's `~/.bashrc` / `~/.zshrc` (PATH and completion).
+- After modifying scripts, run the syntax check:
 
 ```bash
 for f in scripts/*.sh scripts/lib/*.sh; do bash -n "$f" || exit 1; done
