@@ -1,0 +1,46 @@
+schema_version: 1
+
+context:
+  version: "1.4.4"
+
+package:
+  name: appdirs
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/a/appdirs/appdirs-${{ version }}.tar.gz
+  sha256: 7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}
+    - setuptools
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - appdirs
+      pip_check: false
+      python_version: ${{ python_min }}
+  - requirements:
+      run:
+        - python ${{ python_min }}
+
+about:
+  license: MIT
+  license_file: LICENSE.txt
+  summary: A small Python module for determining appropriate platform-specific dirs.
+  homepage: http://github.com/ActiveState/appdirs
+
+extra:
+  recipe-maintainers:
+    - ocefpaf
+
