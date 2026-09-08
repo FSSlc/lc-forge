@@ -1,0 +1,87 @@
+From 209a1a157625ec34791815998079eb86f75dde09 Mon Sep 17 00:00:00 2001
+From: Neil Godber <njgodber@outlook.com>
+Date: Thu, 17 Jun 2021 23:00:54 +1000
+Subject: [PATCH] Patch Makefile to build on Windows
+
+---
+ makefile | 32 +++++++++++++++-----------------
+ 1 file changed, 15 insertions(+), 17 deletions(-)
+
+diff --git a/makefile b/makefile
+index b0c4f56..1332286 100644
+--- a/makefile
++++ b/makefile
+@@ -5,7 +5,7 @@
+ # After compiling, type "triangle -h" and "showme -h" to read instructions
+ #   for using each of these programs.
+ #
+-# Type "make trilibrary" to compile Triangle as an object file (triangle.o).
++# Type "make trilibrary" to compile Triangle as an object file (triangle.obj).
+ #
+ # Type "make distclean" to delete all object and executable files.
+ 
+@@ -18,7 +18,7 @@ BIN = ./
+ 
+ # CC should be set to the name of your favorite C compiler.
+ 
+-CC = cc
++CC = cl
+ 
+ # CSWITCHES is a list of all switches passed to the C compiler.  I strongly
+ #   recommend using the best level of optimization.  I also strongly
+@@ -73,11 +73,11 @@ CC = cc
+ #
+ #   CSWITCHES = -O -DNO_TIMER -DLINUX -I/usr/X11R6/include -L/usr/X11R6/lib
+ 
+-CSWITCHES = -O -DLINUX -I/usr/X11R6/include -L/usr/X11R6/lib
++CSWITCHES = -DNO_TIMER -DCPU64
+ 
+ # TRILIBDEFS is a list of definitions used to compile an object code version
+-#   of Triangle (triangle.o) to be called by another program.  The file
+-#   "triangle.h" contains detailed information on how to call triangle.o.
++#   of Triangle (triangle.obj) to be called by another program.  The file
++#   "triangle.h" contains detailed information on how to call triangle.obj.
+ #
+ # The -DTRILIBRARY should always be used when compiling Triangle into an
+ #   object file.
+@@ -90,27 +90,25 @@ TRILIBDEFS = -DTRILIBRARY
+ 
+ # RM should be set to the name of your favorite rm (file deletion program).
+ 
+-RM = /bin/rm
++RM = del
+ 
+ # The action starts here.
+ 
+-all: $(BIN)triangle $(BIN)showme
++all: $(BIN)triangle
+ 
+-trilibrary: $(BIN)triangle.o $(BIN)tricall
++trilibrary: $(BIN)triangle.obj
++	lib $(BIN)triangle.obj /out:libtri.lib
+ 
+ $(BIN)triangle: $(SRC)triangle.c
+-	$(CC) $(CSWITCHES) -o $(BIN)triangle $(SRC)triangle.c -lm
++	$(CC) $(CSWITCHES) -o $(BIN)triangle $(SRC)triangle.c
+ 
+-$(BIN)tricall: $(BIN)tricall.c $(BIN)triangle.o
++$(BIN)tricall: $(BIN)tricall.c $(BIN)triangle.obj
+ 	$(CC) $(CSWITCHES) -o $(BIN)tricall $(SRC)tricall.c \
+-		$(BIN)triangle.o -lm
++		$(BIN)triangle.obj
+ 
+-$(BIN)triangle.o: $(SRC)triangle.c $(SRC)triangle.h
+-	$(CC) $(CSWITCHES) $(TRILIBDEFS) -c -o $(BIN)triangle.o \
++$(BIN)triangle.obj: $(SRC)triangle.c $(SRC)triangle.h
++	$(CC) $(CSWITCHES) $(TRILIBDEFS) -c -o $(BIN)triangle.obj \
+ 		$(SRC)triangle.c
+ 
+-$(BIN)showme: $(SRC)showme.c
+-	$(CC) $(CSWITCHES) -o $(BIN)showme $(SRC)showme.c -lX11
+-
+ distclean:
+-	$(RM) $(BIN)triangle $(BIN)triangle.o $(BIN)tricall $(BIN)showme
++	$(RM) $(BIN)triangle $(BIN)triangle.obj $(BIN)tricall
+-- 
+2.29.2
+

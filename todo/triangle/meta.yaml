@@ -1,0 +1,51 @@
+{% set name = "triangle" %}
+{% set version = "1.6" %}
+{% set sha256 = "1766327add038495fa3499e9b7cc642179229750f7201b94f8e1b7bee76f8480" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  fn: {{ name }}-{{ version }}.zip
+  url: http://www.netlib.org/voronoi/triangle.zip
+  sha256: {{ sha256 }}
+  patches:
+    - makefile_unix.patch  # [unix]
+    - makefile_win.patch  # [win]
+
+build:
+  number: 6
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib('c') }}
+    - make
+test:
+  commands:
+    - test -f ${PREFIX}/bin/triangle  # [unix]
+    - test -f ${PREFIX}/lib/libtri.a  # [unix]
+    - test -f ${PREFIX}/include/triangle.h  # [unix]
+    - if not exist %LIBRARY_PREFIX%\bin\triangle.exe exit 1  # [win]
+    - if not exist %LIBRARY_PREFIX%\lib\libtri.lib exit 1  # [win]
+    - if not exist %LIBRARY_PREFIX%\include\triangle.h exit 1  # [win]
+
+about:
+  home: http://www.cs.cmu.edu/~quake/triangle.html
+  license: MIT-like
+  license_family: MIT
+  license_file: README
+  summary: 'A Two-Dimensional Quality Mesh Generator and Delaunay Triangulator.'
+
+  description: |
+    Triangle generates exact Delaunay triangulations, constrained Delaunay
+    triangulations, conforming Delaunay triangulations, Voronoi diagrams, and
+    high-quality triangular meshes. The latter can be generated with no small or
+    large angles, and are thus suitable for finite element analysis. 
+
+extra:
+  recipe-maintainers:
+    - cekees
+    - msarahan
+    - nehaljwani

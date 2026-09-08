@@ -1,0 +1,28 @@
+--- makefile	2005-07-27 19:22:01.000000000 -0500
++++ makefile	2024-09-18 14:57:15.111083272 -0500
+@@ -18,7 +18,6 @@
+ 
+ # CC should be set to the name of your favorite C compiler.
+ 
+-CC = cc
+ 
+ # CSWITCHES is a list of all switches passed to the C compiler.  I strongly
+ #   recommend using the best level of optimization.  I also strongly
+@@ -73,7 +72,7 @@
+ #
+ #   CSWITCHES = -O -DNO_TIMER -DLINUX -I/usr/X11R6/include -L/usr/X11R6/lib
+ 
+-CSWITCHES = -O -DLINUX -I/usr/X11R6/include -L/usr/X11R6/lib
++CSWITCHES = -O -fPIC
+ 
+ # TRILIBDEFS is a list of definitions used to compile an object code version
+ #   of Triangle (triangle.o) to be called by another program.  The file
+@@ -97,6 +96,8 @@
+ all: $(BIN)triangle $(BIN)showme
+ 
+ trilibrary: $(BIN)triangle.o $(BIN)tricall
++	$(AR) r $(LIB)libtri.a $(BIN)triangle.o
++	$(RANLIB) $(LIB)libtri.a
+ 
+ $(BIN)triangle: $(SRC)triangle.c
+ 	$(CC) $(CSWITCHES) -o $(BIN)triangle $(SRC)triangle.c -lm
