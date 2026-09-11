@@ -1,0 +1,66 @@
+{% set version = "4.2.15" %}
+
+package:
+  name: hdf4
+  version: {{ version }}
+
+source:
+  url: https://support.hdfgroup.org/ftp/HDF/releases/HDF{{ version }}/src/hdf-{{ version }}.tar.bz2
+  sha256: bde035ef5a1cd5fdbd0a7f1fa5c17e98bbd599300189ac4d234f16e9bb7bcb12
+  patches:
+    - patches/max_files.patch
+    - patches/0001-Don-t-build-ctest0-and-run-ncgen-when-not-testing.patch
+    - patches/debian/64bit.patch
+    - patches/debian/hdf-4.2.10-aarch64.patch
+    - patches/debian/hdfi.h.patch
+    - patches/debian/spelling-errors.patch
+
+build:
+  number: 7
+  run_exports:
+    # change SONAMEs with bugfix rev.
+    #    https://abi-laboratory.pro/tracker/timeline/hdf5/
+    - {{ pin_subpackage('hdf4', max_pin='x.x.x') }}
+
+requirements:
+  build:
+    - cmake       # [win]
+    - bison       # [not win]
+    - flex        # [not win]
+    - make        # [not win]
+    # To build this on ppc64le we need to run autoreconf so:
+    - libtool     # [not win]
+    - automake    # [not win]
+    - autoconf    # [not win]
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - gnuconfig   # [unix]
+  host:
+    - zlib
+    - libjpeg-turbo
+
+test:
+  commands:
+    - hdiff -V  # [not win]
+    - h4_ncgen -V  # [not win]
+    - h4_ncdump -V  # [not win]
+    - test -f ${PREFIX}/lib/libdf.a  # [not win]
+    - test -f ${PREFIX}/lib/libmfhdf.a  # [not win]
+    - test -f ${PREFIX}/lib/libdf${SHLIB_EXT}  # [not win]
+    - test -f ${PREFIX}/lib/libmfhdf${SHLIB_EXT}  # [not win]
+
+about:
+  home: http://www.hdfgroup.org/HDF4/
+  license: BSD-3-Clause
+  summary: 'Library and multi-object file format for storing and managing data between machines'
+  license_family: BSD
+  license_file: COPYING
+  doc_url: https://support.hdfgroup.org/release4/doc/index.html
+  dev_url: https://github.com/HDFGroup/hdf4
+
+extra:
+  recipe-maintainers:
+    - groutr
+    - msarahan
+    - ocefpaf
+    - matthiasdiener

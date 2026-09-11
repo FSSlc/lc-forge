@@ -1,0 +1,83 @@
+schema_version: 1
+
+context:
+  version: "4.2.15"
+
+package:
+  name: hdf4
+  version: ${{ version }}
+
+source:
+  url: https://support.hdfgroup.org/ftp/HDF/releases/HDF${{ version }}/src/hdf-${{ version }}.tar.bz2
+  sha256: bde035ef5a1cd5fdbd0a7f1fa5c17e98bbd599300189ac4d234f16e9bb7bcb12
+  patches:
+    - patches/max_files.patch
+    - patches/0001-Don-t-build-ctest0-and-run-ncgen-when-not-testing.patch
+    - patches/debian/64bit.patch
+    - patches/debian/hdf-4.2.10-aarch64.patch
+    - patches/debian/hdfi.h.patch
+    - patches/debian/spelling-errors.patch
+
+build:
+  number: 7
+
+requirements:
+  build:
+    - if: win
+      then: cmake
+    - if: not win
+      then: bison
+    - if: not win
+      then: flex
+    - if: not win
+      then: make
+    # To build this on ppc64le we need to run autoreconf so:
+    - if: not win
+      then: libtool
+    - if: not win
+      then: automake
+    - if: not win
+      then: autoconf
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib("c") }}
+    - if: unix
+      then: gnuconfig
+  host:
+    - zlib
+    - libjpeg-turbo
+  run_exports:
+    - ${{ pin_subpackage('hdf4', upper_bound='x.x.x') }}
+
+tests:
+  - script:
+      - if: not win
+        then: hdiff -V
+      - if: not win
+        then: h4_ncgen -V
+      - if: not win
+        then: h4_ncdump -V
+      - if: not win
+        then: test -f ${PREFIX}/lib/libdf.a
+      - if: not win
+        then: test -f ${PREFIX}/lib/libmfhdf.a
+      - if: not win
+        then: test -f ${PREFIX}/lib/libdf${SHLIB_EXT}
+      - if: not win
+        then: test -f ${PREFIX}/lib/libmfhdf${SHLIB_EXT}
+
+about:
+  license: BSD-3-Clause
+  summary: Library and multi-object file format for storing and managing data between machines
+  license_file: COPYING
+  homepage: http://www.hdfgroup.org/HDF4/
+  repository: https://github.com/HDFGroup/hdf4
+  documentation: https://support.hdfgroup.org/release4/doc/index.html
+
+extra:
+  recipe-maintainers:
+    - groutr
+    - msarahan
+    - ocefpaf
+    - matthiasdiener
+
