@@ -73,6 +73,17 @@ SELECTOR_RE = re.compile(r"\s+#\s*\[.*?\]\s*$")
 INTERNAL_PIN_RE = re.compile(
     r"pin_subpackage|pin_compatible|compiler\s*\(|stdlib\s*\("
 )
+# Package names with a jinja fragment glued straight onto them
+# (gxx_impl_${{ cross_target_platform }}, cross-python_${{ target_platform }}).
+# The rendered names always carry a platform suffix (gxx_impl_linux-64, ...),
+# so the bare `name_` left after jinja neutralization is never a real package.
+# Matches both the raw `${{ ... }}` form and the `__JINJA__` placeholder used
+# by extract_deps_from_recipe, and only when the fragment is glued on with no
+# version operator (==, >=, space, ...) in between, so legitimate MatchSpecs
+# like `pybind11-global ==${{ version }} *_${{ build_number }}` are untouched.
+GLUED_JINJA_RE = re.compile(
+    r"^[- '\"]*[A-Za-z0-9_.-]*?_\s*(?:\$\{\{[^}]*\}\}|__JINJA__)"
+)
 
 USER_AGENT = "lc-forge-import-recipe/1.0"
 
@@ -337,6 +348,10 @@ def _dep_name_from_spec(spec: str) -> str | None:
     spec = _strip_selectors_and_jinja_line(spec.strip())
     if not spec or spec.startswith("#"):
         return None
+    # name_${{ ... }} template remnants (raw form; the yaml-walk path also
+    # pre-filters the __JINJA__ form before calling this).
+    if GLUED_JINJA_RE.match(spec):
+        return None
     # Drop pure jinja expressions / pin helpers.
     if INTERNAL_PIN_RE.search(spec):
         return None
@@ -509,7 +524,16 @@ def extract_deps_from_recipe(recipe_path: Path) -> set[str]:
         # tests may use requirements.run etc.; already covered by walk above.
         # Also look at top-level tests[*].requirements explicitly is included.
 
-        interesting_keys = {"build", "host", "run", "run_constrained", "test"}
+        # rattler-build v1 uses run_constraints; conda meta.yaml uses
+        # run_constrained. Both are real package lists we should resolve.
+        interesting_keys = {
+            "build",
+            "host",
+            "run",
+            "run_constraints",
+            "run_constrained",
+            "test",
+        }
         raw: list[str] = []
         for block in req_blocks:
             if not isinstance(block, dict):
@@ -540,6 +564,12 @@ def extract_deps_from_recipe(recipe_path: Path) -> set[str]:
             stripped = spec.strip().lstrip("- ").strip()
             if stripped in {"__JINJA__", ""}:
                 continue
+            # name___JINJA__: jinja glued onto the package name, e.g.
+            # gxx_impl_${{ cross_target_platform }}. The bare name_ is never a
+            # real package, so skip before placeholder removal turns it into a
+            # plain (but fake) name.
+            if GLUED_JINJA_RE.match(spec):
+                continue
             # Remove placeholder tokens left inside mixed strings, then parse.
             orig_guess = spec.replace("__JINJA__", " ").strip()
             name = _dep_name_from_spec(orig_guess)
@@ -551,7 +581,8 @@ def extract_deps_from_recipe(recipe_path: Path) -> set[str]:
         in_interesting = False
         interesting_indent = -1
         section_re = re.compile(
-            r"^(\s*)(build|host|run|run_constrained)\s*:\s*(?:#.*)?$"
+            r"^(\s*)(build|host|run|run_constraints|run_constrained)\s*:"
+            r"\s*(?:#.*)?$"
         )
         for line in text.splitlines():
             m = section_re.match(line)

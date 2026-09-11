@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  name: ampl-asl
+  version: "1.0.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/ampl/asl/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 28426e67b610874bbf8fd71fae982921aafe42310ef674c86aa6ec1181472ad0
+  patches:
+    # Backport https://github.com/ampl/asl/pull/22
+    - 22.patch
+    # Ensure that .dll gets installed in <CMAKE_INSTALL_PREFIX>/bin
+    - install_library_in_default_location.patch
+    - disable_setting_custom_flags_in_arm_and_ppc.patch
+
+build:
+  number: 2
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake <4
+    - pkg-config
+    - ninja
+  run_exports:
+    - ${{ pin_subpackage(name, upper_bound='x.x.x') }}
+  run_constraints:
+    - ampl-mp >=4.0.0
+
+tests:
+  - script:
+      - if: not win
+        then: test -f ${PREFIX}/include/asl/asl.h
+      - if: not win
+        then: test -f ${PREFIX}/lib/libasl${SHLIB_EXT}
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\asl\\asl.h exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\lib\\asl.lib exit 1
+      - if: win
+        then: if not exist %PREFIX%\\Library\\bin\\asl.dll exit 1
+
+about:
+  license: BSD-3-Clause AND SMLNJ
+  license_file:
+    - LICENSE
+    - src/f2c/Notice
+  summary: ASL (AMPL Solver Library).
+  homepage: https://github.com/ampl/asl
+
+extra:
+  feedstock-name: ampl-asl
+  recipe-maintainers:
+    - traversaro
