@@ -1,0 +1,40 @@
+{% set name = "utfcpp" %}
+{% set version = "4.0.9" %}
+{% set sha256 = "397a9a2a6ed5238f854f490b0177b840abc6b62571ec3e07baa0bb94d3f14d5a" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  fn: v{{ version }}.tar.gz
+  url: https://github.com/nemtrif/{{ name }}/archive/v{{ version }}.tar.gz
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+
+test:
+  commands:
+    # Verify headers are installed.
+    - test -f $PREFIX/include/utf8.h             # [unix]
+    - test -d $PREFIX/include/utf8               # [unix]
+    - if not exist %LIBRARY_INC%\\utf8.h exit 1  # [win]
+    - if not exist %LIBRARY_INC%\\utf8 exit 1    # [win]
+
+about:
+  home: https://github.com/nemtrif/utfcpp
+  license: BSL-1.0
+  summary: A simple, portable and lightweight generic library for handling UTF-8 encoded strings.
+  description: |
+    UTF-8 with C++ in a Portable Way
+
+    An easily to handle generic library for UTF-8 encoded Unicode strings. For
+    anybody used to work with STL algorithms and iterators, it should be easy
+    and natural to use.
+  doc_url: https://github.com/nemtrif/utfcpp/blob/master/README.md
+  dev_url: https://github.com/nemtrif/utfcpp
+
+extra:
+  recipe-maintainers:
+    - stuertz
