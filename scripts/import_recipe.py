@@ -312,6 +312,15 @@ def _is_skipped_dep(name: str) -> bool:
         return True
     if name in SKIP_DEP_EXACT:
         return True
+    # Internal cross-compile helper, e.g. `cross-python_${{ target_platform }}`
+    # in `if: build_platform != target_platform` branches. After jinja
+    # neutralization this collapses to the bare `cross-python_`, which is never
+    # a real package; the actual packages are always cross-python_<platform>
+    # (cross-python_linux-64, ...). This repo builds natively only, and on the
+    # rare cross case rattler-build pulls the real names from conda-forge, so
+    # never import it as a feedstock.
+    if name == "cross-python_":
+        return True
     if name.startswith(SKIP_DEP_PREFIXES):
         return True
     # compiler/stdlib activation packages still appear as concrete names
@@ -393,6 +402,23 @@ def _condition_applies_linux(condition: Any) -> bool | None:
         return True
     if expr in negative_linux:
         return False
+
+    # Native-build guards. This repo's CI builds linux-64 on x86_64 and
+    # linux-aarch64 on arm64 runners, and local builds are always native, so
+    # build_platform == target_platform. Many conda-forge recipes gate
+    # cross-python / toolchain setup on `build_platform != target_platform`;
+    # those branches are inactive here and must not count as linux deps.
+    bare = expr.strip("()").strip()
+    if bare in {
+        "build_platform != target_platform",
+        "target_platform != build_platform",
+    }:
+        return False
+    if bare in {
+        "build_platform == target_platform",
+        "target_platform == build_platform",
+    }:
+        return True
 
     # not win / not osx → true on linux; not unix / not linux → false
     if expr.startswith("not "):
