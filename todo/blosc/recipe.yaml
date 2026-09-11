@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  version: "1.21.6"
+
+package:
+  name: blosc
+  version: ${{ version }}
+
+source:
+  url: https://github.com/Blosc/c-blosc/archive/v${{ version }}.tar.gz
+  sha256: 9fcd60301aae28f97f1301b735f966cc19e7c49b6b4321b839b4579a0c156f38
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - cmake <4
+    - if: unix
+      then: make
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+  host:
+    - lz4-c
+    - snappy
+    - zlib
+    - zstd
+  run_exports:
+    - ${{ pin_subpackage('blosc') }}
+
+tests:
+  - script:
+      - if: unix
+        then: 
+          - test -e $PREFIX/include/blosc.h
+          - test -e $PREFIX/include/blosc-export.h
+          - test ! -e $PREFIX/lib/libblosc.a
+          - test -e $PREFIX/lib/libblosc${SHLIB_EXT}
+      - if: win
+        then: 
+          - if not exist %LIBRARY_INC%\\blosc.h exit 1
+          - if not exist %LIBRARY_INC%\\blosc-export.h exit 1
+          - if not exist %LIBRARY_BIN%\\blosc.dll exit 1
+          - if not exist %LIBRARY_LIB%\\blosc.lib exit 1
+          - if exist %LIBRARY_LIB%\\libblosc.lib exit 1
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE.txt
+  summary: A blocking, shuffling and loss-less compression library that can be faster than `memcpy()`
+  homepage: https://github.com/Blosc/c-blosc
+
+extra:
+  recipe-maintainers:
+    - FrancescElies
+    - jakirkham
+    - hmaarrfk
+    - zklaus
+
