@@ -1,0 +1,74 @@
+schema_version: 1
+
+context:
+  name: pybind11_json
+  version: "0.2.15"
+  sha256: 9a4a1494549a2db27bc4c5a16743a5c88ebc18e13c73019c56f399ae0310baf2
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/pybind/${{ name }}/archive/${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 2
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then: python
+    - if: build_platform != target_platform
+      then: cross-python_${{ target_platform }}
+    - if: build_platform != target_platform
+      then: pybind11
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib("c") }}
+    - cmake
+    - if: win
+      then: ninja
+    - if: unix
+      then: make
+  host:
+    - python
+    - pybind11 >=2.2.4,<3.0
+    - nlohmann_json >=3.2.0,<4.0
+  run:
+    - python
+
+tests:
+  - script:
+      - if: unix
+        then: test -d ${PREFIX}/include/pybind11_json
+      - if: unix
+        then: test -f ${PREFIX}/include/pybind11_json/pybind11_json.hpp
+      - if: unix
+        then: test -f ${PREFIX}/share/cmake/pybind11_json/pybind11_jsonConfig.cmake
+      - if: unix
+        then: test -f ${PREFIX}/share/cmake/pybind11_json/pybind11_jsonConfigVersion.cmake
+      - if: win
+        then: if not exist %LIBRARY_INC%\pybind11_json\pybind11_json.hpp (exit 1)
+      - if: win
+        then: if not exist %LIBRARY_PREFIX%\share\cmake\pybind11_json\pybind11_jsonConfig.cmake (exit 1)
+      - if: win
+        then: if not exist %LIBRARY_PREFIX%\share\cmake\pybind11_json\pybind11_jsonConfigVersion.cmake (exit 1)
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Using nlohmann::json with pybind11
+  description: |
+    pybind11_json is an nlohmann::json to pybind11 bridge, it allows you to
+    automatically convert nlohmann::json to py::object and the other way around.
+  homepage: http://github.com/pybind/pybind11_json
+  repository: https://github.com/pybind/pybind11_json
+
+extra:
+  recipe-maintainers:
+    - SylvainCorlay
+    - JohanMabille
+    - martinRenou
+    - wjakob
+
