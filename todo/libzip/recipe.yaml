@@ -1,0 +1,66 @@
+schema_version: 1
+
+context:
+  name: libzip
+  version: "1.11.2"
+  sha256: 6b2a43837005e1c23fdfee532b78f806863e412d2089b9c42b49ab08cbcd7665
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://libzip.org/download/libzip-${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+  patches:
+    - pc-remove-libs-private.patch
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - cmake
+    - ninja
+    - perl 5.32.*  # avoid making a matrix of perl builds
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+  host:
+    - zlib
+    - bzip2
+    - openssl
+    # perl is needed to run the package tests
+  run_exports:
+    - ${{ pin_subpackage(name, upper_bound='x') }}
+
+tests:
+  - script:
+      - if: linux or osx
+        then: test -f ${PREFIX}/bin/ziptool
+      - if: linux
+        then: test -f ${PREFIX}/lib/libzip.so
+      - if: osx
+        then: test -f ${PREFIX}/lib/libzip.dylib
+      - if: win
+        then: if not exist %LIBRARY_BIN%\\ziptool.exe exit 1
+      - if: win
+        then: if not exist %LIBRARY_LIB%\\zip.lib exit 1
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: A C library for reading, creating, and modifying zip archives.
+  description: |
+    libzip is a C library for reading, creating, and modifying zip archives.
+    Files can be added from data buffers, files, or compressed data copied
+    directly from other zip archives. Changes made without closing the
+    archive can be reverted. The API is documented by man pages.
+  homepage: https://libzip.org/
+  repository: https://github.com/nih-at/libzip
+  documentation: https://libzip.org/documentation/
+
+extra:
+  recipe-maintainers:
+    - ceholden
+    - traversaro
+

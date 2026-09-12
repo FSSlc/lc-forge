@@ -1,0 +1,19 @@
+From 0efad51e2643140cd2bae0f08bfbe856e2b0a2ec Mon Sep 17 00:00:00 2001
+From: Silvio Traversaro <silvio@traversaro.it>
+Date: Mon, 11 Sep 2023 08:55:42 +0200
+Subject: [PATCH] Remove Libs.private from .pc file
+
+---
+ libzip.pc.in | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/libzip.pc.in b/libzip.pc.in
+index d51b0ab6..5dfe8730 100644
+--- a/libzip.pc.in
++++ b/libzip.pc.in
+@@ -10,5 +10,4 @@ Name: libzip
+ Description: library for handling zip archives
+ Version: @PROJECT_VERSION@
+ Libs: @PKG_CONFIG_RPATH@ -L${libdir} -lzip
+-Libs.private: @LIBS@
+ Cflags: -I${includedir}
