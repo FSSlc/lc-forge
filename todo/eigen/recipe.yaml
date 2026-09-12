@@ -54,6 +54,7 @@ outputs:
           # wrong architecture.
           run:
             - ${{ compiler('cxx') }}
+            - ${{ stdlib('c') }}
         script:
           - if: unix
             then:
@@ -79,6 +80,7 @@ outputs:
             - cmake-package-check
             - ${{ compiler('c') }}
             - ${{ compiler('cxx') }}
+            - ${{ stdlib('c') }}
 
   # The eigen-abi and eigen-abi-devel logic is discussed in detail recipe/README.md
   - package:
@@ -95,6 +97,7 @@ outputs:
       run:
         - ${{ pin_subpackage('eigen', upper_bound='x.x.x') }}
         - ${{ pin_subpackage('eigen-abi', upper_bound='x.x.x.x') }}
+        - ${{ stdlib('c') }}
         - if: x86_64 and eigen_max_align_bytes == "32"
           then: x86_64-microarch-level 3.*
         - if: x86_64 and eigen_max_align_bytes == "64"
@@ -112,6 +115,8 @@ outputs:
             - cmake
             - ninja
             - ${{ compiler('cxx') }}
+            - ${{ stdlib('c') }}
+
 
   - package:
       name: eigen-abi
