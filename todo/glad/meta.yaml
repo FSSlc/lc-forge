@@ -1,0 +1,87 @@
+{% set version = "2.0.8" %}
+
+package:
+  name: glad2
+  version: {{ version }}
+
+source:
+  url: https://github.com/Dav1dde/glad/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: 44f06f9195427c7017f5028d0894f57eb216b0a8f7c4eda7ce883732aeb2d0fc
+
+build:
+  number: 1
+
+outputs:
+  - name: glad2
+    build:
+      noarch: python
+      skip: true  # [not linux64]
+      entry_points:
+        - glad = glad.__main__:main
+      script: python -m pip install . --no-deps -vv
+
+    requirements:
+      host:
+        - pip
+        - python {{ python_min }}
+        - setuptools
+      run:
+        - python >={{ python_min }}
+        - jinja2
+
+    test:
+      requires:
+        - python {{ python_min }}
+        - pip
+      imports:
+        - glad
+      commands:
+        - glad --help
+        - pip check
+
+  - name: glad2-cmake
+    build:
+      skip: false
+      script:
+        - ${RECIPE_DIR}/install_cmake.sh  # [not win]
+        - "%RECIPE_DIR%\\install_cmake.bat"  # [win]
+
+    requirements:
+      # dummy build env to avoid EnvironmentLocationNotFound on win
+      build:   # [win]
+        - cmake  # [win]
+      run:
+        - {{ pin_subpackage('glad2', exact=True) }}
+
+    test:
+      files:
+        - CMakeLists.txt
+      requires:
+        - cmake
+        - ninja
+      commands:
+        - cmake -G Ninja -B b
+
+    about:
+      home: https://github.com/Dav1dde/glad
+      license: MIT
+      license_file: LICENSE
+      summary: CMake package for glad2.
+      description: |
+        Example of use:
+        ```cmake
+        find_package(Glad CONFIG REQUIRED)
+        glad_add_library(glad_gl_core_mx_33 REPRODUCIBLE MX API gl:core=3.3)
+        ```
+        and link `glad_gl_core_mx_33` to target
+
+about:
+  home: https://github.com/Dav1dde/glad
+  license: MIT
+  license_file: LICENSE
+  summary: GL/GLES/EGL/GLX/WGL Loader-Generator based on the official specs.
+
+extra:
+  recipe-maintainers:
+    - cNoNim
+    - traversaro
