@@ -1,0 +1,98 @@
+schema_version: 1
+
+context:
+  version: "9.2.1"
+
+package:
+  name: superlu_dist
+  version: ${{ version }}
+
+source:
+  url: https://github.com/xiaoyeli/superlu_dist/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: c80a1c2edaaa451ee9a54e005e5f3f56dc55cabe2b0a8d7acf5a1447a648157a
+  patches:
+    # patches from debian to remove mc64,
+    # which has a non-free license that doesn't permit redistribution
+    - mc64ad_dist-stub.patch
+    - rowperm_default_NOROWPERM_not_MC64.patch
+
+build:
+  number: 2
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+    - ${{ compiler('fortran') }}
+    - if: osx
+      then:
+        - llvm-openmp
+    - if: linux
+      then:
+        - libgomp
+    - cmake
+    - make
+    - if: build_platform != target_platform and mpi == "openmpi"
+      then:
+        - ${{ mpi }}
+  host:
+    - ${{ mpi }}
+    - metis
+    - parmetis
+    - libblas
+    - liblapack
+  run_exports:
+    - ${{ pin_subpackage('superlu_dist', upper_bound='x') }}
+
+tests:
+  - package_contents:
+      files:
+        not_exists:
+          - lib/libsuperlu_dist.a
+          - lib/libsuperlu_dist_fortran.a
+          - lib/EXAMPLE
+      lib:
+        exists:
+          - superlu_dist
+          - superlu_dist_fortran
+        not_exists:
+          - superlu_dist_python
+
+      include:
+        exists:
+          - superlu-dist/superlu_defs.h
+          - superlu-dist/superlu_dist_config.fh
+          - superlu-dist/superlu_mod.mod
+        not_exists: 
+          - colamd.h
+          - supermatrix.h
+  - files:
+      source:
+        - EXAMPLE/
+        - FORTRAN/
+    requirements:
+      run:
+        - pkg-config
+        - ${{ compiler('c') }}
+        - ${{ compiler('fortran') }}
+    script:
+      - pkg-config --cflags --libs superlu_dist
+
+about:
+  license: BSD-3-Clause
+  license_file: License.txt
+  summary: |
+    Supernodal LU, solvers for large, sparse, nonsymmetric systems of linear
+    equations. SuperLU_DIST is a parallel extension to the serial SuperLU library.
+  homepage: https://portal.nersc.gov/project/sparse/superlu/
+  repository: https://github.com/xiaoyeli/superlu_dist/
+  documentation: https://portal.nersc.gov/project/sparse/superlu/superlu_dist_code_html/index.html
+
+extra:
+  recipe-maintainers:
+    - awvwgk
+    - minrk
+    - davidbrochart
+    - SylvainCorlay
