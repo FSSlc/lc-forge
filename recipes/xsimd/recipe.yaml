@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  name: xsimd
+  version: 14.3.0
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/xtensor-stack/xsimd/archive/${{ version }}.tar.gz
+  sha256: b3d50e7a73fbf4642ceef30131c93414901d69eee41c2a5302db650b03e2c792
+
+build:
+  number: 0
+  script:
+    - cmake -G "Ninja" -B build/ -D BUILD_TESTS=OFF ${{ "%CMAKE_ARGS%" if win else "${CMAKE_ARGS}" }}
+    - cmake --build build/
+    - cmake --install build/
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib("c") }}
+    - cmake
+    - ninja
+
+tests:
+  - package_contents:
+      include:
+        - "xsimd/xsimd.hpp"
+      files:
+        - ${{ "Library/" if win }}share/cmake/xsimd/xsimdConfig.cmake
+        - ${{ "Library/" if win }}share/cmake/xsimd/xsimdConfigVersion.cmake
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: C++ Wrappers for SIMD Intrinsices
+  description: High-level APIs for SIMD operations
+  homepage: https://github.com/xtensor-stack/xsimd
+  repository: https://github.com/xtensor-stack/xsimd
+  documentation: httpis://xsimd.readthedocs.io
+
+extra:
+  recipe-maintainers:
+    - SylvainCorlay
+    - JohanMabille
+    - davidbrochart
+    - conda-forge/xtensor
