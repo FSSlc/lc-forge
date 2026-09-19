@@ -14,6 +14,10 @@ package:
 source:
   url: https://github.com/llnl/cruise/archive/refs/heads/master.tar.gz
   sha256: ${{ sha256 }}
+  patches:
+    # LD_PRELOAD build: declare __real_open so libcruise.so does not carry an
+    # unresolved symbol.
+    - cruise-preload-real-open.patch
 
 build:
   number: 0
@@ -37,21 +41,24 @@ requirements:
     - ${{ pin_subpackage('cruise', upper_bound='x') }}
 
 tests:
+  # Upstream installs the static library used with the cruise-config wrap flags,
+  # the LD_PRELOAD library, and the cruise-config helper. It ships no headers.
   - package_contents:
-      include:
-        - cruise.h
-      lib:
-        - cruise-posix
-        - cruise
       files:
         - bin/cruise-config
+        - lib/libcruise-posix.a
+      lib:
+        - cruise
   - script:
-      - test -f "${PREFIX}/include/cruise.h"
       - test -f "${PREFIX}/lib/libcruise-posix.a"
-      - test -f "${PREFIX}/lib/libcruise${SHLIB_EXT}"
+      - test -f "${PREFIX}/lib/libcruise.so"
       - test -x "${PREFIX}/bin/cruise-config"
       - cruise-config --pre-ld-flags
       - cruise-config --post-ld-flags
+      # The LD_PRELOAD library is the main entry point and used to abort with
+      # "undefined symbol: numa_tonode_memory" in a process that does not link
+      # libnuma itself.
+      - LD_PRELOAD="${PREFIX}/lib/libcruise.so" head -c 4 "${PREFIX}/lib/libcruise.so" > /dev/null
 
 about:
   homepage: https://github.com/llnl/cruise
