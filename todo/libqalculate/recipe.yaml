@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: libqalculate
+  version: "5.12.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/Qalculate/${{ name }}/releases/download/v${{ version }}/${{ name }}-${{ version }}.tar.gz
+  sha256: f3dfdcf97d5a9e3a5bc0ebe66afd184721b606276eee3ba0ada8c92a5e71d44c
+
+build:
+  number: 0
+  # The scns channel only carries linux-64/linux-aarch64, and the Windows build
+  # needs an MSYS2 toolchain, so neither is claimed here.
+  skip: [win, osx]
+  script: build.sh
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - make
+    - pkg-config
+    # NLS: data/*.xml are generated with `msgfmt --xml -L QALCULATE` using the
+    # ITS rules in data/its/, and po-defs-fixed/ builds a `fixpo` helper.
+    - gettext-tools
+  host:
+    - gmp
+    - mpfr
+    - libxml2
+    - icu
+    - curl
+    - readline
+  run_exports:
+    - ${{ pin_subpackage('libqalculate', upper_bound='x.x') }}
+
+tests:
+  - package_contents:
+      include:
+        - libqalculate/qalculate.h
+        - libqalculate/Calculator.h
+      lib:
+        - qalculate
+      files:
+        - bin/qalc
+        - lib/pkgconfig/libqalculate.pc
+        # definitions generated through gettext during the build
+        - share/qalculate/units.xml
+        - share/qalculate/functions.xml
+        - share/qalculate/currencies.xml
+        - share/qalculate/elements.xml
+  - requirements:
+      run:
+        - pkg-config
+    script:
+      # `qalc --version` prints the bare version string
+      - qalc --version | grep -qx "${PKG_VERSION}"
+      # the installed definitions must load, parse and evaluate
+      - test "$(qalc -t '144 / 12')" = "12"
+      - test "$(qalc -t '2^10')" = "1024"
+      - pkg-config --exists libqalculate
+      - pkg-config --modversion libqalculate | grep -qx "${PKG_VERSION}"
+  # Downstream consumer: build against the installed headers and pkg-config file.
+  - files:
+      recipe:
+        - test/
+    requirements:
+      run:
+        - pkg-config
+        - ${{ compiler('cxx') }}
+        - ${{ stdlib('c') }}
+    script:
+      - ${CXX} -std=c++17 test/api_check.cc -o api_check $(pkg-config --cflags --libs libqalculate)
+      - ./api_check
+
+about:
+  homepage: https://qalculate.github.io/
+  repository: https://github.com/Qalculate/libqalculate
+  documentation: https://qalculate.github.io/reference/index.html
+  license: GPL-2.0-or-later
+  license_file: COPYING
+  summary: Multi-purpose calculator library with arbitrary precision
+  description: |
+    libqalculate is the library behind Qalculate!, a multi-purpose desktop
+    calculator.  It provides a powerful and easy-to-use calculation engine with
+    arbitrary precision, units, physical constants, currency conversion,
+    symbolic computation, function plotting, and parsing of natural language
+    expressions.  This package ships libqalculate, the qalc command line
+    calculator, the public headers, the pkg-config file, and the unit/function
+    definition data.
+
+extra:
+  recipe-maintainers:
+    - fsslc

@@ -1,0 +1,94 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: mpl
+  version: "0.4.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/rabauke/${{ name }}/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: e66ba90ada64c82eeaaefa059c145639e0eaa6f656841642554d5ae097f02076
+
+build:
+  number: 0
+  # The build/test scripts are POSIX shell; the MPI toolchain is only wired up on unix.
+  skip: win
+  script:
+    # Header-only INTERFACE library: nothing is compiled, only headers and the
+    # CMake package files are installed.  doc/ is configured unconditionally but
+    # its `documentation` target is not part of ALL, so no Doxygen/Sphinx needed.
+    - |
+      cmake -S . -B build -G Ninja ${CMAKE_ARGS} \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=$PREFIX \
+        -DCMAKE_INSTALL_LIBDIR=lib
+    - cmake --build build --parallel ${CPU_COUNT}
+    - cmake --install build
+
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    # project(... LANGUAGES CXX C) enables the C language as well
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+    - if: unix
+      then: make
+  host:
+    - mpich
+  run:
+    - mpich
+  run_exports:
+    - ${{ pin_subpackage('mpl', upper_bound='x.x') }}
+
+tests:
+  - package_contents:
+      include:
+        - mpl/mpl.hpp
+        - mpl/comm_group.hpp
+      files:
+        - lib/cmake/mpl/mplConfig.cmake
+        - lib/cmake/mpl/mplTargets.cmake
+  # Compile and run a downstream consumer against the installed CMake package.
+  - script:
+      - cmake -S test -B test/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$PREFIX
+      - cmake --build test/build
+      - ./test/build/mpl_hello
+    files:
+      recipe:
+        - test/
+    requirements:
+      run:
+        - cmake
+        - ninja
+        - mpich
+        - ${{ compiler('cxx') }}
+        - ${{ compiler('c') }}
+        - ${{ stdlib('c') }}
+
+about:
+  homepage: https://rabauke.github.io/mpl/html/
+  repository: https://github.com/rabauke/mpl
+  documentation: https://rabauke.github.io/mpl/html/
+  license: BSD-3-Clause
+  license_file: COPYING
+  summary: A C++17 message passing library based on MPI
+  description: |
+    MPL is a message passing library written in C++17 based on the Message
+    Passing Interface (MPI) standard.  Since the C++ API was dropped from the
+    MPI standard in version 3.1, MPL provides a modern, idiomatic C++ message
+    passing interface for high performance computing.  Unlike Boost.MPI it does
+    not rely on an external serialization library and adds a negligible
+    run-time overhead compared to the plain MPI C API.  The library is
+    header-only and covers point-to-point and collective communication, derived
+    data types, communicator and group management, process topologies,
+    inter-communicators, dynamic process creation and MPI file I/O.
+
+extra:
+  recipe-maintainers:
+    - fsslc
