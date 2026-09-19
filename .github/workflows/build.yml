@@ -244,13 +244,26 @@ jobs:
             done
 
             # Scan the build log for test failures. rattler-build --continue-on-failure
-            # may exit 0 even when tests fail, so check the log explicitly.
+            # may exit 0 even when tests fail, and it runs the tests of every recipe
+            # only after building all of them, so failures are attributed either by
+            # the "Processing recipe at path" marker (build-time failures) or by the
+            # "Running <kind> test for recipe: <pkg>-<version>-<build>" marker.
             declare -A test_failed=()
             if [[ -f ".build-meta/rattler-$TARGET.log" ]]; then
               current_recipe=""
               while IFS= read -r line; do
                 if [[ "$line" =~ Processing\ recipe\ at\ path:.*/todo/([^/]+)/ ]]; then
                   current_recipe="${BASH_REMATCH[1]}"
+                elif [[ "$line" =~ Running\ [a-z]+\ test\ for\ recipe:\ (.+)\.conda ]]; then
+                  test_pkg=""
+                  for candidate in "${!owner[@]}"; do
+                    if [[ "${BASH_REMATCH[1]}" == "$candidate-"* && ${#candidate} -gt ${#test_pkg} ]]; then
+                      test_pkg="$candidate"
+                    fi
+                  done
+                  if [[ -n "$test_pkg" ]]; then
+                    current_recipe="${owner[$test_pkg]}"
+                  fi
                 fi
                 if [[ "$line" == *"× error Script failed with status"* ]] || \
                    [[ "$line" == *"× error Script execution failed"* ]]; then
