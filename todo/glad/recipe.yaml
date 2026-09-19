@@ -1,0 +1,95 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "2.0.8"
+
+recipe:
+  name: glad2
+  version: ${{ version }}
+
+source:
+  url: https://github.com/Dav1dde/glad/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 44f06f9195427c7017f5028d0894f57eb216b0a8f7c4eda7ce883732aeb2d0fc
+
+build:
+  number: 1
+
+about:
+  homepage: https://github.com/Dav1dde/glad
+  license: MIT
+  license_file: LICENSE
+  summary: GL/GLES/EGL/GLX/WGL Loader-Generator based on the official specs.
+
+extra:
+  recipe-maintainers:
+    - cNoNim
+    - traversaro
+
+outputs:
+  - package:
+      name: glad2
+    build:
+      number: 1
+      noarch: python
+      # Upstream (conda-forge/glad-feedstock) skips this output outside linux-64.
+      # rattler-build resolves the `pin_subpackage('glad2', exact=True)` of the
+      # glad2-cmake output while rendering and fails hard with
+      # "missing output: glad2" when this output is skipped, so the skip is
+      # dropped. glad2 is noarch, so consumers on every platform still see it.
+      python:
+        entry_points:
+          - glad = glad.__main__:main
+      script: ${{ PYTHON }} -m pip install . --no-deps -vv
+    requirements:
+      host:
+        - pip
+        - python ${{ python_min }}.*
+        - setuptools
+      run:
+        - python >=${{ python_min }}
+        - jinja2
+    tests:
+      - python:
+          imports:
+            - glad
+          pip_check: true
+          python_version:
+            - ${{ python_min }}.*
+      - script:
+          - glad --help
+        requirements:
+          run:
+            - pip
+            - python ${{ python_min }}.*
+
+  - package:
+      name: glad2-cmake
+    build:
+      number: 1
+      script:
+        - if: not win
+          then: ${RECIPE_DIR}/install_cmake.sh
+          else: "%RECIPE_DIR%\\install_cmake.bat"
+    requirements:
+      run:
+        - ${{ pin_subpackage('glad2', exact=True) }}
+    tests:
+      - files:
+          source:
+            - CMakeLists.txt
+        requirements:
+          run:
+            - cmake
+            - ninja
+        script:
+          - cmake -G Ninja -B b
+    about:
+      summary: CMake package for glad2.
+      description: |
+        Example of use:
+        ```cmake
+        find_package(Glad CONFIG REQUIRED)
+        glad_add_library(glad_gl_core_mx_33 REPRODUCIBLE MX API gl:core=3.3)
+        ```
+        and link `glad_gl_core_mx_33` to target
