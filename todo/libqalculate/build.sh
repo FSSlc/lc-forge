@@ -2,6 +2,8 @@
 # libqalculate ships a pre-generated configure script, so no autoreconf is needed.
 set -Eeuo pipefail
 
+export PKG_CONFIG_PATH=${BUILD_PREFIX}/lib/pkgconfig
+
 ./configure \
   --prefix="${PREFIX}" \
   --disable-static \

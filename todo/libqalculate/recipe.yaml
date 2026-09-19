@@ -33,7 +33,12 @@ requirements:
   host:
     - gmp
     - mpfr
+    # The scns channel splits libxml2: `libxml2` ships bin/{xmllint,xmlcatalog}
+    # and `libxml2-16` ships only libxml2.so.16.  Headers, libxml2.so and
+    # libxml-2.0.pc all live in `libxml2-devel`, which must be in host so that
+    # configure's pkg-config (which searches $PREFIX/lib/pkgconfig) can find it.
     - libxml2
+    - libxml2-devel
     - icu
     - curl
     - readline
