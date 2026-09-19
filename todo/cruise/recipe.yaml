@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: cruise
+  # upstream ships as "2.x" (no tagged releases); use master HEAD
+  version: "2.0"
+  sha256: 130478d4f9fc47f9419b405b6644a502062c9b6e93cc5967c3169af8e90ca1ec
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/llnl/cruise/archive/refs/heads/master.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip:
+    - win
+    - osx  # uses Linux-specific APIs: NUMA, shm, ld wrap, etc.
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - make
+    - autoconf
+    - automake
+    - libtool
+  host:
+    - numactl  # libnuma
+  run:
+    - numactl
+  run_exports:
+    - ${{ pin_subpackage('cruise', upper_bound='x') }}
+
+tests:
+  - package_contents:
+      include:
+        - cruise.h
+      lib:
+        - cruise-posix
+        - cruise
+      files:
+        - bin/cruise-config
+  - script:
+      - test -f "${PREFIX}/include/cruise.h"
+      - test -f "${PREFIX}/lib/libcruise-posix.a"
+      - test -f "${PREFIX}/lib/libcruise${SHLIB_EXT}"
+      - test -x "${PREFIX}/bin/cruise-config"
+      - cruise-config --pre-ld-flags
+      - cruise-config --post-ld-flags
+
+about:
+  homepage: https://github.com/llnl/cruise
+  repository: https://github.com/llnl/cruise
+  documentation: https://github.com/llnl/cruise/blob/master/README.md
+  license: BSD-3-Clause
+  license_file: COPYRIGHT
+  summary: User space POSIX-like file system in main memory (checkpoint/restart)
+  description: |
+    CRUISE (Checkpoint-Restart In User-SpacE) is a user-space file system that
+    stores data in main memory and transparently spills over to other storage
+    as needed.  Used by SCR and other checkpointing libraries to provide
+    node-local storage on systems without local filesystems.
+
+extra:
+  recipe-maintainers:
+    - fsslc
