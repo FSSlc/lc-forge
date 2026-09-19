@@ -2,6 +2,8 @@
 # libqalculate ships a pre-generated configure script, so no autoreconf is needed.
 set -Eeuo pipefail
 
+export PKG_CONFIG_PATH=${BUILD_PREFIX}/lib/pkgconfig
+
 # --enable-compiled-definitions bakes units.xml/functions.xml/etc. into the
 # library instead of loading them from "$(datadir)/qalculate" at runtime. We
 # need this because the autoconf datadir is embedded as an absolute path that

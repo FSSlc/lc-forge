@@ -1,0 +1,62 @@
+schema_version: 1
+
+context:
+  name: lyra
+  version: "1.7.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/bfgroup/Lyra/archive/${{ version }}.tar.gz
+  sha256: d26b9e9dc1e08f88feaebc68965a6e5b25c7cd88617ce910d47cc83efb1e07d9
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - cmake <4
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib("c") }}
+    - ninja
+
+tests:
+  - files:
+      recipe:
+        - test
+    requirements:
+      run:
+        - cmake <4
+        - ${{ compiler('cxx') }}
+        - ${{ stdlib("c") }}
+        - ninja
+    script:
+      - if: unix
+        then: test -f $PREFIX/include/lyra/lyra.hpp
+      - if: win
+        then: if not exist %PREFIX%\\Library\\include\\lyra\\lyra.hpp exit 1
+      - if: unix
+        then: test -f $PREFIX/share/lyra/cmake/lyraConfig.cmake
+      - if: win
+        then: if not exist %PREFIX%\\Library\\share\\lyra\\cmake\\lyraConfig.cmake exit 1
+      - cd test
+      - cmake . -GNinja -DCMAKE_BUILD_TYPE=Release
+      - cmake --build . --config Release
+      - if: unix
+        then: ./program
+      - if: win
+        then: program.exe
+
+about:
+  license: BSL-1.0
+  license_file: LICENSE.txt
+  summary: A simple to use, composing, header only, command line arguments parser for C++ 11 and beyond
+  homepage: https://github.com/bfgroup/Lyra
+
+extra:
+  recipe-maintainers:
+    - apmorton
+    - mattgodbolt
+
