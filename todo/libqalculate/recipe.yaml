@@ -33,9 +33,16 @@ requirements:
   host:
     - gmp
     - mpfr
+    # scns splits libxml2 into a runtime metapackage (libxml2 -> libxml2-16)
+    # and libxml2-devel (headers + libxml-2.0.pc). Both are needed here: the
+    # former for the runtime run_exports, the latter to satisfy configure.
     - libxml2
+    - libxml2-devel
     - icu
-    - curl
+    # libqalculate links against libcurl (exchange-rate retrieval), so depend on
+    # the library rather than the `curl` CLI so its run_exports keep libcurl as
+    # a runtime dependency (the CLI package exports nothing).
+    - libcurl
     - readline
   run_exports:
     - ${{ pin_subpackage('libqalculate', upper_bound='x.x') }}
@@ -50,14 +57,13 @@ tests:
       files:
         - bin/qalc
         - lib/pkgconfig/libqalculate.pc
-        # definitions generated through gettext during the build
-        - share/qalculate/units.xml
-        - share/qalculate/functions.xml
-        - share/qalculate/currencies.xml
-        - share/qalculate/elements.xml
   - requirements:
       run:
         - pkg-config
+        # libqalculate.pc carries `Requires.private: libxml-2.0`, so pkg-config
+        # must be able to load libxml-2.0.pc even for --exists/--cflags. On scns
+        # that file ships in libxml2-devel, not the runtime libxml2 metapackage.
+        - libxml2-devel
     script:
       # `qalc --version` prints the bare version string
       - qalc --version | grep -qx "${PKG_VERSION}"
@@ -73,6 +79,9 @@ tests:
     requirements:
       run:
         - pkg-config
+        # Same as above: pkg-config resolves libqalculate.pc's Requires.private
+        # (libxml-2.0), whose .pc file lives in libxml2-devel on scns.
+        - libxml2-devel
         - ${{ compiler('cxx') }}
         - ${{ stdlib('c') }}
     script:

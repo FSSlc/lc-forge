@@ -2,11 +2,18 @@
 # libqalculate ships a pre-generated configure script, so no autoreconf is needed.
 set -Eeuo pipefail
 
+# --enable-compiled-definitions bakes units.xml/functions.xml/etc. into the
+# library instead of loading them from "$(datadir)/qalculate" at runtime. We
+# need this because the autoconf datadir is embedded as an absolute path that
+# rattler-build does not relocate: the shipped binary would otherwise look for
+# share/qalculate/ under the CI runner's build prefix and print
+# "Failed to load global definitions!".
 ./configure \
   --prefix="${PREFIX}" \
   --disable-static \
   --enable-shared \
-  --with-readline
+  --with-readline \
+  --enable-compiled-definitions
 
 make -j"${CPU_COUNT}"
 
