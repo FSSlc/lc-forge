@@ -186,17 +186,60 @@ jobs:
             mkdir -p .build-meta
             : > ".build-meta/$TARGET.txt"
 
-            # Build a map: every .conda file belongs to the LONGEST matching
-            # recipe dir name (so 'foo' never claims 'foo-bar-<...>.conda').
-            declare -A claim
+            # Package names a recipe declares, resolved through rattler-build so
+            # that split recipes and Jinja-templated package names (the coreutils
+            # recipe builds `gnu-coreutils` this way) work. Falls back to the
+            # directory name when the recipe does not render; such a recipe is
+            # reported as FAILED below anyway.
+            recipe_package_names() {
+              local names
+              names="$(rattler-build build --render-only --experimental \
+                -m ./conda_build_config.yaml --target-platform "$TARGET" \
+                -c https://prefix.dev/scns -r "$1" 2>/dev/null \
+                | tr -d ' \n' \
+                | grep -oE '"package":\{"name":"[^"]+"' \
+                | sed 's/.*"name":"//; s/"$//' \
+                | sort -u)" || true
+              if [[ -z "$names" ]]; then
+                names="${1%/}"; names="${names##*/}"
+              fi
+              printf '%s\n' "$names"
+            }
+
+            # A package counts as available when the channel has it in the
+            # target subdir or as noarch.
+            package_on_channel() {
+              local pkg
+              for pkg in "$@"; do
+                if conda search --override-channels -c https://prefix.dev/scns \
+                  --subdir "$TARGET" "$pkg" >/dev/null 2>&1; then
+                  return 0
+                fi
+                if conda search --override-channels -c https://prefix.dev/scns \
+                  --subdir noarch "$pkg" >/dev/null 2>&1; then
+                  return 0
+                fi
+              done
+              return 1
+            }
+
+            # Build a map: every .conda file belongs to the recipe dir declaring
+            # the LONGEST matching package name (so a recipe for 'foo' never
+            # claims the artifact of a recipe declaring 'foo-bar').
+            declare -A claim claim_len owner pkgnames
             for d in todo/*/; do
               [[ -d "$d" ]] || continue
               name="${d%/}"; name="${name##*/}"
-              for f in output/*/"$name"-*.conda; do
-                [[ -e "$f" ]] || continue
-                if [[ -z "${claim[$f]:-}" || ${#claim[$f]} -lt ${#name} ]]; then
-                  claim[$f]="$name"
-                fi
+              pkgnames[$name]="$(recipe_package_names "$d")"
+              for pkg in ${pkgnames[$name]}; do
+                owner[$pkg]="$name"
+                for f in output/*/"$pkg"-*.conda; do
+                  [[ -e "$f" ]] || continue
+                  if [[ -z "${claim[$f]:-}" || ${claim_len[$f]:-0} -lt ${#pkg} ]]; then
+                    claim[$f]="$name"
+                    claim_len[$f]=${#pkg}
+                  fi
+                done
               done
             done
 
@@ -223,11 +266,13 @@ jobs:
               name="${d%/}"; name="${name##*/}"
 
               built=false
-              for f in output/*/"$name"-*.conda; do
-                if [[ -e "$f" && "${claim[$f]:-}" == "$name" ]]; then
-                  built=true
-                  break
-                fi
+              for pkg in ${pkgnames[$name]}; do
+                for f in output/*/"$pkg"-*.conda; do
+                  if [[ -e "$f" && "${claim[$f]:-}" == "$name" ]]; then
+                    built=true
+                    break 2
+                  fi
+                done
               done
 
               if [[ "$built" == true ]]; then
@@ -236,8 +281,7 @@ jobs:
                 else
                   echo "BUILT $name" >> ".build-meta/$TARGET.txt"
                 fi
-              elif conda search --override-channels -c https://prefix.dev/scns --subdir "$TARGET" "$name" >/dev/null 2>&1 || \
-                   conda search --override-channels -c https://prefix.dev/scns --subdir noarch "$name" >/dev/null 2>&1; then
+              elif package_on_channel ${pkgnames[$name]}; then
                 echo "SKIPPED $name" >> ".build-meta/$TARGET.txt"
               else
                 echo "FAILED $name" >> ".build-meta/$TARGET.txt"
@@ -247,8 +291,21 @@ jobs:
             # extract failure reasons from the rattler build log
             : > ".build-meta/reasons-$TARGET.txt"
             if [[ -f ".build-meta/rattler-$TARGET.log" ]]; then
+              # "Build failed for <pkg>-<version>-<build>" carries the package
+              # name, not the recipe dir; rewrite it as "<recipe dir>: <reason>"
+              # so the finalize job can attribute it to the recipe.
               grep -E "error Build failed for" ".build-meta/rattler-$TARGET.log" \
-                | sed 's/^.*Build failed for //' >> ".build-meta/reasons-$TARGET.txt" || true
+                | sed 's/^.*Build failed for //' | while IFS= read -r reason; do
+                    pkg=""
+                    for candidate in "${!owner[@]}"; do
+                      [[ "$reason" == "$candidate-"* && ${#candidate} -gt ${#pkg} ]] && pkg="$candidate"
+                    done
+                    if [[ -n "$pkg" ]]; then
+                      echo "${owner[$pkg]}: $reason"
+                    else
+                      echo "$reason"
+                    fi
+                  done >> ".build-meta/reasons-$TARGET.txt" || true
               grep -B1 -E "Failed to parse recipe" ".build-meta/rattler-$TARGET.log" \
                 | sed -n 's#^.*Processing recipe at path: .*/todo/\([^/]*\)/.*#\1: parse error#' \
                 | sort -u >> ".build-meta/reasons-$TARGET.txt" || true
