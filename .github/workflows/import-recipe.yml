@@ -1,5 +1,5 @@
 name: Import recipe from conda-forge
-run-name: Import recipe from conda-forge: ${{ inputs.recipe }}
+run-name: Import recipe from conda-forge ：${{ inputs.recipe }}
 
 # Manually import a package (and missing deps) from conda-forge into todo/,
 # convert to recipe.yaml, build inside the pixi container for linux-64 and
