@@ -840,6 +840,32 @@ def verify_all_deps_resolvable(state: PrepareState) -> None:
 # Build & upload inside pixi container
 # ---------------------------------------------------------------------------
 
+# Test-failure markers to scan for in the build log after a "successful" build.
+# rattler-build --continue-on-failure still exits 0 when a recipe's test script
+# fails, so the exit code alone is not a reliable signal before uploading.
+TEST_FAILURE_RES = (
+    re.compile(r"× error Script failed with status"),
+    re.compile(r"× error Script execution failed"),
+)
+
+
+def fail_if_test_failures(log_file: Path, target_platform: str) -> None:
+    """Abort if the build log shows test failures, before anything is uploaded.
+
+    Must run between the build and the upload phase: the workflow's own log
+    scan (in .github/workflows/import-recipe.yml) only runs after the upload
+    step, so it can flag the failure but cannot stop the upload.
+    """
+    if not log_file.is_file():
+        return
+    text = log_file.read_text(errors="replace")
+    for pattern in TEST_FAILURE_RES:
+        if pattern.search(text):
+            raise ImportError_(
+                f"Test failures detected in {log_file} for {target_platform} "
+                f"(matched {pattern.pattern!r}); aborting before upload."
+            )
+
 
 def container_build_and_upload(
     root: Path,
@@ -945,6 +971,11 @@ trap fix_workspace_owner EXIT
         ["bash", str(start_img), "--run", build_cmd],
         cwd=root,
     )
+
+    # The build can exit 0 even when a recipe's test script failed (because of
+    # --continue-on-failure). Check the log here so we never upload on test
+    # failure; the CI workflow's own scan runs only after upload.
+    fail_if_test_failures(log_file, target_platform)
 
     conda_files = list(output_dir.rglob("*.conda"))
     if not conda_files:
