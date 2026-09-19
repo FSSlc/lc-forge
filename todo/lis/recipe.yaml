@@ -1,0 +1,110 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "2.1.11"
+  build: 0
+  # Only mpich is available on https://prefix.dev/scns.
+  mpi: mpich
+  mpi_prefix: mpi_mpich
+
+package:
+  name: lis
+  version: ${{ version }}
+
+source:
+  # The https endpoint of this host breaks the downloader of rattler-build
+  # ("error decoding response body" for this .zip over https, while other files
+  # of the same host over https and this .zip over http work); the archive is
+  # checksum-pinned below.
+  url: http://www.ssisc.org/lis/dl/lis-${{ version }}.zip
+  sha256: 2523439ad448608e6e5167b69a0c5d721db2e30d5943188a9ca9f21baa0dd0a9
+
+build:
+  number: ${{ build }}
+  string: ${{ mpi_prefix }}_h${{ hash }}_${{ build }}
+  skip: win
+  script: build.sh
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('fortran') }}
+    - make
+    - if: unix
+      then: gnuconfig
+  host:
+    - ${{ mpi }}
+  run_exports:
+    - lis * ${{ mpi_prefix }}_*
+
+tests:
+  # OpenMP, MPI and Fortran support leave traces in the installed tree.
+  - script:
+      - test -f ${PREFIX}/lib/liblis.so
+      - test -f ${PREFIX}/include/lis.h
+      - test -f ${PREFIX}/include/lisf.h
+      - grep -q "define USE_FORTRAN 1" ${PREFIX}/include/lis_config.h
+      - grep -q "define USE_SAAMG 1" ${PREFIX}/include/lis_config.h
+      # MPI and OpenMP are compiler/linker flags, so check the linked libraries.
+      - ldd ${PREFIX}/lib/liblis.so | grep -qi libmpi
+      - ldd ${PREFIX}/lib/liblis.so | grep -q libgomp
+      - test -f ${PREFIX}/share/examples/lis/testmat.mtx
+
+  # Downstream C consumer: build with mpicc + OpenMP and run on 2 ranks.
+  - files:
+      recipe:
+        - test/api_check.c
+    requirements:
+      run:
+        - ${{ compiler('c') }}
+        # Pin the C stdlib to the build-time value; the newest sysroot on scns
+        # uses .relr.dyn relocations that the scns binutils 2.36 cannot read.
+        - ${{ stdlib('c') }}
+    script:
+      # ${LDFLAGS} comes from the activated compiler toolchain (rpath into
+      # $PREFIX/lib, --allow-shlib-undefined); pass it like a real build system
+      # would.
+      - mpicc -fopenmp ${LDFLAGS:-} -I${PREFIX}/include -L${PREFIX}/lib -o api_check test/api_check.c -llis
+      - OMP_NUM_THREADS=2 mpirun -n 2 ./api_check ${PREFIX}/share/examples/lis/testmat.mtx
+
+  # Downstream Fortran consumer: build with mpifort and run on 2 ranks.
+  - files:
+      recipe:
+        - test/api_check.F90
+    requirements:
+      run:
+        - ${{ compiler('fortran') }}
+        - ${{ stdlib('c') }}
+    script:
+      - mpifort -fopenmp -DUSE_MPI ${LDFLAGS:-} -I${PREFIX}/include -L${PREFIX}/lib -o fapi_check test/api_check.F90 -llis
+      - OMP_NUM_THREADS=2 mpirun -n 2 ./fapi_check
+
+  # Example programs installed by the upstream build:
+  # test1 = C API, test4f = Fortran 77 interface, test2 -p saamg = SA-AMG.
+  - script:
+      - cd ${PREFIX}/share/examples/lis
+      - OMP_NUM_THREADS=2 mpirun -n 2 ./test1 testmat.mtx 2 /dev/null /dev/null
+      - OMP_NUM_THREADS=2 mpirun -n 2 ./test4f
+      - OMP_NUM_THREADS=2 mpirun -n 2 ./test2 10 10 1 /dev/null /dev/null -i cg -p saamg
+
+about:
+  license: BSD-3-Clause
+  license_file: COPYING
+  summary: Library of Iterative Solvers for linear systems
+  description: |
+    Lis (Library of Iterative Solvers for linear systems, pronounced [lis]) is a
+    parallel software library for solving discretized linear equations and
+    eigenvalue problems that arise from the numerical solution of partial
+    differential equations using iterative methods.
+
+    This build enables the OpenMP, MPI (mpich) and Fortran interfaces as well as
+    the SA-AMG preconditioner.
+  homepage: https://www.ssisc.org/lis/
+  documentation: https://www.ssisc.org/lis/lis-ug-en.pdf
+  repository: https://github.com/anishida/lis
+
+extra:
+  recipe-maintainers:
+    - fsslc
