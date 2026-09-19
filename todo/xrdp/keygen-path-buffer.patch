@@ -1,0 +1,30 @@
+--- a/keygen/keygen.c
++++ b/keygen/keygen.c
+@@ -28,6 +28,8 @@
+ #if defined(HAVE_CONFIG_H)
+ #include <config_ac.h>
+ #endif
++
++#include <limits.h>
+ 
+ #include "os_calls.h"
+ #include "string_calls.h"
+@@ -344,15 +346,15 @@
+          const char *path_and_file_name)
+ {
+     int fd;
+-    char filename[256];
++    char filename[PATH_MAX];
+ 
+     if (path_and_file_name == 0)
+     {
+-        g_strncpy(filename, "rsakeys.ini", 255);
++        g_strncpy(filename, "rsakeys.ini", sizeof(filename) - 1);
+     }
+     else
+     {
+-        g_strncpy(filename, path_and_file_name, 255);
++        g_strncpy(filename, path_and_file_name, sizeof(filename) - 1);
+     }
+ 
+     g_writeln("saving to %s", filename);
