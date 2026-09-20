@@ -1,0 +1,4 @@
+mesa-libGL
+mesa-libGL-devel
+mesa-dri-drivers
+glibc-gconv-extra
