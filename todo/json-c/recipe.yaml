@@ -1,0 +1,59 @@
+schema_version: 1
+
+context:
+  name: json-c
+  version: "0.18"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://s3.amazonaws.com/json-c_releases/releases/json-c-${{ version }}.tar.gz
+  sha256: 876ab046479166b869afc6896d288183bbc0e5843f141200c677b3e8dfb11724
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - if: unix
+      then: gnuconfig
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - cmake <4
+    - make
+  run_exports:
+    - ${{ pin_subpackage(name, upper_bound='x.x') }}
+
+tests:
+  - requirements:
+      run:
+        - pkg-config
+    script:
+      - if: not win
+        then: test -f ${PREFIX}/lib/libjson-c.a
+      - if: not win
+        then: test -f ${PREFIX}/lib/libjson-c${SHLIB_EXT}
+      - if: win
+        then: if not exist %LIBRARY_BIN%/json-c.dll exit 1
+      - if: win
+        then: if not exist %LIBRARY_LIB%/json-c.lib exit 1
+      - if: not win
+        then: test -f $PREFIX/lib/pkgconfig/json-c.pc
+      - if: win
+        then: if not exist %LIBRARY_LIB%\pkgconfig\json-c.pc exit 1
+      - pkg-config --exists json-c
+
+about:
+  license: MIT
+  license_file: COPYING
+  summary: A JSON implementation in C
+  homepage: https://github.com/json-c/json-c/wiki
+
+extra:
+  recipe-maintainers:
+    - ocefpaf
+    - sodre
+    - djsutherland
+
