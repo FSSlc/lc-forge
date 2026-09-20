@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: libple
+  version: "2.0.3"
+  build: 0
+  # Only mpich is available on https://prefix.dev/scns.
+  mpi: mpich
+  mpi_prefix: mpi_mpich
+  sha256: 3123ccad6fc9b1ed9e2090a26d9dcb41e3f3524dd648bf817230cb40697524f6
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  # Upstream tags carry the autotools sources but no generated `configure`;
+  # build.sh bootstraps with autoreconf.  The tarball is checksum-pinned below.
+  url: https://github.com/code-saturne/libple/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: ${{ sha256 }}
+
+build:
+  number: ${{ build }}
+  string: ${{ mpi_prefix }}_h${{ hash }}_${{ build }}
+  skip:
+    - win
+    - osx  # scns only carries the Linux mpich toolchain this library links
+  script: build.sh
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - make
+    # The git archive has no generated autotools files; regenerate them.
+    - autoconf
+    - automake
+    - libtool
+  host:
+    - ${{ mpi }}
+  run_exports:
+    - ${{ pin_subpackage('libple', upper_bound='x') }}
+
+tests:
+  # Upstream installs the coupling/locator/defs headers, the generated
+  # ple_config.h, the shared library (soname .2) and the ple-config helper.
+  - package_contents:
+      bin:
+        - ple-config
+      include:
+        - ple_coupling.h
+        - ple_defs.h
+        - ple_locator.h
+        - ple_config.h
+      lib:
+        - libple.so
+      files:
+        - lib/libple.so.2
+        - share/man/man1/ple-config.1
+  - script:
+      - test -f "${PREFIX}/lib/libple.so"
+      - test -f "${PREFIX}/include/ple_config.h"
+      # The library must have been configured with MPI (coupling support).
+      - grep -q "define PLE_HAVE_MPI 1" "${PREFIX}/include/ple_config.h"
+      - test "$("${PREFIX}/bin/ple-config" --version)" = "${{ version }}"
+      - ldd "${PREFIX}/lib/libple.so" | grep -qi libmpi
+
+  # Downstream MPI consumer: build a coupling smoke test with mpicc and run it
+  # on 2 ranks to prove libple is MPI-enabled and linkable from plain C.
+  - files:
+      recipe:
+        - test/api_check.c
+    requirements:
+      run:
+        - ${{ compiler('c') }}
+        # Pin the C stdlib to the build-time value; a newer sysroot uses
+        # .relr.dyn relocations the scns binutils cannot read.
+        - ${{ stdlib('c') }}
+    script:
+      - mpicc ${LDFLAGS:-} -I"${PREFIX}/include" -L"${PREFIX}/lib" -o api_check test/api_check.c -lple -lm
+      - mpirun -n 2 ./api_check
+
+about:
+  homepage: https://www.code-saturne.org/
+  repository: https://github.com/code-saturne/libple
+  license: LGPL-2.1-or-later
+  license_file: COPYING
+  summary: Parallel Location and Exchange (PLE) coupling library
+  description: |
+    PLE (Parallel Location and Exchange) simplifies coupling of distributed
+    parallel computational codes built on MPI.  It synchronizes parallel codes
+    at predefined points and maps points to distributed meshes to transfer
+    variables across them.
+
+    This build enables the MPI coupling interface on top of mpich.
+
+extra:
+  recipe-maintainers:
+    - fsslc
