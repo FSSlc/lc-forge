@@ -1,0 +1,83 @@
+schema_version: 1
+
+context:
+  version: "0.10.6.1"
+
+package:
+  name: xrdp
+  version: ${{ version }}
+
+source:
+  url: https://github.com/neutrinolabs/xrdp/releases/download/v${{ version }}/xrdp-${{ version }}.tar.gz
+  sha256: 2f7beb5a3b2529c8d72dc0df9b8cdca31ab0e0c14d1e3421210f5e6ec0ab3b75
+
+build:
+  number: 0
+  skip: [win, osx]
+  script: build.sh
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('cxx') }}
+    - autoconf
+    - automake
+    - libtool
+    - pkg-config
+    - make
+    - nasm
+    - if: linux
+      then:
+        - ${{ cdt('libx11-devel') }}
+        - ${{ cdt('libxfixes-devel') }}
+        - ${{ cdt('libxrandr-devel') }}
+        - ${{ cdt('xorg-x11-proto-devel') }}
+        - ${{ cdt('libICE-devel') }}
+        - ${{ cdt('libSM-devel') }}
+  host:
+    - openssl
+    - zlib
+    - libxcrypt
+    - imlib2
+    - freetype
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxfixes
+    - xorg-libxrandr
+    - xorg-libxrender
+    - pixman
+    - libpng
+    - jpeg
+    - giflib
+  run:
+    - openssl
+    - imlib2
+    - freetype
+    - xorg-libx11
+    - xorg-libxext
+    - xorg-libxfixes
+    - xorg-libxrandr
+    - xorg-libxrender
+
+tests:
+  - script:
+      - test -f $PREFIX/sbin/xrdp
+      - test -f $PREFIX/sbin/xrdp-sesman
+      - test -f $PREFIX/bin/xrdp-keygen
+
+about:
+  homepage: https://www.xrdp.org/
+  license: Apache-2.0
+  license_file: COPYING
+  summary: Open source Remote Desktop Protocol (RDP) server
+  description: |
+    xrdp is a daemon that allows remote login using the Remote Desktop
+    Protocol (RDP). It uses xorgxrdp and Xvnc to provide a fully
+    functional X11 desktop environment.
+  repository: https://github.com/neutrinolabs/xrdp
+  documentation: https://xrdp.readthedocs.io/
+
+extra:
+  recipe-maintainers:
+    - FSSlc
