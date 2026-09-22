@@ -16,6 +16,10 @@ usage() {
   echo "  DEFAULT_CHANNEL  Default channel (default: https://prefix.dev/scns)"
   echo "  EXTRA_CHANNELS   Extra channels, space- and/or comma-separated"
   echo "  OUTPUT_DIR       Build output root (default: <repo>/output)"
+  echo
+  echo "Recipe file:"
+  echo "  <recipe_dir>/args.txt  Optional. [env] NAME=VALUE sets extra env vars;"
+  echo "                         [args] lines add one extra arg each."
   exit "${1:-1}"
 }
 
@@ -48,6 +52,7 @@ fi
 recipe_dir="$(resolve_recipe_dir "$recipe_dir")"
 require_cmd rattler-build
 mkdir -p "$OUTPUT_DIR"
+load_recipe_args "$recipe_dir"
 
 if [[ ${#extra_cs[@]} -gt 0 ]]; then
   build_channel_args "${extra_cs[@]}"
@@ -65,6 +70,10 @@ cmd=(
 
 if $skip_existing; then
   cmd+=(--skip-existing=all)
+fi
+
+if [[ ${#RECIPE_EXTRA_ARGS[@]} -gt 0 ]]; then
+  cmd+=("${RECIPE_EXTRA_ARGS[@]}")
 fi
 
 if [[ $# -gt 0 ]]; then

@@ -86,6 +86,40 @@ build_channel_args() {
   done
 }
 
+# 从 recipe 目录读取可选 args.txt（若存在）。
+# [env] 段：每行 NAME=VALUE，导出为环境变量（覆盖继承值）。
+# [args] 段：每行一个参数，写入 RECIPE_EXTRA_ARGS 数组。
+# 空行与 # 注释忽略；无效行告警并跳过。
+RECIPE_EXTRA_ARGS=()
+load_recipe_args() {
+  local recipe_dir="$1"
+  local file="$recipe_dir/args.txt"
+  RECIPE_EXTRA_ARGS=()
+  [[ -f "$file" ]] || return 0
+
+  local section="" line name value
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if [[ "$line" == \[env\] ]]; then section=env; continue; fi
+    if [[ "$line" == \[args\] ]]; then section=args; continue; fi
+    case "$section" in
+      env)
+        name="${line%%=*}"
+        if [[ "$name" == "$line" || ! "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+          echo "Warning: 忽略 args.txt 无效 env 行: $line" >&2
+          continue
+        fi
+        value="${line#*=}"
+        export "$name=$value"
+        ;;
+      args) RECIPE_EXTRA_ARGS+=("$line") ;;
+      *) echo "Warning: 忽略 args.txt 中无段落标记的行: $line" >&2 ;;
+    esac
+  done <"$file"
+}
+
 # Convert meta.yaml -> recipe.yaml atomically.
 # Succeeds only when crm exits 0 and stderr is empty or reports "0 errors".
 # Temp files are cleaned up via EXIT trap even on interrupt.
