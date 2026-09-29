@@ -1,0 +1,8 @@
+mpi:
+  - openmpi
+  - mpich
+  - msmpi
+  - mpi_serial
+  - impi
+  - mvapich
+  - psmpi
