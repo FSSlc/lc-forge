@@ -1,3 +1,0 @@
-ROCM_COMPILATION:
-  # - "enabled"
-  - "disabled"

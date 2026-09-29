@@ -1,0 +1,53 @@
+{% set name = "rdma-core" %}
+{% set version = "65.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: "{{ version }}"
+
+source:
+  url: https://github.com/linux-rdma/rdma-core/archive/v{{ version }}.tar.gz
+  sha256: 714881af1c875f335aee55e94e770894963af3b9bbb6c1248e4a279058dcba58
+  patches:
+    - 0001-Remove-assertions-on-longer-than-sockaddr_un.sun_pat.patch
+
+build:
+  number: 0
+  skip: true  # [not linux]
+  run_exports:
+    - {{ pin_subpackage("rdma-core", max_pin=None) }}
+
+requirements:
+  build:
+    - {{ compiler("c") }}
+    - {{ stdlib("c") }}
+    - {{ compiler("cxx") }}
+    - cmake
+    - ninja
+    - pandoc
+    - pkg-config
+    - python
+    - docutils
+  host:
+    - libnl
+    - libsystemd
+    - libudev
+
+test:
+  commands:
+    - test -f "${PREFIX}/bin/ibv_devices"
+    # Test `ibv_devices` when building natively
+    - ${PREFIX}/bin/ibv_devices            # [build_platform == target_platform]
+
+about:
+  home: https://github.com/linux-rdma/rdma-core
+  license: Linux-OpenIB
+  license_family: BSD
+  license_file: LICENSE.txt
+  summary: RDMA Core Userspace Libraries and Daemons
+  doc_url: https://github.com/linux-rdma/rdma-core
+  dev_url: https://github.com/linux-rdma/rdma-core
+
+extra:
+  recipe-maintainers:
+    - pentschev
