@@ -1,0 +1,127 @@
+{% set version = "2.5.0" %}
+{% set build = 1 %}
+
+# when abi version increments, update the lower bound
+# check https://ofiwg.github.io/libfabric/main/man/fabric.7.html#abi-changes
+{% set soversion = "1" %}
+{% set abi_version = "1.9" %}
+{% set abi_lower_bound = "2.0.0" %}
+
+package:
+  name: libfabric-recipe
+  version: {{ version }}
+
+source:
+  url: https://github.com/ofiwg/libfabric/releases/download/v{{ version }}/libfabric-{{ version }}.tar.bz2
+  sha256: 276019edca708dc0569cf3064a412e395ba7b1883299781caed120594f850995
+
+build:
+  number: {{ build }}
+  skip: true  # [win]
+  script_env:
+    - LIBFABRIC_ABI={{ abi_version }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+    - libtool  # [unix]
+    - make  # [unix]
+    - pkg-config
+    - shellcheck
+  host:
+    - libnl  # [linux]
+    - rdma-core  # [linux]
+
+outputs:
+  - name: libfabric{{ soversion }}
+    files:
+      include:
+        - lib/lib*.so.*  # [linux]
+        - lib/lib*.*.dylib  # [osx]
+        - etc/conda/activate.d/*.sh
+    requirements:
+      # need everything with run_exports here
+      build:
+        - {{ compiler("c") }}
+        - {{ stdlib("c") }}
+      host:
+        - libnl  # [linux]
+        - rdma-core  # [linux]
+    test:
+      commands:
+        - test -f $PREFIX/lib/libfabric.so.{{ soversion }}  # [linux]
+        - test -f $PREFIX/lib/libfabric.{{ soversion }}.dylib  # [osx]
+        - test ! -f $PREFIX/lib/libfabric${SHLIB_EXT}
+        # test activation
+        - if [ "$FI_PROVIDER" != "tcp" ]; then exit 1; fi
+
+  - name: libfabric
+    # empty metapackage for mutual exclusivity and backward-compatiblity
+    # ensures only one libfabric{so} per env
+    requirements:
+      run:
+        - {{ pin_subpackage("libfabric" ~ soversion, exact=True) }}
+    test:
+      commands:
+        - "true"
+  - name: libfabric-bin
+    files:
+      include:
+        - bin/
+    requirements:
+      build:
+        - {{ compiler("c") }}
+        - {{ stdlib("c") }}
+      host:
+        - {{ pin_subpackage("libfabric" ~ soversion, exact=True) }}
+      run:
+        - {{ pin_subpackage("libfabric", exact=True) }}
+        - {{ pin_subpackage("libfabric" ~ soversion, exact=True) }}
+    test:
+      commands:
+        - test -f $PREFIX/bin/fi_info
+        - fi_info --version
+        - fi_info --list
+
+  - name: libfabric-devel
+    files:
+      include:
+        - lib/
+        - include/
+        - lib/pkgconfig/
+      exclude:
+        # exclude versioned dylibs in libfabric{so}
+        - lib/lib*.so.*  # [linux]
+        - lib/lib*.*.dylib  # [osx]
+    build:
+      run_exports:
+        # depending on libfabric ensures mutual exclusivity
+        - libfabric
+        # don't use pin_subpackage, which doesn't allow explicit lower bound
+        - libfabric{{ soversion }} >={{ abi_lower_bound }}
+    requirements:
+      run:
+        - {{ pin_subpackage("libfabric", exact=True) }}
+        - {{ pin_subpackage("libfabric" ~ soversion, exact=True) }}
+    test:
+      requires:
+        - pkg-config
+      commands:
+        - test -f $PREFIX/lib/libfabric${SHLIB_EXT}
+        - test -f $PREFIX/include/rdma/fabric.h
+        - pkg-config --cflags --libs libfabric
+        - pkg-config --validate libfabric
+
+about:
+  home: http://libfabric.org/
+  license: BSD-2-Clause OR GPL-2.0-only
+  license_family: BSD
+  license_file: COPYING
+  summary: Libfabric is also known as Open Fabrics Interfaces (OFI).
+
+extra:
+  feedstock-name: libfabric
+  recipe-maintainers:
+    - j34ni
+    - minrk
