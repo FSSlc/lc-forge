@@ -1,0 +1,106 @@
+schema_version: 1
+
+context:
+  version: "1.4.43"
+  sha256: 0348903f49ec762149d7639b0677873ba12c319e4987528fd15800e18dca029c
+
+package:
+  name: remmina
+  version: ${{ version }}
+
+source:
+  url: https://gitlab.com/Remmina/Remmina/-/archive/v${{ version }}/Remmina-v${{ version }}.tar.bz2
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip: [win, osx]
+  script: build.sh
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake
+    - ninja
+    - pkg-config
+    - gettext
+    - if: linux
+      then:
+        - ${{ cdt('libx11-devel') }}
+        - ${{ cdt('mesa-libegl-devel') }}
+        - ${{ cdt('mesa-libgl-devel') }}
+  host:
+    - gtk3
+    - glib
+    - gdk-pixbuf
+    - at-spi2-core
+    - pango
+    - cairo 1.16.*
+    - epoxy
+    - libsodium
+    - libcurl
+    - pcre2
+    - json-glib
+    - libxml2
+    - openssl
+    - zlib
+    - libssh
+    - libxkbfile
+    - libgcrypt
+    - libsecret
+    - wayland
+    - pulseaudio
+    - libcups
+    - libjpeg-turbo
+    - freerdp
+    - python
+  run:
+    - gtk3
+    - glib
+    - gdk-pixbuf
+    - at-spi2-core
+    - pango
+    - cairo 1.16.*
+    - libsodium
+    - libcurl
+    - pcre2
+    - json-glib
+    - libxml2
+    - openssl
+    - libssh
+    - libxkbfile
+    - libsecret
+    - wayland
+    - pulseaudio
+    - libjpeg-turbo
+    - freerdp
+    - python
+    - libcups
+    - libgcrypt
+  ignore_run_exports:
+    # adwaita-icon-theme (from gtk3's run_exports) pulls librsvg from
+    # conda-forge, which requires libxml2 < 2.14 and conflicts with the
+    # scns libxml2 2.15 stack (libxml2-16). Remove once librsvg and
+    # adwaita-icon-theme are built into scns.
+    by_name:
+      - adwaita-icon-theme
+
+tests:
+  - script:
+      - remmina --version 2>&1 | grep -q "${{ version }}"
+
+about:
+  homepage: https://remmina.org/
+  license: GPL-2.0-or-later
+  license_file: LICENSE
+  summary: Remote desktop client for GTK3
+  description: |
+    Remmina is a remote desktop client written in GTK3, supporting
+    multiple network protocols: RDP, VNC, SSH, SFTP, and more.
+  repository: https://gitlab.com/Remmina/Remmina
+
+extra:
+  recipe-maintainers:
+    - fsslc

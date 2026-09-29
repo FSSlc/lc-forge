@@ -1,0 +1,38 @@
+#!/bin/bash
+set -ex
+
+mkdir -p build && cd build
+
+cmake -GNinja \
+  -DCMAKE_C_FLAGS="-D_GNU_SOURCE" \
+  -DCMAKE_BUILD_TYPE=Release \
+  ${CMAKE_ARGS} \
+  -DCMAKE_PREFIX_PATH="${PREFIX}" \
+  -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+  -DCMAKE_INSTALL_LIBDIR=lib \
+  -DWITH_WWW=OFF \
+  -DWITH_GVNC=OFF \
+  -DWITH_X2GO=OFF \
+  -DWITH_NX=OFF \
+  -DWITH_ST=OFF \
+  -DWITH_XDMCP=OFF \
+  -DWITH_VTE=OFF \
+  -DWITH_SPICE=OFF \
+  -DWITH_LIBVNCSERVER=OFF \
+  -DWITH_EXAMPLES=OFF \
+  -DWITH_ICON_CACHE=OFF \
+  -DWITH_UPDATE_DESKTOP_DB=OFF \
+  -DWITH_MANPAGES=OFF \
+  -DWITH_TRANSLATIONS=OFF \
+  -DWITH_NEWS=OFF \
+  -DWITH_STATS=OFF \
+  -DWITH_TIP=OFF \
+  -DWITH_FREERDP3=ON \
+  -DHAVE_LIBAPPINDICATOR=OFF \
+  $SRC_DIR
+
+CPATH=$PREFIX/include:$PREFIX/include/gtk-3.0/ ninja -j${CPU_COUNT}
+ninja install
+
+# Remove libtool archives
+find $PREFIX -name "*.la" -delete
