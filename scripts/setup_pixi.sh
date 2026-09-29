@@ -10,7 +10,7 @@ COMPLETION_LINE_BASH='eval "$(pixi completion --shell bash)"'
 # shellcheck disable=SC2016
 COMPLETION_LINE_ZSH='eval "$(pixi completion --shell zsh)"'
 INSTALLER=""
-PIXI_BIN="${PIXI_BIN:-$HOME/.pixi/bin/pixi}"
+PIXI_BIN="${PIXI_BIN:-$(command -v pixi 2>/dev/null || echo "$HOME/.pixi/bin/pixi")}"
 PIXI_INSTALL_URL="${PIXI_INSTALL_URL:-https://pixi.sh/install.sh}"
 TOOLS=(
   rattler-build
@@ -48,11 +48,24 @@ ensure_path_export() {
   local rc_file="$1"
   # shellcheck disable=SC2016 # Literal $HOME/$PATH for the rc file, not current shell.
   local export_line='export PATH="$HOME/.pixi/bin:$PATH"'
+  local tmp
 
   touch "$rc_file"
-  if ! grep -Fq '.pixi/bin' "$rc_file"; then
-    printf '%s\n' "$export_line" >>"$rc_file"
+
+  # 已存在前置形式则无需处理
+  grep -Fq '$HOME/.pixi/bin:$PATH' "$rc_file" && return 0
+
+  # 旧的追加形式（$PATH:...pixi/bin）会让 pixi 的工具被 ~/.cargo/bin 等同名遮蔽，
+  # 就地升级为前置形式。
+  if grep -Eq '\$PATH:.*\.pixi/bin' "$rc_file"; then
+    tmp="$(mktemp)"
+    sed 's|export PATH=\$PATH:.*\.pixi/bin.*|export PATH="$HOME/.pixi/bin:$PATH"|' \
+      "$rc_file" > "$tmp"
+    mv "$tmp" "$rc_file"
+    return 0
   fi
+
+  printf '%s\n' "$export_line" >>"$rc_file"
 }
 
 ensure_completion() {
@@ -111,7 +124,7 @@ if [[ ! -f "$HOME/.bashrc" && ! -f "$HOME/.zshrc" ]]; then
 fi
 
 echo "Installing global tools into pixi env 'tools' ..."
-"$PIXI_BIN" global install -e tools "${TOOLS[@]}"
+"$PIXI_BIN" global install --environment tools "${TOOLS[@]}"
 
 echo
 echo "Done. Current shell PATH already includes $HOME/.pixi/bin."
