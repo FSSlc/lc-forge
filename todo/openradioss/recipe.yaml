@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  name: openradioss
+  # Upstream tags stable releases as latest-YYYYMMDD.
+  version: "2026.07.28"
+  tag: "latest-20260728"
+  # OpenRadioss source tarball (git archive).
+  src_sha256: 66807aa2f6688a3f95327738d0c68e721e911ef2360eae4a23d2d4a65252a016
+  # Prebuilt third-party libraries shipped from a separate GitHub release.
+  # The build script downloads this at build time, so we bundle it instead to
+  # keep CI offline.
+  extlib_sha256: 93a6301baf9a116ac3ba10dc212b5c38dd3e6a88319d1d6aecbec8d68f3c449b
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  - url: https://github.com/OpenRadioss/OpenRadioss/archive/refs/tags/${{ tag }}.tar.gz
+    sha256: ${{ src_sha256 }}
+    target_directory: openradioss
+  - url: https://github.com/OpenRadioss/OpenRadioss_extlib/releases/download/v70/extlib.zip
+    sha256: ${{ extlib_sha256 }}
+    target_directory: extlib
+
+build:
+  number: 0
+  script: build.sh
+  skip:
+    - win
+    # Upstream prebuilt extlib only ships linux64 / linuxa64 binaries, and the
+    # gfortran SMP build targets those two arches only.
+    - osx
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ${{ compiler('fortran') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - make
+    - python
+    # Fix the rpath of the generated binaries (the upstream CMake flags drop
+    # the conda toolchain's LDFLAGS, so $PREFIX/lib is not searched at runtime).
+    - patchelf
+
+tests:
+  - script:
+      - |
+        case "$(uname -m)" in
+          x86_64)  or_arch=linux64_gf ;;
+          aarch64) or_arch=linuxa64_gf ;;
+          *)       echo "unsupported arch: $(uname -m)" >&2; exit 1 ;;
+        esac
+        test -x "${PREFIX}/bin/starter_${or_arch}"
+        test -x "${PREFIX}/bin/engine_${or_arch}"
+        # The exes must resolve the conda toolchain libs and the bundled reader
+        # shared libraries without LD_LIBRARY_PATH (rpath points at $PREFIX/lib).
+        ldd "${PREFIX}/bin/starter_${or_arch}" | grep -qE 'libgfortran|libhm_reader'
+        ldd "${PREFIX}/bin/engine_${or_arch}" | grep -q libgfortran
+      - |
+        # Smoke-run: the binaries must get past dynamic loading and report a
+        # missing input deck rather than a missing shared library.
+        case "$(uname -m)" in
+          x86_64)  or_arch=linux64_gf ;;
+          aarch64) or_arch=linuxa64_gf ;;
+          *)       exit 1 ;;
+        esac
+        set +e
+        out="$("${PREFIX}/bin/starter_${or_arch}" 2>&1)"
+        rc=$?
+        set -e
+        echo "${out}"
+        # not zero (no input), but must not be a loader error
+        test ${rc} -ne 0
+        echo "${out}" | grep -qiE 'starter|radioss|input|error|usage' \
+          && ! echo "${out}" | grep -qiE 'error while loading|No such file'
+
+about:
+  homepage: https://openradioss.org/
+  repository: https://github.com/OpenRadioss/OpenRadioss
+  documentation: https://github.com/OpenRadioss/OpenRadioss/blob/main/HOWTO.md
+  license: AGPL-3.0-or-later
+  license_file: LICENSE.md
+  summary: Open source software for finite element analysis and crash simulation
+  description: |
+    OpenRadioss is the open-source release of Simcenter Radioss, an industrial
+    general-purpose finite element solver for structural crash, impact, and
+    safety analyses.  This recipe builds the Starter and Engine SMP (gfortran)
+    executables following the upstream "Building on Linux" HOWTO:
+    `./build_script.sh -arch=linux64_gf -release`.
+
+    The MPI flavor (`-mpi=ompi`) is not built because upstream only wires
+    OpenMPI and the scns channel carries mpich.
+
+extra:
+  recipe-maintainers:
+    - fsslc
