@@ -1,0 +1,153 @@
+# give conda package a higher build number
+schema_version: 1
+
+context:
+  version: "4.1.6"
+  major: "4.1"
+  build: 101
+
+recipe:
+  name: openmpi-mpi
+  version: ${{ version }}
+
+source:
+  url: https://www.open-mpi.org/software/ompi/v${{ major }}/downloads/openmpi-${{ version }}.tar.bz2
+  sha256: f740994485516deb63b5311af122c265179f5328a0d857a567b85db00b11e415
+
+build:
+  number: ${{ build }}
+  skip: win
+
+outputs:
+  - package:
+      name: openmpi
+    build:
+      script:
+        file: build-mpi.sh
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - ${{ compiler('cxx') }}
+        - ${{ compiler('fortran') }}
+        - if: unix
+          then: autoconf
+        - if: unix
+          then: automake
+        - if: unix
+          then: libtool
+        - if: unix
+          then: make
+        - perl
+      host:
+        - zlib
+        - if: enable_cuda
+          then: ucx
+        - if: enable_cuda
+          then: ucx-proc
+      run:
+        - zlib
+        - mpi ==1.0 openmpi*
+      run_exports:
+        - ${{ pin_subpackage('openmpi', lower_bound='x.x.x', upper_bound='x') }}
+      ignore_run_exports:
+        by_name:
+          - if: enable_cuda
+            then: ucx
+      run_constraints:
+        - if: enable_cuda
+          then: cudatoolkit  >= ${{ cudatoolkit }}
+        - if: enable_cuda
+          then: ${{ pin_compatible("ucx", upper_bound="x") }}
+    tests:
+      - script: run_test.sh
+        files:
+          recipe:
+            - mpiexec.sh
+            - tests/helloworld.sh
+  - package:
+      name: openmpi-mpicc
+    build:
+      script:
+        - if: not osx
+          then: echo 'ok'
+        # make CONDA_BUILD_SYSROOT a 'used variable'
+        # so that conda-build knows to pass it to the test env
+        - if: osx
+          then: echo "${{ CONDA_BUILD_SYSROOT }}"
+    requirements:
+      run:
+        - ${{ pin_subpackage('openmpi', exact=True) }}
+        # host C compilers work fine (better) on mac
+        - ${{ compiler('c') }}
+    tests:
+      - script: run_test.sh
+        files:
+          recipe:
+            - mpiexec.sh
+            - tests/helloworld.c
+  - package:
+      name: openmpi-mpicxx
+    build:
+      script:
+        - if: not osx
+          then: echo 'ok'
+        # make CONDA_BUILD_SYSROOT a 'used variable'
+        # so that conda-build knows to pass it to the test env
+        - if: osx
+          then: echo "${{ CONDA_BUILD_SYSROOT }}"
+    requirements:
+      run:
+        - ${{ pin_subpackage('openmpi', exact=True) }}
+        # host C compilers work fine (better) on mac
+        - ${{ compiler('cxx') }}
+    tests:
+      - script: run_test.sh
+        files:
+          recipe:
+            - mpiexec.sh
+            - tests/helloworld.cxx
+  - package:
+      name: openmpi-mpifort
+    build:
+      script:
+        - if: not osx
+          then: echo 'ok'
+        # make CONDA_BUILD_SYSROOT a 'used variable'
+        # so that conda-build knows to pass it to the test env
+        - if: osx
+          then: echo "${{ CONDA_BUILD_SYSROOT }}"
+    requirements:
+      run:
+        - ${{ pin_subpackage('openmpi', exact=True) }}
+        - ${{ compiler('fortran') }}
+    tests:
+      - script: run_test.sh
+        files:
+          recipe:
+            - mpiexec.sh
+            - tests/helloworld.f
+            - tests/helloworld.f90
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: An open source Message Passing Interface implementation.
+  description: |
+    The Open MPI Project is an open source Message Passing Interface
+    implementation that is developed and maintained by a consortium of academic,
+    research, and industry partners.
+  homepage: https://www.open-mpi.org/
+  repository: https://github.com/open-mpi/ompi
+  documentation: https://www.open-mpi.org/doc/
+
+extra:
+  recipe-maintainers:
+    - astrofrog
+    - bekozi
+    - dalcinl
+    - leofang
+    - minrk
+    - msarahan
+    - ocefpaf
+    - beckermr
+

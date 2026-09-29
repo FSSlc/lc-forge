@@ -1,0 +1,4 @@
+mpi_type:
+  - conda
+enable_cuda:
+  - False
