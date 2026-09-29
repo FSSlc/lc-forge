@@ -27,9 +27,8 @@ requirements:
     - make
     - bison
     - flex
-  host:
   run_exports:
-    - ${{ pin_subpackage('libnl', 'x.x.x') }}
+    - ${{ pin_subpackage('libnl') }}
 
 tests:
   - script:
