@@ -93,14 +93,22 @@ for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
   fi
 done
 
-# The extlib's libapr-1.so needs libuuid.so.1, and the object files
-# need libdl.so.2 (dlsym etc.).  Both are available in the conda prefix
-# and/or the sysroot, but the upstream CMake flags drop the toolchain
-# LDFLAGS and the aarch64 sysroot is missing the libdl.so symlink.
-# Solve both by adding $PREFIX/lib to LIBRARY_PATH (so ld finds libuuid
-# via gcc's library search) and creating a missing libdl.so -> libdl.so.2
-# symlink in the sysroot.
+# The extlib's libapr-1.so needs libuuid.so.1 at link time (DT_NEEDED),
+# but the upstream CMake flags drop the toolchain LDFLAGS so $PREFIX/lib
+# is not in the linker search path.  Prepend -L$PREFIX/lib to every
+# set (LINK "...") line in the cmake configs (both starter and engine,
+# indented or not).  Also add LIBRARY_PATH for GCC's -l resolution.
 export LIBRARY_PATH="${LIBRARY_PATH:-}:${PREFIX}/lib"
+for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
+           starter/CMake_Compilers/cmake_linuxa64_gf.txt \
+           engine/CMake_Compilers/cmake_linux64_gf.txt \
+           engine/CMake_Compilers/cmake_linuxa64_gf.txt; do
+  [ -f "$cfg" ] || continue
+  sed -i "s|set (LINK \"|set (LINK \"-L${PREFIX}/lib |g" "$cfg"
+done
+
+# On aarch64 the sysroot is missing the libdl.so symlink (only
+# libdl.so.2 exists), so -ldl fails.  Create it.
 if [ "${target_platform}" = linux-aarch64 ]; then
   for d in "${BUILD_PREFIX}/aarch64-scns-linux-gnu/sysroot/lib64" \
            "${BUILD_PREFIX}/aarch64-scns-linux-gnu/sysroot/lib"; do
