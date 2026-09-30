@@ -94,20 +94,12 @@ for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
 done
 
 # The extlib's libapr-1.so needs libuuid.so.1 at link time (DT_NEEDED),
-# but the upstream CMake flags drop the toolchain LDFLAGS so $PREFIX/lib
-# is not searched.  Symlink libuuid into the extlib directory so the
-# linker finds it alongside libapr-1.so.
-for d in starter/../extlib/hm_reader/linux64 starter/../extlib/hm_reader/linuxa64 \
-         engine/../extlib/hm_reader/linux64 engine/../extlib/hm_reader/linuxa64; do
-  d="${SRC_DIR}/openradioss/${d}"
-  [ -d "$d" ] || continue
-  if [ -f "${PREFIX}/lib/libuuid.so" ]; then
-    ln -sf "${PREFIX}/lib/libuuid.so" "$d/libuuid.so"
-    ln -sf "${PREFIX}/lib/libuuid.so.1" "$d/libuuid.so.1" 2>/dev/null || true
-  elif [ -f "${PREFIX}/lib/libuuid.so.1" ]; then
-    ln -sf "${PREFIX}/lib/libuuid.so.1" "$d/libuuid.so.1"
-  fi
-done
+# but the upstream CMake flags drop the toolchain LDFLAGS.  libuuid is
+# a build dependency so it lives in $BUILD_PREFIX/lib.  The linker (ld)
+# respects LD_LIBRARY_PATH when resolving DT_NEEDED libraries (it is
+# searched before the default system paths).  Use that instead of
+# patching cmake configs.
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${BUILD_PREFIX}/lib"
 
 # On aarch64 the sysroot has libdl.so.2 but no libdl.so symlink.
 # Find libdl.so.2 anywhere under BUILD_PREFIX and create the symlink.
