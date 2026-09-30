@@ -95,8 +95,15 @@ done
 
 # libuuid is a conda dependency but the upstream CMake flags drop the
 # toolchain LDFLAGS, so $PREFIX/lib is not searched during linking.
-# Help the linker find libuuid.so.1 via LIBRARY_PATH.
-export LIBRARY_PATH="${LIBRARY_PATH:-}:${PREFIX}/lib"
+# Add it directly into the cmake config LINK variable so the linker
+# can find libuuid.so.1 (needed by extlib's libapr-1.so).
+for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
+           starter/CMake_Compilers/cmake_linuxa64_gf.txt \
+           engine/CMake_Compilers/cmake_linux64_gf.txt \
+           engine/CMake_Compilers/cmake_linuxa64_gf.txt; do
+  [ -f "$cfg" ] || continue
+  sed -i "s|^set (LINK \"|set (LINK \"-L${PREFIX}/lib |" "$cfg"
+done
 
 # Patch the upstream CMake config to find OpenMPI in the conda build prefix
 # (where the openmpi build dependency lives) instead of hardcoded /opt/openmpi/.
