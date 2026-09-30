@@ -95,28 +95,27 @@ done
 
 # The extlib's libapr-1.so needs libuuid.so.1 at link time (DT_NEEDED),
 # but the upstream CMake flags drop the toolchain LDFLAGS so $PREFIX/lib
-# is not in the linker search path.  Prepend -L$PREFIX/lib to every
-# set (LINK "...") line in the cmake configs (both starter and engine,
-# indented or not).  Also add LIBRARY_PATH for GCC's -l resolution.
-export LIBRARY_PATH="${LIBRARY_PATH:-}:${PREFIX}/lib"
-for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
-           starter/CMake_Compilers/cmake_linuxa64_gf.txt \
-           engine/CMake_Compilers/cmake_linux64_gf.txt \
-           engine/CMake_Compilers/cmake_linuxa64_gf.txt; do
-  [ -f "$cfg" ] || continue
-  sed -i "s|set (LINK \"|set (LINK \"-L${PREFIX}/lib |g" "$cfg"
+# is not searched.  Symlink libuuid into the extlib directory so the
+# linker finds it alongside libapr-1.so.
+for d in starter/../extlib/hm_reader/linux64 starter/../extlib/hm_reader/linuxa64 \
+         engine/../extlib/hm_reader/linux64 engine/../extlib/hm_reader/linuxa64; do
+  d="${SRC_DIR}/openradioss/${d}"
+  [ -d "$d" ] || continue
+  if [ -f "${PREFIX}/lib/libuuid.so" ]; then
+    ln -sf "${PREFIX}/lib/libuuid.so" "$d/libuuid.so"
+    ln -sf "${PREFIX}/lib/libuuid.so.1" "$d/libuuid.so.1" 2>/dev/null || true
+  elif [ -f "${PREFIX}/lib/libuuid.so.1" ]; then
+    ln -sf "${PREFIX}/lib/libuuid.so.1" "$d/libuuid.so.1"
+  fi
 done
 
-# On aarch64 the sysroot has no libdl.so (only libdl.so.2), so -ldl
-# fails.  The upstream cmake LINK includes -ldl unconditionally; we
-# cannot remove it because it is needed for x86_64.  Create an empty
-# libdl.a in $PREFIX/lib so the linker resolves -ldl silently.
-# (On glibc ≥2.34 the dl functions are in libc, so an empty stub
-#  is harmless.  On glibc <2.34 the real libdl from the sysroot
-#  is found first because it is searched before $PREFIX/lib.)
+# On aarch64 the sysroot has libdl.so.2 but no libdl.so symlink.
+# Find libdl.so.2 anywhere under BUILD_PREFIX and create the symlink.
 if [ "${target_platform}" = linux-aarch64 ]; then
-  mkdir -p "${PREFIX}/lib"
-  touch "${PREFIX}/lib/libdl.a"
+  find "${BUILD_PREFIX}" -name "libdl.so.2" -maxdepth 6 2>/dev/null | while read -r f; do
+    d="$(dirname "$f")"
+    [ ! -f "$d/libdl.so" ] && ln -sf libdl.so.2 "$d/libdl.so"
+  done || true
 fi
 
 # Patch the upstream CMake config to find OpenMPI in the conda build prefix
