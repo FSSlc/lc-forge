@@ -163,8 +163,14 @@ mkdir -p "${PREFIX}/lib"
 for lib in "libhm_reader_${extlib_arch}.so" libapr-1.so libapr-1.so.0; do
   install -m 0755 "extlib/hm_reader/${extlib_arch}/${lib}" "${PREFIX}/lib/"
 done
-patchelf --set-rpath '$ORIGIN/../lib' "${PREFIX}/bin/starter_linux64_gf"
-patchelf --set-rpath '$ORIGIN/../lib' "${PREFIX}/bin/engine_linux64_gf"
+# Fix the rpath of every installed binary (upstream CMake drops LDFLAGS).
+# The arch suffix varies per platform (e.g. linux64_gf vs linuxa64_gf).
+for f in "${PREFIX}/bin/starter_${or_arch}"*; do
+  [ -f "$f" ] && patchelf --set-rpath '$ORIGIN/../lib' "$f"
+done
+for f in "${PREFIX}/bin/engine_${or_arch}"*; do
+  [ -f "$f" ] && patchelf --set-rpath '$ORIGIN/../lib' "$f"
+done
 
 # Install license file for rattler-build (it looks for license_file
 # relative to the work root, but our source is nested in openradioss/).
