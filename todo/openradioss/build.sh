@@ -97,12 +97,17 @@ done
 # toolchain LDFLAGS, so $PREFIX/lib is not searched during linking.
 # Add it directly into the cmake config LINK variable so the linker
 # can find libuuid.so.1 (needed by extlib's libapr-1.so).
+# Also remove -ldl on aarch64 where glibc ≥2.34 merged libdl into libc
+# and the sysroot does not ship libdl.so.
 for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
            starter/CMake_Compilers/cmake_linuxa64_gf.txt \
            engine/CMake_Compilers/cmake_linux64_gf.txt \
            engine/CMake_Compilers/cmake_linuxa64_gf.txt; do
   [ -f "$cfg" ] || continue
   sed -i "s|^set (LINK \"|set (LINK \"-L${PREFIX}/lib |" "$cfg"
+  if [ "${target_platform}" = linux-aarch64 ]; then
+    sed -i 's/ -ldl / /g' "$cfg"
+  fi
 done
 
 # Patch the upstream CMake config to find OpenMPI in the conda build prefix
