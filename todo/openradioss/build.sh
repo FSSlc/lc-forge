@@ -93,8 +93,10 @@ for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
   fi
 done
 
-# libuuid is now provided by conda dependency (added to recipe.yaml).
-# No need to add system paths.
+# libuuid is a conda dependency but the upstream CMake flags drop the
+# toolchain LDFLAGS, so $PREFIX/lib is not searched during linking.
+# Help the linker find libuuid.so.1 via LIBRARY_PATH.
+export LIBRARY_PATH="${LIBRARY_PATH:-}:${PREFIX}/lib"
 
 # Patch the upstream CMake config to find OpenMPI in the conda build prefix
 # (where the openmpi build dependency lives) instead of hardcoded /opt/openmpi/.
