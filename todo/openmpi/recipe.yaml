@@ -29,14 +29,14 @@ outputs:
         - ${{ compiler('c') }}
         - ${{ compiler('cxx') }}
         - ${{ compiler('fortran') }}
+        - ${{ stdlib('c') }}
         - if: unix
-          then: autoconf
-        - if: unix
-          then: automake
-        - if: unix
-          then: libtool
-        - if: unix
-          then: make
+          then: 
+            - autoconf
+            - automake
+            - libtool
+            - make
+            - libltdl
         - perl
       host:
         - zlib
@@ -65,6 +65,22 @@ outputs:
             - mpiexec.sh
             - tests/helloworld.sh
   - package:
+      name: mpi
+      version: 1.0
+    build:
+      noarch: generic
+      string: openmpi
+    requirements:
+      run:
+        - ${{ pin_subpackage('openmpi', exact=True) }}
+    tests:
+      - script:
+          - exit 0
+    about:
+      homepage: https://www.open-mpi.org/
+      license: BSD-3-Clause
+      summary: A virtual package for MPI
+  - package:
       name: openmpi-mpicc
     build:
       script:
@@ -79,6 +95,7 @@ outputs:
         - ${{ pin_subpackage('openmpi', exact=True) }}
         # host C compilers work fine (better) on mac
         - ${{ compiler('c') }}
+        - ${{ stdlib('c') }}
     tests:
       - script: run_test.sh
         files:
@@ -100,6 +117,7 @@ outputs:
         - ${{ pin_subpackage('openmpi', exact=True) }}
         # host C compilers work fine (better) on mac
         - ${{ compiler('cxx') }}
+        - ${{ stdlib('c') }}
     tests:
       - script: run_test.sh
         files:
@@ -120,6 +138,7 @@ outputs:
       run:
         - ${{ pin_subpackage('openmpi', exact=True) }}
         - ${{ compiler('fortran') }}
+        - ${{ stdlib('c') }}
     tests:
       - script: run_test.sh
         files:

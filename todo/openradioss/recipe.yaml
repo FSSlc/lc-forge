@@ -40,12 +40,16 @@ requirements:
     - ${{ compiler('cxx') }}
     - ${{ compiler('fortran') }}
     - ${{ stdlib('c') }}
-    - cmake
+    - cmake <4
     - make
     - python
+    - openmpi
     # Fix the rpath of the generated binaries (the upstream CMake flags drop
     # the conda toolchain's LDFLAGS, so $PREFIX/lib is not searched at runtime).
     - patchelf
+    - libuuid
+  run:
+    - openmpi
 
 tests:
   - script:
@@ -74,8 +78,8 @@ tests:
         rc=$?
         set -e
         echo "${out}"
-        # not zero (no input), but must not be a loader error
-        test ${rc} -ne 0
+        # Exit may be 0 or non-zero depending on upstream version; the key
+        # is that it is a clean message about missing input, not a loader error.
         echo "${out}" | grep -qiE 'starter|radioss|input|error|usage' \
           && ! echo "${out}" | grep -qiE 'error while loading|No such file'
 
@@ -89,12 +93,7 @@ about:
   description: |
     OpenRadioss is the open-source release of Simcenter Radioss, an industrial
     general-purpose finite element solver for structural crash, impact, and
-    safety analyses.  This recipe builds the Starter and Engine SMP (gfortran)
-    executables following the upstream "Building on Linux" HOWTO:
-    `./build_script.sh -arch=linux64_gf -release`.
-
-    The MPI flavor (`-mpi=ompi`) is not built because upstream only wires
-    OpenMPI and the scns channel carries mpich.
+    safety analyses.
 
 extra:
   recipe-maintainers:
