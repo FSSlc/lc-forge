@@ -107,14 +107,16 @@ for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
   sed -i "s|set (LINK \"|set (LINK \"-L${PREFIX}/lib |g" "$cfg"
 done
 
-# On aarch64 the sysroot is missing the libdl.so symlink (only
-# libdl.so.2 exists), so -ldl fails.  Create it.
+# On aarch64 the sysroot has no libdl.so (only libdl.so.2), so -ldl
+# fails.  The upstream cmake LINK includes -ldl unconditionally; we
+# cannot remove it because it is needed for x86_64.  Create an empty
+# libdl.a in $PREFIX/lib so the linker resolves -ldl silently.
+# (On glibc ≥2.34 the dl functions are in libc, so an empty stub
+#  is harmless.  On glibc <2.34 the real libdl from the sysroot
+#  is found first because it is searched before $PREFIX/lib.)
 if [ "${target_platform}" = linux-aarch64 ]; then
-  for d in "${BUILD_PREFIX}/aarch64-scns-linux-gnu/sysroot/lib64" \
-           "${BUILD_PREFIX}/aarch64-scns-linux-gnu/sysroot/lib"; do
-    [ -f "$d/libdl.so.2" ] && [ ! -f "$d/libdl.so" ] && \
-      ln -sf libdl.so.2 "$d/libdl.so"
-  done
+  mkdir -p "${PREFIX}/lib"
+  touch "${PREFIX}/lib/libdl.a"
 fi
 
 # Patch the upstream CMake config to find OpenMPI in the conda build prefix
