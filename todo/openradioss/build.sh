@@ -93,10 +93,8 @@ for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
   fi
 done
 
-# libapr-1.so (shipped in extlib) links against libuuid from the system.
-# The conda build env does not include /usr/lib64 in its linker search path.
-export LIBRARY_PATH="${LIBRARY_PATH:-}:/usr/lib64"
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:/usr/lib64"
+# libuuid is now provided by conda dependency (added to recipe.yaml).
+# No need to add system paths.
 
 # Patch the upstream CMake config to find OpenMPI in the conda build prefix
 # (where the openmpi build dependency lives) instead of hardcoded /opt/openmpi/.

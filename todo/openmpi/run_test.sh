@@ -12,13 +12,15 @@ if [[ $PKG_NAME == "openmpi" ]]; then
   command -v ompi_info
   ompi_info
 
-  if [[ ! -z "$(conda list | grep ucx)" ]]; then
-    echo "Improper UCX dependency!"
-    exit 1
-  fi
-  if [[ ! -z "$(conda list | grep cudatoolkit)" ]]; then
-    echo "Improper cuda dependency!"
-    exit 1
+  if command -v conda >/dev/null 2>&1; then
+    if [[ ! -z "$(conda list 2>/dev/null | grep ucx)" ]]; then
+      echo "Improper UCX dependency!"
+      exit 1
+    fi
+    if [[ ! -z "$(conda list 2>/dev/null | grep cudatoolkit)" ]]; then
+      echo "Improper cuda dependency!"
+      exit 1
+    fi
   fi
 
   command -v mpiexec
