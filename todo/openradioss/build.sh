@@ -106,7 +106,12 @@ for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
   [ -f "$cfg" ] || continue
   sed -i "s|^set (LINK \"|set (LINK \"-L${PREFIX}/lib |" "$cfg"
   if [ "${target_platform}" = linux-aarch64 ]; then
-    sed -i 's/ -ldl / /g' "$cfg"
+    # On aarch64 glibc ≥2.34 merged libdl into libc and the sysroot
+    # has no libdl.so.  The cmake config LINK strings reference libdl
+    # as both " dl " (CMake resolves it to -ldl) and " -ldl ". Remove all.
+    sed -i 's/-ldl//g; s/ dl /   /g' "$cfg"
+    # Clean up excess whitespace left by removals.
+    sed -i 's/  */ /g' "$cfg"
   fi
 done
 
