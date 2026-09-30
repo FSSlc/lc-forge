@@ -93,27 +93,21 @@ for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
   fi
 done
 
-# libuuid is a conda dependency but the upstream CMake flags drop the
-# toolchain LDFLAGS, so $PREFIX/lib is not searched during linking.
-# Add it directly into the cmake config LINK variable so the linker
-# can find libuuid.so.1 (needed by extlib's libapr-1.so).
-# Also remove -ldl on aarch64 where glibc ≥2.34 merged libdl into libc
-# and the sysroot does not ship libdl.so.
-for cfg in starter/CMake_Compilers/cmake_linux64_gf.txt \
-           starter/CMake_Compilers/cmake_linuxa64_gf.txt \
-           engine/CMake_Compilers/cmake_linux64_gf.txt \
-           engine/CMake_Compilers/cmake_linuxa64_gf.txt; do
-  [ -f "$cfg" ] || continue
-  sed -i "s|^set (LINK \"|set (LINK \"-L${PREFIX}/lib |" "$cfg"
-  if [ "${target_platform}" = linux-aarch64 ]; then
-    # On aarch64 glibc ≥2.34 merged libdl into libc and the sysroot
-    # has no libdl.so.  The cmake config LINK strings reference libdl
-    # as both " dl " (CMake resolves it to -ldl) and " -ldl ". Remove all.
-    sed -i 's/-ldl//g; s/ dl /   /g' "$cfg"
-    # Clean up excess whitespace left by removals.
-    sed -i 's/  */ /g' "$cfg"
-  fi
-done
+# The extlib's libapr-1.so needs libuuid.so.1, and the object files
+# need libdl.so.2 (dlsym etc.).  Both are available in the conda prefix
+# and/or the sysroot, but the upstream CMake flags drop the toolchain
+# LDFLAGS and the aarch64 sysroot is missing the libdl.so symlink.
+# Solve both by adding $PREFIX/lib to LIBRARY_PATH (so ld finds libuuid
+# via gcc's library search) and creating a missing libdl.so -> libdl.so.2
+# symlink in the sysroot.
+export LIBRARY_PATH="${LIBRARY_PATH:-}:${PREFIX}/lib"
+if [ "${target_platform}" = linux-aarch64 ]; then
+  for d in "${BUILD_PREFIX}/aarch64-scns-linux-gnu/sysroot/lib64" \
+           "${BUILD_PREFIX}/aarch64-scns-linux-gnu/sysroot/lib"; do
+    [ -f "$d/libdl.so.2" ] && [ ! -f "$d/libdl.so" ] && \
+      ln -sf libdl.so.2 "$d/libdl.so"
+  done
+fi
 
 # Patch the upstream CMake config to find OpenMPI in the conda build prefix
 # (where the openmpi build dependency lives) instead of hardcoded /opt/openmpi/.
