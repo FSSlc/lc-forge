@@ -120,7 +120,7 @@ jobs:
       # ---- 1. build packages listed in only-meta.txt via conda build ----
       - name: Build only-meta recipes with conda
         if: needs.changes.outputs.has-only-meta == 'true'
-        uses: kohlerdominik/docker-run-action@v2.1.0
+        uses: kohlerdominik/docker-run-action@v2.2.0
         with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
@@ -149,7 +149,7 @@ jobs:
 
       # ---- 2. build every recipe under todo/ with rattler-build ----
       - name: Build todo recipes with rattler-build
-        uses: kohlerdominik/docker-run-action@v2.1.0
+        uses: kohlerdominik/docker-run-action@v2.2.0
         with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
@@ -174,7 +174,7 @@ jobs:
 
       # ---- 3. classify per-recipe results: BUILT / SKIPPED (already on channel) / FAILED ----
       - name: Classify per-recipe build results
-        uses: kohlerdominik/docker-run-action@v2.1.0
+        uses: kohlerdominik/docker-run-action@v2.2.0
         with:
           image: ghcr.io/fsslc/pixi:latest
           volumes: ${{ github.workspace }}:${{ github.workspace }}
