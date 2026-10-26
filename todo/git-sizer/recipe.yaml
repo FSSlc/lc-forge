@@ -1,0 +1,58 @@
+schema_version: 1
+
+context:
+  name: git-sizer
+  version: 1.5.0
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/github/${{ name }}/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 07a5ac5f30401a17d164a6be8d52d3d474ee9c3fb7f60fd83a617af9f7e902bb
+  target_directory: src
+
+build:
+  number: 3
+  script:
+    - cd src
+    - if: unix
+      then: go build -buildvcs=false -ldflags "-s -w -X main.ReleaseVersion=${{ version }}" -v -o "$PREFIX/bin/git-sizer"
+    - if: win
+      then: go build -buildvcs=false -ldflags "-s -w -X main.ReleaseVersion=${{ version }}" -v -o "%LIBRARY_BIN%\git-sizer.exe"
+    - go-licenses save . --save_path ../library_licenses
+
+requirements:
+  build:
+    - ${{ compiler('go-nocgo') }}
+    - go-licenses
+
+tests:
+  - package_contents:
+      bin:
+        - git-sizer
+  - requirements:
+      run:
+        - if: not riscv64 and not (win and arm64)
+          then: git
+    script:
+      - git-sizer --version
+      - if: not riscv64 and not (win and arm64)
+        then:
+          - git init .
+          - git-sizer -v
+
+about:
+  homepage: https://github.com/github/git-sizer
+  repository: https://github.com/github/git-sizer
+  license: MIT
+  license_family: MIT
+  license_file:
+    - src/LICENSE.md
+    - library_licenses/
+  summary: Compute various size metrics for a Git repository, flagging those that might cause problems
+
+extra:
+  recipe-maintainers:
+    - dbast
