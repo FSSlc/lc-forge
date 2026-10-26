@@ -1,0 +1,45 @@
+schema_version: 1
+
+context:
+  name: gocryptfs
+  version: "2.6.1"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/rfjakob/${{ name }}/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: 8b293c77703e9a45b629a47ce16aad701a9f2f53af5a8fb6200abe274f08051c
+
+build:
+  number: 0
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('go-nocgo') }}
+    - go-licenses
+
+tests:
+  - script:
+      - gocryptfs -h
+
+about:
+  summary: Encrypted overlay filesystem written in Go
+  description: |
+    gocryptfs is built on top the excellent go-fuse FUSE library.
+    This project was inspired by EncFS and strives to fix its security issues while providing good performance.
+    For details on the security of gocryptfs see the Security design document.
+  license: MIT
+  license_file:
+    - LICENSE
+    - license-files/
+  homepage: https://github.com/rfjakob/gocryptfs
+  repository: https://github.com/rfjakob/gocryptfs
+  documentation: https://nuetzlich.net/gocryptfs/
+
+extra:
+  recipe-maintainers:
+    - vinisalazar
+
