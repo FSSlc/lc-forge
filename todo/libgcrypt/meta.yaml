@@ -1,0 +1,158 @@
+{% set version = "1.12.2" %}
+
+package:
+  name: libgcrypt-split
+  version: {{ version }}
+
+source:
+  url: https://mirrors.dotsrc.org/gcrypt/libgcrypt/libgcrypt-{{ version }}.tar.bz2
+  sha256: 7ce33c2492221a0436f96a8500215e9f3e3dcb5fd26a757cd415e7a843babd5e
+
+build:
+  number: 2
+  skip: true  # [win]
+  run_exports:
+    - {{ pin_subpackage('libgcrypt') }}
+
+requirements:
+  build:
+    - autoconf 2.71
+    - automake
+    - make
+    - {{ compiler('c') }}
+    - {{ stdlib('c') }}
+  host:
+    - libgpg-error
+
+outputs:
+  - name: libgcrypt
+    build:
+      run_exports:
+        - {{ pin_subpackage('libgcrypt-lib') }}
+
+    requirements:
+      host:
+        - {{ pin_subpackage('libgcrypt-lib', exact=true) }}
+        - {{ pin_subpackage('libgcrypt-tools', exact=true) }}
+        - {{ pin_subpackage('libgcrypt-devel', exact=true) }}
+      run:
+        - {{ pin_subpackage('libgcrypt-lib', exact=true) }}
+        - {{ pin_subpackage('libgcrypt-tools', exact=true) }}
+        - {{ pin_subpackage('libgcrypt-devel', exact=true) }}
+
+    test:
+      commands:
+        - test -f ${PREFIX}/bin/dumpsexp
+        - test -f ${PREFIX}/bin/hmac256
+        - test -f ${PREFIX}/bin/mpicalc
+        - test -f ${PREFIX}/include/gcrypt.h
+        - test -f ${PREFIX}/lib/libgcrypt.20${SHLIB_EXT}  # [osx]
+        - test -f ${PREFIX}/lib/libgcrypt${SHLIB_EXT}.20  # [linux]
+        - test -f ${PREFIX}/lib/pkgconfig/libgcrypt.pc
+        - test -f ${PREFIX}/share/aclocal/libgcrypt.m4
+        - test -f ${PREFIX}/share/info/gcrypt.info
+        - test -f ${PREFIX}/share/info/gcrypt.info-1
+        - test -f ${PREFIX}/share/info/gcrypt.info-2
+
+    about:
+      license: LGPL-2.1-or-later AND GPL-2.0-or-later
+
+  - name: libgcrypt-tools
+    script: install-libgcrypt-tools.sh
+    requirements:
+      build:
+        - make
+        - {{ compiler('c') }}
+        - {{ stdlib('c') }}
+      host:
+        - {{ pin_subpackage('libgcrypt-devel', exact=true) }}
+        - {{ pin_subpackage('libgcrypt-lib', exact=true) }}
+        - libgpg-error
+      run:
+        - {{ pin_subpackage('libgcrypt-lib', exact=true) }}
+    test:
+      commands:
+        - test -f ${PREFIX}/bin/dumpsexp
+        - test -f ${PREFIX}/bin/hmac256
+        - test -f ${PREFIX}/bin/mpicalc
+    about:
+      license: GPL-2.0-or-later
+      license_file:
+        - COPYING
+        - LICENSES
+
+  - name: libgcrypt-lib
+    script: install-libgcrypt-lib.sh
+    build:
+      run_exports:
+        - {{ pin_subpackage('libgcrypt-lib') }}
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ stdlib('c') }}
+      host:
+        - libgpg-error
+    test:
+      commands:
+        - test ! -f ${PREFIX}/bin/dumpsexp
+        - test ! -f ${PREFIX}/bin/hmac256
+        - test ! -f ${PREFIX}/bin/mpicalc
+        - test -f ${PREFIX}/lib/libgcrypt.20${SHLIB_EXT}  # [osx]
+        - test -f ${PREFIX}/lib/libgcrypt${SHLIB_EXT}.20  # [linux]
+    about:
+      license: LGPL-2.1-or-later
+      license_file:
+        - COPYING.LIB
+        - LICENSES
+
+  - name: libgcrypt-devel
+    script: install-libgcrypt-devel.sh
+    build:
+      run_exports:
+        - {{ pin_subpackage('libgcrypt-lib') }}
+    requirements:
+      build:
+        - make
+        - {{ compiler('c') }}
+        - {{ stdlib('c') }}
+      host:
+        - {{ pin_subpackage('libgcrypt-lib', exact=true) }}
+      run:
+        - {{ pin_subpackage('libgcrypt-lib', exact=true) }}
+    test:
+      commands:
+        - test ! -f ${PREFIX}/bin/dumpsexp
+        - test ! -f ${PREFIX}/bin/hmac256
+        - test ! -f ${PREFIX}/bin/mpicalc
+        - test -f ${PREFIX}/include/gcrypt.h
+        - test -f ${PREFIX}/lib/libgcrypt.20${SHLIB_EXT}  # [osx]
+        - test -f ${PREFIX}/lib/libgcrypt${SHLIB_EXT}.20  # [linux]
+        - test -f ${PREFIX}/lib/pkgconfig/libgcrypt.pc
+        - test -f ${PREFIX}/share/aclocal/libgcrypt.m4
+        - test -f ${PREFIX}/share/info/gcrypt.info
+        - test -f ${PREFIX}/share/info/gcrypt.info-1
+        - test -f ${PREFIX}/share/info/gcrypt.info-2
+    about:
+      license: LGPL-2.1-or-later
+      license_file:
+        - COPYING.LIB
+        - LICENSES
+
+about:
+  home: https://gnupg.org/software/index.html
+  license: LGPL-2.1-or-later AND GPL-2.0-or-later
+  license_file:
+    - COPYING.LIB
+    - COPYING
+    - LICENSES
+  license_family: GPL
+  dev_url: https://dev.gnupg.org/source/libgcrypt/
+  summary: a general purpose cryptographic library originally based on code from GnuPG.
+
+extra:
+  recipe-maintainers:
+    - martindurant
+    - mariusvniekerk
+    - mbargull
+    - xhochy
+    - luhenry

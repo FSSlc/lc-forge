@@ -1,0 +1,57 @@
+schema_version: 1
+
+context:
+  name: libgpg-error
+  version: "1.61"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://mirrors.dotsrc.org/gcrypt/libgpg-error/${{ name }}-${{ version }}.tar.bz2
+  sha256: 7a85413f2bc354f4f8aa832b718af122e48965e9e0eb9012ee659c13c6385c93
+
+build:
+  number: 2
+  skip: win
+
+requirements:
+  build:
+    - if: unix
+      then: gnuconfig
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+    - if: unix
+      then:
+        - make
+        - libtool
+        - automake
+        - xz-tools
+    - if: osx
+      then: gnuconfig
+    - gettext-tools
+    - pkg-config
+  host:
+    - if: osx
+      then: libintl-devel
+  run_exports:
+    - ${{ pin_subpackage('libgpg-error') }}
+
+tests:
+  - script:
+      - if: unix
+        then: test -f $PREFIX/lib/libgpg-error${SHLIB_EXT}
+
+about:
+  license: LGPL-2.1-only
+  license_file: COPYING
+  summary: a small library that originally defined common error values for all GnuPG components
+  homepage: https://www.gnupg.org/software/libgpg-error/index.html
+
+extra:
+  recipe-maintainers:
+    - martindurant
+    - mariusvniekerk
+    - xhochy
