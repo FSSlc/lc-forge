@@ -689,25 +689,27 @@ class PrepareState:
     force_packages: set[str] = field(default_factory=set)
     visiting: set[str] = field(default_factory=set)
     order: list[str] = field(default_factory=list)  # feedstock prep order
+    # Prep failures collected during recursion (clone / crm conversion). The
+    # download keeps going past these and reports them together at the end so a
+    # human can fix them, instead of aborting the whole import on the first one.
+    prep_errors: list[str] = field(default_factory=list)
+    # Package/feedstock names whose prep already failed; avoids re-prepping them
+    # when another branch depends on the same output.
+    failed: set[str] = field(default_factory=set)
 
     def todo_dir(self, feedstock: str) -> Path:
         return self.root / "todo" / feedstock
 
 
 def prep_feedstock(state: PrepareState, feedstock: str) -> Path:
-    """Run prep.sh --strict <feedstock>; return path to todo/<feedstock>."""
+    """Run prep.sh --strict <feedstock>; return path to todo/<feedstock>.
+
+    On failure the partially cloned recipe dir (meta.yaml etc.) is left in place
+    so a human can inspect and fix the crm conversion afterwards.
+    """
     script = state.root / "scripts" / "prep.sh"
     todo = state.todo_dir(feedstock)
-    try:
-        run(["bash", str(script), "--strict", feedstock], cwd=state.root)
-    except ImportError_:
-        # prep.sh --strict may leave a partial todo/<fs> (e.g. meta.yaml only).
-        # Remove it so a retry starts clean and we do not commit junk.
-        if todo.is_dir() and not (todo / "recipe.yaml").is_file():
-            import shutil
-
-            shutil.rmtree(todo, ignore_errors=True)
-        raise
+    run(["bash", str(script), "--strict", feedstock], cwd=state.root)
     recipe = todo / "recipe.yaml"
     if not recipe.is_file():
         raise ImportError_(
@@ -722,6 +724,9 @@ def ensure_package(state: PrepareState, pkg: str, *, via: str) -> None:
     # Packages listed in force_packages must still be prepared/built even when
     # scns already has them (used for the root package under --force).
     if pkg in state.satisfied:
+        return
+    if pkg in state.failed:
+        # Already recorded as a prep failure via another dependency branch.
         return
     if pkg not in state.force_packages and state.scns.has(pkg):
         state.satisfied.add(pkg)
@@ -754,11 +759,28 @@ def ensure_package(state: PrepareState, pkg: str, *, via: str) -> None:
 
         # If this feedstock was already prepared, its outputs will be built.
         if feedstock not in state.prepared:
+            todo = state.todo_dir(feedstock)
+            if feedstock in state.failed:
+                # This feedstock already failed prep via another output; do not
+                # re-run it or duplicate the recorded error.
+                state.failed.add(pkg)
+                return
             # Skip prep only if the *package* is already on scns (checked above)
             # or feedstock recipe already in todo from this/previous step.
-            todo = state.todo_dir(feedstock)
             if not (todo / "recipe.yaml").is_file():
-                prep_feedstock(state, feedstock)
+                try:
+                    prep_feedstock(state, feedstock)
+                except ImportError_ as e:
+                    # Do not abort the whole download: record this recipe's
+                    # failure and keep resolving the remaining dependencies.
+                    # prep.sh --strict leaves meta.yaml in place for a human to
+                    # fix the crm conversion afterwards.
+                    state.failed.add(pkg)
+                    state.failed.add(feedstock)
+                    state.prep_errors.append(
+                        f"{feedstock} (for package {pkg}, required by {via}): {e}"
+                    )
+                    return
             else:
                 print(
                     f"Reusing existing todo/{feedstock}/recipe.yaml",
@@ -1224,7 +1246,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.force:
             state.force_packages.add(pkg)
         ensure_package(state, pkg, via="(root)")
-        if not state.prepared:
+        if not state.prepared and pkg not in state.failed:
             fs = resolve_feedstock(pkg)
             print(
                 f"Root package was not recorded during ensure_package; "
@@ -1241,13 +1263,43 @@ def main(argv: list[str] | None = None) -> int:
 
         # Guarantees: the root feedstock is always first in the build list.
         root_fs = resolve_feedstock(pkg)
-        if root_fs not in state.order:
+        if root_fs not in state.order and pkg not in state.failed:
             # ensure_package may have short-circuited if scns.has flipped; force.
             if root_fs not in state.prepared:
                 if not (state.todo_dir(root_fs) / "recipe.yaml").is_file():
                     prep_feedstock(state, root_fs)
                 state.prepared[root_fs] = "root package (forced into build list)"
             state.order.insert(0, root_fs)
+
+        print("==> Prepared feedstocks (build order):", flush=True)
+        for fs in state.order:
+            print(f"    - {fs}: {state.prepared.get(fs, '')}", flush=True)
+
+        if state.prep_errors:
+            print(
+                f"==> {len(state.prep_errors)} recipe(s) failed to prepare "
+                f"(crm conversion or feedstock clone). All other recipes were "
+                f"downloaded; fix these manually and re-run.",
+                file=sys.stderr,
+                flush=True,
+            )
+            for i, msg in enumerate(state.prep_errors, 1):
+                print(f"  [{i}] {msg}", file=sys.stderr, flush=True)
+            write_status(
+                root,
+                {
+                    "root_package": pkg,
+                    "already_on_scns": False,
+                    "should_build": False,
+                    "feedstocks": state.order,
+                    "reason": (
+                        f"{len(state.prep_errors)} recipe(s) failed to prepare; "
+                        f"fix them manually and re-run"
+                    ),
+                    "prep_errors": state.prep_errors,
+                },
+            )
+            return 1
 
         if not state.order:
             raise ImportError_(
@@ -1256,10 +1308,6 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         verify_all_deps_resolvable(state)
-
-        print("==> Prepared feedstocks (build order):", flush=True)
-        for fs in state.order:
-            print(f"    - {fs}: {state.prepared.get(fs, '')}", flush=True)
 
         manifest = {
             "root_package": pkg,
