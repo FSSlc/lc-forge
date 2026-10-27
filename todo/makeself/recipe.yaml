@@ -1,0 +1,71 @@
+schema_version: 1
+
+context:
+  name: makeself
+  version: "2.7.1"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://github.com/megastep/makeself/archive/release-${{ version }}.tar.gz
+  sha256: 96843e5db70da71dcb3cb594a6899886043f115e9205c6b5ca2f26000389514e
+  patches:
+    - conda-prefix.patch
+
+build:
+  number: 0
+  skip: win
+
+requirements:
+  run:
+    - tar
+    - findutils
+    - gzip
+    # for md5sum, cksum, sha256sum
+    - coreutils
+    # enables --gpg-encrypt
+    - gnupg
+    # enables --ssl-encrypt
+    - openssl
+    # enables --pigz
+    - pigz
+    # enables --zstd
+    - zstd
+    # enables --bzip2
+    - bzip2
+    # enables --pbzip2
+    - pbzip2
+    # enables --xz
+    - liblzma-devel
+    # enables --lzo
+    - lzo
+    # enables --lz4
+    - lz4
+
+tests:
+  - script:
+      - makeself --version
+
+about:
+  license: GPL-2.0-or-later
+  license_file: COPYING
+  summary: Make self-extractable archives on Unix
+  description: |
+    makeself.sh is a small shell script that generates a self-extractable
+    compressed tar archive from a directory. The resulting file appears as a
+    shell script (many of those have a .run suffix), and can be launched as is.
+    The archive will then uncompress itself to a temporary directory and an
+    optional arbitrary command will be executed (for example an installation
+    script). This is pretty similar to archives generated with WinZip
+    Self-Extractor in the Windows world. Makeself archives also include
+    checksums for integrity self-validation (CRC and/or MD5/SHA256 checksums).
+  homepage: https://github.com/megastep/makeself
+  repository: https://github.com/megastep/makeself
+  documentation: https://github.com/megastep/makeself
+
+extra:
+  recipe-maintainers:
+    - saraedum
+    - hobu

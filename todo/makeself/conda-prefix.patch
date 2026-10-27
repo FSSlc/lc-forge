@@ -1,0 +1,25 @@
+From 6e16f871071f2393b3dd10513b732e92486dff92 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Julian=20R=C3=BCth?= <julian.rueth@fsfe.org>
+Date: Fri, 17 Mar 2023 23:15:30 +0200
+Subject: [PATCH] Fix prefix for installation in conda
+
+---
+ makeself.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/makeself.sh b/makeself.sh
+index aa55dc0..5c2d267 100755
+--- a/makeself.sh
++++ b/makeself.sh
+@@ -147,7 +147,7 @@ TAR_FORMAT=ustar
+ TAR_EXTRA=""
+ GPG_EXTRA=""
+ DU_ARGS=-ks
+-HEADER=`dirname "$0"`/makeself-header.sh
++HEADER=`dirname "$0"`/../share/makeself/makeself-header.sh
+ SIGNATURE=""
+ TARGETDIR=""
+ NOOVERWRITE=n
+-- 
+2.39.2
+
