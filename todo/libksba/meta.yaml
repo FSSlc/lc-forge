@@ -1,0 +1,47 @@
+{% set name = "libksba" %}
+{% set version = "1.6.7" %}
+{% set sha256 = "cf72510b8ebb4eb6693eef765749d83677a03c79291a311040a5bfd79baab763" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  fn: {{ name }}-{{ version }}.tar.gz
+  url: https://www.gnupg.org/ftp/gcrypt/{{ name }}/{{ name }}-{{ version }}.tar.bz2
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  skip: true  # [win]
+  run_exports:
+    - {{ pin_subpackage('libksba', max_pin='x.x') }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+    - {{ compiler('cxx') }}
+    - gnuconfig  # [unix]
+    - make  # [unix]
+  host:
+    - libgpg-error
+
+test:
+  commands:
+
+about:
+  home: https://www.gnupg.org/software/libksba/index.html
+  summary: Libksba is a library to make the tasks of working with X.509 certificates
+  license: LGPL-3.0-or-later
+  license_family: GPL
+  license_file: COPYING
+  description: |
+    Libksba is a library to make the tasks of working with X.509 certificates,
+    CMS data and related objects more easy. It provides a highlevel interface to
+    the implemented protocols and presents the data in a consistent way.
+
+extra:
+  recipe-maintainers:
+    - mariusvniekerk
+    - zklaus

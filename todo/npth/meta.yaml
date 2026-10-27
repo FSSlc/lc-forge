@@ -1,0 +1,51 @@
+{% set name = "npth" %}
+{% set version = "1.8" %}
+{% set sha256 = "8bd24b4f23a3065d6e5b26e98aba9ce783ea4fd781069c1b35d149694e90ca3e" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  fn: {{ name }}-{{ version }}.tar.gz
+  url: https://www.gnupg.org/ftp/gcrypt/{{ name }}/{{ name }}-{{ version }}.tar.bz2
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  skip: true  # [win]
+  run_exports:
+    - {{ pin_subpackage('npth') }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib("c") }}
+    - {{ compiler('cxx') }}
+    - gnuconfig  # [unix]
+    - make  # [unix]
+  host:
+    - libgpg-error
+
+test:
+  commands:
+
+about:
+  home: https://www.gnupg.org/software/ntbtls/index.html
+  summary: The New GNU Portable Threads Library
+  license: LGPL-2.0-only
+  license_family: GPL
+  license_file: COPYING.LIB
+  description: |
+    nPth is a library to provide the GNU Pth API and thus a non-preemptive
+    threads implementation.
+
+    In contrast to GNU Pth is is based on the system's standard threads implementation.
+    This allows the use of libraries which are not compatible to GNU Pth. Experience
+    with a Windows Pth emulation showed that this is a solid way to provide a co-routine
+    based framework.
+extra:
+  recipe-maintainers:
+    - zklaus
+    - mariusvniekerk
+    - notestaff

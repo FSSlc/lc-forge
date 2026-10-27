@@ -1,0 +1,53 @@
+schema_version: 1
+
+context:
+  name: libassuan
+  version: "3.0.2"
+  sha256: d2931cdad266e633510f9970e1a2f346055e351bb19f9b78912475b8074c36f6
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://www.gnupg.org/ftp/gcrypt/${{ name }}/${{ name }}-${{ version }}.tar.bz2
+  sha256: ${{ sha256 }}
+
+build:
+  number: 0
+  skip: win
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - ${{ compiler('cxx') }}
+    - if: unix
+      then: make
+    - if: unix
+      then: libtool
+    - if: unix
+      then: automake
+    - if: unix
+      then: gnuconfig
+  host:
+    - libgpg-error
+  run_exports:
+    - ${{ pin_subpackage('libassuan', upper_bound='x') }}
+
+about:
+  summary: Libassuan is a small library implementing the so-called Assuan protocol.
+  license: LGPL-2.1-or-later
+  license_file: COPYING.LIB
+  description: |
+    Libassuan is a small library implementing the so-called Assuan protocol.
+    This protocol is used for IPC between most newer GnuPG components.
+
+
+  homepage: https://www.gnupg.org/software/libassuan/index.html
+
+extra:
+  recipe-maintainers:
+    - mariusvniekerk
+    - xhochy
+
