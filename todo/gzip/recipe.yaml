@@ -1,0 +1,48 @@
+schema_version: 1
+
+context:
+  name: gzip
+  version: "1.14"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://ftp.gnu.org/gnu/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: 613d6ea44f1248d7370c7ccdeee0dd0017a09e6c39de894b3c6f03f981191c6b
+
+build:
+  number: 0
+  skip: win
+
+requirements:
+  build:
+    - if: unix
+      then: gnuconfig
+    - ${{ compiler('c') }}
+    - ${{ stdlib("c") }}
+    - make
+
+tests:
+  - script:
+      - gzip --version
+
+about:
+  license: GPL-3.0-or-later
+  license_file: COPYING
+  summary: The GNU zip complession utility
+  description: |
+    gzip (GNU zip) is a compression utility designed to be a replacement
+    for 'compress'. Its main advantages over compress are much better
+    compression and freedom from patented algorithms.  The GNU Project
+    uses it as the standard compression program for its system.
+  homepage: https://www.gnu.org/software/gzip/
+  repository: https://savannah.gnu.org/projects/gzip/
+  documentation: https://www.gnu.org/software/gzip/manual/gzip.html
+
+extra:
+  recipe-maintainers:
+    - corneliusroemer
+    - saraedum
+
