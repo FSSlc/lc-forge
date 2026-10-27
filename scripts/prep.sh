@@ -8,27 +8,31 @@ cd "$REPO_ROOT" || exit 1
 PACKAGE_NAME_PATTERN='^[A-Za-z0-9_.-]+$'
 
 usage() {
-  echo "Usage: $0 [--strict] [--recursive] <package_name>"
+  echo "Usage: $0 [-s|--strict] [-r|--recursive] [-f|--force] <package_name>"
   echo "  Clone conda-forge feedstock and copy recipe into todo/<package_name>."
-  echo "  --strict     Fail hard if meta.yaml cannot be converted to recipe.yaml"
-  echo "               (do not append to only-meta.txt)."
-  echo "  --recursive  Recursively download the package and its missing"
-  echo "               dependencies via scripts/import_recipe.py (prepare only;"
-  echo "               no build/upload). crm conversion failures are collected"
-  echo "               and reported at the end without aborting the download."
-  echo "  -h           Show this help"
+  echo "  -s, --strict    Fail hard if meta.yaml cannot be converted to recipe.yaml"
+  echo "                  (do not append to only-meta.txt)."
+  echo "  -r, --recursive Recursively download the package and its missing"
+  echo "                  dependencies via scripts/import_recipe.py (prepare only;"
+  echo "                  no build/upload). crm conversion failures are collected"
+  echo "                  and reported at the end without aborting the download."
+  echo "  -f, --force     With --recursive: download/prepare even if the package"
+  echo "                  already exists on scns."
+  echo "  -h              Show this help"
   exit "${1:-1}"
 }
 
 strict=0
 recursive=0
+force=0
 pkgname=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage 0 ;;
-    --strict) strict=1; shift ;;
-    --recursive) recursive=1; shift ;;
+    -s|--strict) strict=1; shift ;;
+    -r|--recursive) recursive=1; shift ;;
+    -f|--force) force=1; shift ;;
     -*)
       echo "Unknown option: $1" >&2
       usage
@@ -58,7 +62,9 @@ require_cmd git
 
 if [[ "$recursive" -eq 1 ]]; then
   require_cmd python3
-  exec python3 "$REPO_ROOT/scripts/import_recipe.py" --prepare-only "$pkgname"
+  force_args=()
+  [[ "$force" -eq 1 ]] && force_args+=(--force)
+  exec python3 "$REPO_ROOT/scripts/import_recipe.py" --prepare-only "${force_args[@]}" "$pkgname"
 fi
 
 feedstock_dir="${pkgname}-feedstock"
