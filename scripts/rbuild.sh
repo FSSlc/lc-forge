@@ -7,7 +7,8 @@ cd "$REPO_ROOT" || exit 1
 
 usage() {
   echo "Usage: $0 -r <recipe_dir> [-f] [-c <channel>]... [--] [extra rattler-build args...]"
-  echo "  -r <recipe_dir>  Specify the recipe directory (required)"
+  echo "  -r <recipe_dir>  Specify the recipe directory (required). Without its own"
+  echo "                   recipe.yaml, every nested recipe is built via --recipe-dir."
   echo "  -f               Force rebuild existing packages (optional, default: skip existing)"
   echo "  -c <channel>     Add an additional -c channel; can be specified multiple times"
   echo "  -h               Show this help"
@@ -54,6 +55,19 @@ require_cmd rattler-build
 mkdir -p "$OUTPUT_DIR"
 load_recipe_args "$recipe_dir"
 
+# `<recipe_dir>/recipe.yaml` means one recipe and rattler-build's -r handles it.
+# A directory like todo/ has no recipe.yaml of its own but may hold any number of
+# nested recipes; -r would look for todo/recipe.yaml and fail, so hand the whole
+# directory to --recipe-dir and let rattler-build build every recipe inside it.
+recipe_args=(-r "$recipe_dir")
+if [[ ! -f "$recipe_dir/recipe.yaml" ]]; then
+  nested=$(find "$recipe_dir" -mindepth 2 -name recipe.yaml -print | wc -l)
+  if ((nested > 0)); then
+    echo "No recipe.yaml in $recipe_dir; building all $((nested)) nested recipe(s)" >&2
+    recipe_args=(--recipe-dir "$recipe_dir")
+  fi
+fi
+
 if [[ ${#extra_cs[@]} -gt 0 ]]; then
   build_channel_args "${extra_cs[@]}"
 else
@@ -65,7 +79,7 @@ cmd=(
   --experimental
   -m conda_build_config.yaml
   "${CHANNEL_ARGS[@]}"
-  -r "$recipe_dir"
+  "${recipe_args[@]}"
 )
 
 if $skip_existing; then
