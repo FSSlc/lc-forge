@@ -334,8 +334,11 @@ jobs:
 
       # ---- 4. AI diagnosis + single-recipe rebuild for the FAILED ones ----
       # A recipe that fails here fails identically on every later push, so give
-      # it the same AI fix the import workflow uses. This step never fails the
-      # job: finalize reports whatever is still FAILED in .build-meta/<target>.txt.
+      # it the same AI fix the import workflow uses. Deliberately no
+      # `if: always()`: the status file comes from the classify step, and
+      # repairing a leg that will not reach finalize would upload a fixed
+      # package whose recipe never gets archived.
+      # Still-FAILED recipes are reported by finalize from .build-meta/<target>.txt.
       - name: Repair FAILED recipes with AI
         id: repair
         shell: bash

@@ -3,6 +3,10 @@ pkgs
 output
 tmp
 
+# ci scratch dirs
+.build-meta
+.fixed-recipes
+
 # editors
 .vscode
 .idea
