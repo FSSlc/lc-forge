@@ -1,0 +1,48 @@
+{% set version = "2.0.0" %}
+
+package:
+  name: sphinxcontrib-devhelp
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/s/sphinxcontrib-devhelp/sphinxcontrib_devhelp-{{ version }}.tar.gz
+  sha256: 411f5d96d445d1d73bb5d52133377b4248ec79db5c793ce7dbe59e074b4dd1ad
+
+build:
+  number: 1
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - flit-core >=3.7
+  run:
+    - python >={{ python_min }}
+    - sphinx >=5
+
+test:
+  imports:
+    - sphinxcontrib
+    - sphinxcontrib.devhelp
+  requires:
+    - pip
+    - python {{ python_min }}
+  commands:
+    - pip check
+
+about:
+  home: https://www.sphinx-doc.org/
+  license: BSD-2-Clause
+  license_family: BSD
+  license_file: LICENCE.rst
+  summary: sphinxcontrib-devhelp is a sphinx extension which outputs Devhelp document
+  doc_url: https://www.sphinx-doc.org/en/master/
+  dev_url: https://github.com/sphinx-doc/sphinxcontrib-devhelp
+
+extra:
+  recipe-maintainers:
+    - AA-Turner
+    - conda-forge/sphinx
+    - ocefpaf

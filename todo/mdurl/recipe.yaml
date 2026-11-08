@@ -1,0 +1,46 @@
+schema_version: 1
+
+context:
+  name: mdurl
+  version: "0.1.2"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/mdurl-${{ version }}.tar.gz
+  sha256: bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}
+    - flit-core >=3.2.0,<4
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - mdurl
+      pip_check: true
+      python_version: ${{ python_min }}
+
+about:
+  summary: Markdown URL utilities
+  license: MIT
+  license_file: LICENSE
+  homepage: https://github.com/executablebooks/mdurl
+
+extra:
+  recipe-maintainers:
+    - thewchan
+    - chrisjsewell
+    - thewchan
+

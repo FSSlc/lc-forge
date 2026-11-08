@@ -1,0 +1,48 @@
+{% set version = "2.1.0" %}
+
+package:
+  name: sphinxcontrib-htmlhelp
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/s/sphinxcontrib-htmlhelp/sphinxcontrib_htmlhelp-{{ version }}.tar.gz
+  sha256: c9e2916ace8aad64cc13a0d233ee22317f2b9025b9cf3295249fa985cc7082e9
+
+build:
+  number: 1
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - flit-core >=3.7
+  run:
+    - python >={{ python_min }}
+    - sphinx >=5
+
+test:
+  imports:
+    - sphinxcontrib
+    - sphinxcontrib.htmlhelp
+  requires:
+    - pip
+    - python {{ python_min }}
+  commands:
+    - pip check
+
+about:
+  home: https://www.sphinx-doc.org/
+  license: BSD-2-Clause
+  license_family: BSD
+  license_file: LICENCE.rst
+  summary: sphinxcontrib-htmlhelp is a sphinx extension which ...
+  doc_url: https://www.sphinx-doc.org/en/master/
+  dev_url: https://github.com/sphinx-doc/sphinxcontrib-htmlhelp
+
+extra:
+  recipe-maintainers:
+    - AA-Turner
+    - conda-forge/sphinx
+    - ocefpaf

@@ -1,0 +1,54 @@
+{% set name = "accessible-pygments" %}
+{% set version = "0.0.5" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name.replace('-', '_') }}-{{ version }}.tar.gz
+  sha256: 40918d3e6a2b619ad424cb91e556bd3bd8865443d9f22f1dcdf79e33c8046872
+
+build:
+  noarch: python
+  number: 1
+  script: {{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - setuptools
+    - pygments
+    - hatchling
+    - hatch-vcs
+    - setuptools-scm
+    - hatch-fancy-pypi-readme
+  run:
+    - python >={{ python_min }}
+    - pygments
+
+test:
+  requires:
+    - python {{ python_min }}
+  imports:
+    - a11y_pygments.a11y_light
+    - a11y_pygments.a11y_dark
+    - a11y_pygments.a11y_high_contrast_light
+    - a11y_pygments.a11y_high_contrast_dark
+
+
+about:
+  home: https://github.com/Quansight-Labs/accessible-pygments
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file: LICENSE
+  summary: A collection of accessible pygments styles
+  description: |
+    A collection of WCAG 2.1 conformant pygments styles
+  dev_url: https://github.com/Quansight-Labs/accessible-pygments
+
+extra:
+  recipe-maintainers:
+    - carreau
+    - trallard

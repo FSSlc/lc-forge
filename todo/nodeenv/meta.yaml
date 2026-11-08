@@ -1,0 +1,53 @@
+{% set name = "nodeenv" %}
+{% set version = "1.12.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  fn: {{ name }}-{{ version }}.tar.gz
+  url: https://github.com/ekalinin/nodeenv/archive/{{ version }}.tar.gz
+  sha256: f3440cca5e907a733727b799d065ec56a9cd4be99ef5608eee0b7689d137893d
+
+build:
+  number: 0
+  entry_points:
+    - nodeenv = nodeenv:main
+  script: {{ PYTHON }} -m pip install . --no-deps -vv
+  noarch: python
+
+requirements:
+  host:
+    - pip
+    - python {{ python_min }}
+    - setuptools
+  run:
+    - python >={{ python_min }}
+    - setuptools  # depends on pkg_resources at runtime
+
+test:
+  commands:
+    - nodeenv --help
+    # skip test_smoke because nodejs fails with:
+    #   nodejs: /lib64/libc.so.6: version `GLIBC_2.16' not found (required by nodejs)
+    # let's assume it's an issue with the docker image
+    - pytest tests -ra -k "not test_smoke"
+  requires:
+    - pytest
+    - mock
+    - coverage
+    - python {{ python_min }}
+  source_files:
+    - tests
+
+about:
+  home: https://github.com/ekalinin/nodeenv
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file: LICENSE
+  summary: Node.js virtual environment builder
+
+extra:
+  recipe-maintainers:
+    - nicoddemus

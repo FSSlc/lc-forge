@@ -1,0 +1,62 @@
+schema_version: 1
+
+context:
+  python_min: "3.10"
+  name: alabaster
+  version: "1.0.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/alabaster-${{ version }}.tar.gz
+  sha256: c00dca57bca26fa62a6d7d0a9fcce65f3e026e9bfe33e9c538fd3fbb2144fd9e
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - flit-core >=3.7
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - alabaster
+        - alabaster.support
+      pip_check: true
+      python_version: ${{ python_min }}
+  - requirements:
+      run:
+        - pip
+        - pygments
+        - python ${{ python_min }}
+    script:
+      - python -c "import alabaster; print(alabaster.get_path())"
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE.rst
+  summary: A light, configurable Sphinx theme
+  description: |
+    Alabaster is a visually clean, responsive, and configurable Sphinx
+    theme, and the default theme for Sphinx.
+  homepage: https://alabaster.readthedocs.io/
+  repository: https://github.com/sphinx-doc/alabaster
+  documentation: https://alabaster.readthedocs.io/
+
+extra:
+  recipe-maintainers:
+    - AA-Turner
+    - conda-forge/sphinx
+    - msarahan
+    - r-jain1
+    - ocefpaf
+

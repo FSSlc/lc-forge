@@ -1,0 +1,55 @@
+schema_version: 1
+
+context:
+  name: diagnostic
+  version: "3.0.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: 5c80d7f77706dca775cc85d7b0492e4e96385dade2103052cf06cf6ab105b855
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}
+    - pip
+    - flit-core >=3.2,<4
+  run:
+    - python >=${{ python_min }}
+    - rich
+    - markdown-it-py
+    - docutils
+
+tests:
+  - python:
+      imports:
+        - diagnostic
+      pip_check: true
+      python_version: ${{ python_min }}
+
+about:
+  summary: Present errors that contain causes to better understand what happened.
+  description: |
+    diagnostic makes it easier to build command line tools with great error
+    reporting. It provides unique codes on every Diagnostic, tooling to help
+    ensure all codes in the codebase are documented, fancy graphical output
+    built on top of rich with graceful fallbacks to ASCII and plain strings,
+    and the ability to present a causal chain if needed.
+  license: MIT
+  license_file: LICENSE
+  homepage: https://github.com/pradyunsg/diagnostic
+  repository: https://github.com/pradyunsg/diagnostic
+  documentation: https://diagnostic.readthedocs.io/en/stable/
+
+extra:
+  recipe-maintainers:
+    - cxzhong
+

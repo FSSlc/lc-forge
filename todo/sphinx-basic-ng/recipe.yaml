@@ -1,0 +1,47 @@
+schema_version: 1
+
+context:
+  name: sphinx-basic-ng
+  version: 1.0.0b2
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/sphinx_basic_ng-${{ version }}.tar.gz
+  sha256: 9ec55a47c90c8c002b5960c57492ec3021f5193cb26cebc2dc4ea226848651c9
+
+build:
+  number: 3
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}
+    - setuptools
+  run:
+    - python >=${{ python_min }}
+    - sphinx >=4.0
+
+tests:
+  - python:
+      imports:
+        - sphinx.application
+        - sphinx_basic_ng
+      pip_check: true
+      python_version: ${{ python_min }}
+
+about:
+  summary: A modern skeleton for Sphinx themes.
+  license: MIT
+  license_file: LICENSE
+  homepage: https://github.com/pradyunsg/sphinx-basic-ng
+
+extra:
+  recipe-maintainers:
+    - rhkleijn
+    - gforsyth
+

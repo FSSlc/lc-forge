@@ -1,0 +1,45 @@
+schema_version: 1
+
+context:
+  name: roman-numerals
+  version: "4.1.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/roman_numerals-${{ version }}.tar.gz
+  sha256: 1af8b147eb1405d5839e78aeb93131690495fe9da5c91856cb33ad55a7f1e5b2
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}
+    - flit-core >=3.7,<4
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - roman_numerals
+      pip_check: true
+      python_version: ${{ python_min }}
+
+about:
+  summary: Manipulate well-formed Roman numerals
+  license: 0BSD OR CC0-1.0
+  license_file: LICENCE.rst
+  homepage: https://github.com/AA-Turner/roman-numerals
+
+extra:
+  recipe-maintainers:
+    - AA-Turner
+    - ocefpaf
+

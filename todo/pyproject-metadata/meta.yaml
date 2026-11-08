@@ -1,0 +1,43 @@
+{% set name = "pyproject-metadata" %}
+{% set version = "0.12.1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name.replace('-', '_') }}-{{ version }}.tar.gz
+  sha256: 8809a4df6fe08279b39a8890669506ed3158e0617855ac9aff098fcbe772ae4c
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  number: 0
+
+requirements:
+  host:
+    - pip
+    - python {{ python_min }}
+    - flit-core
+  run:
+    - packaging >=23.2
+    - python >={{ python_min }}
+
+test:
+  imports:
+    - pyproject_metadata
+  commands:
+    - pip check
+  requires:
+    - pip
+    - python {{ python_min }}
+
+about:
+  home: https://github.com/FFY00/python-pyproject-metadata
+  summary: PEP 621 metadata parsing
+  license: MIT
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - gforsyth

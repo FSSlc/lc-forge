@@ -1,0 +1,47 @@
+{% set name = "sphinx-basic-ng" %}
+{% set version = "1.0.0b2" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/sphinx_basic_ng-{{ version }}.tar.gz
+  sha256: 9ec55a47c90c8c002b5960c57492ec3021f5193cb26cebc2dc4ea226848651c9
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  number: 3
+
+requirements:
+  host:
+    - pip
+    - python {{ python_min }}
+    - setuptools
+  run:
+    - python >={{ python_min }}
+    - sphinx >=4.0
+
+test:
+  imports:
+    # This is a dirty hack because sphinx.application
+    # isn't available with a simple `import sphinx`
+    - sphinx.application
+    - sphinx_basic_ng
+  commands:
+    - pip check
+  requires:
+    - pip
+    - python {{ python_min }}
+
+about:
+  home: https://github.com/pradyunsg/sphinx-basic-ng
+  summary: A modern skeleton for Sphinx themes.
+  license: MIT
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - rhkleijn
+    - gforsyth

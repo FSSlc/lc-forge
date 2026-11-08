@@ -1,0 +1,48 @@
+{% set version = "2.0.0" %}
+
+package:
+  name: sphinxcontrib-serializinghtml
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/s/sphinxcontrib-serializinghtml/sphinxcontrib_serializinghtml-{{ version }}.tar.gz
+  sha256: e9d912827f872c029017a53f0ef2180b327c3f7fd23c87229f7a8e8b70031d4d
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - flit-core >=3.7
+  run:
+    - python >={{ python_min }}
+    - sphinx >=5
+
+test:
+  imports:
+    - sphinxcontrib
+    - sphinxcontrib.serializinghtml
+  requires:
+    - pip
+    - python {{ python_min }}
+  commands:
+    - pip check
+
+about:
+  home: https://www.sphinx-doc.org/
+  license: BSD-2-Clause
+  license_family: BSD
+  license_file: LICENCE.rst
+  summary: sphinxcontrib-serializinghtml is a sphinx extension which outputs "serialized" HTML files (json and pickle).
+  doc_url: https://www.sphinx-doc.org/en/master/
+  dev_url: https://github.com/sphinx-doc/sphinxcontrib-serializinghtml
+
+extra:
+  recipe-maintainers:
+    - AA-Turner
+    - conda-forge/sphinx
+    - ocefpaf

@@ -1,0 +1,48 @@
+schema_version: 1
+
+context:
+  version: "2.0.0"
+
+package:
+  name: sphinxcontrib-jsmath
+  version: ${{ version }}
+
+source:
+  url: https://files.pythonhosted.org/packages/source/s/sphinxcontrib-jsmath/sphinxcontrib_jsmath-${{ version }}.tar.gz
+  sha256: 551f780cf9687f9c3c74f0cf9f18aca06e0d6958853453f3803fe4d357c5b924
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - flit-core >=3.7
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      pip_check: true
+      python_version:
+        - ${{ python_min }}.*
+        - "*"
+  - requirements:
+      run:
+      - sphinx >=2
+    script:
+      - python -c "import sphinxcontrib.jsmath"
+
+about:
+  summary: sphinxcontrib-jsmath is a sphinx extension which renders displayed maths in HTML via JavaScript
+  license: BSD-2-Clause
+  license_file: LICENCE.rst
+  homepage: https://www.sphinx-doc.org/
+
+extra:
+  recipe-maintainers:
+    - conda-forge/sphinx
+    - ocefpaf
