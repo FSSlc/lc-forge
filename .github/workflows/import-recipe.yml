@@ -44,6 +44,7 @@ jobs:
       feedstocks: ${{ steps.import.outputs.feedstocks }}
       already_on_scns: ${{ steps.import.outputs.already_on_scns }}
       should_build: ${{ steps.import.outputs.should_build }}
+      failed_feedstocks: ${{ steps.import.outputs.failed_feedstocks }}
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -87,6 +88,9 @@ jobs:
           RECIPE: ${{ steps.normalize.outputs.recipe }}
           # workflow_dispatch booleans arrive as the strings 'true'/'false'
           FORCE: ${{ inputs.force }}
+          AI_API_BASE_URL: ${{ secrets.AI_API_BASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
         run: |
           set -Eeuo pipefail
           export PATH="$HOME/.pixi/bin:$PATH"
@@ -121,6 +125,7 @@ jobs:
           already=false
           should_build=false
           feedstocks=""
+          failed_feedstocks=""
 
           if [[ -f "$status" ]]; then
             echo "--- import-status.json ---"
@@ -128,12 +133,14 @@ jobs:
             already=$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1])).get("already_on_scns", False)).lower())' "$status")
             should_build=$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1])).get("should_build", False)).lower())' "$status")
             feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1])).get("feedstocks") or []))' "$status")
+            failed_feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1])).get("failed_feedstocks") or []))' "$status")
           elif [[ -f "$manifest" ]]; then
             echo "--- import-manifest.json (no status file; infer should_build) ---"
             cat "$manifest"
             already=false
             should_build=true
             feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1])).get("feedstocks") or []))' "$manifest")
+            failed_feedstocks=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1])).get("failed_feedstocks") or []))' "$manifest")
           else
             # No status and no manifest → treat as already present / nothing to do.
             already=true
@@ -158,7 +165,12 @@ jobs:
           echo "already_on_scns=$already" >> "$GITHUB_OUTPUT"
           echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
           echo "feedstocks=$feedstocks" >> "$GITHUB_OUTPUT"
-          echo "Decision: already_on_scns=$already should_build=$should_build feedstocks=$feedstocks"
+          echo "failed_feedstocks=$failed_feedstocks" >> "$GITHUB_OUTPUT"
+          echo "Decision: already_on_scns=$already should_build=$should_build feedstocks=$feedstocks failed=$failed_feedstocks"
+
+          if [[ -n "$failed_feedstocks" ]]; then
+            echo "::warning::AI 修复后仍有 feedstock 准备失败（已跳过，成功项继续构建）：$failed_feedstocks"
+          fi
 
           {
             echo "## Import decision"
@@ -167,6 +179,7 @@ jobs:
             echo "- already_on_scns: \`$already\`"
             echo "- should_build: \`$should_build\`"
             echo "- feedstocks: \`$feedstocks\`"
+            echo "- failed_feedstocks: \`${failed_feedstocks:-}\`"
             if [[ -f "$manifest" ]]; then
               echo
               echo "### Manifest"
@@ -336,6 +349,9 @@ jobs:
           TARGET_PLATFORM: ${{ matrix.target }}
           RECIPE: ${{ needs.prepare.outputs.recipe }}
           IMPORT_FEEDSTOCKS: ${{ needs.prepare.outputs.feedstocks }}
+          AI_API_BASE_URL: ${{ secrets.AI_API_BASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
         run: |
           set -Eeuo pipefail
 
@@ -494,10 +510,11 @@ jobs:
             logs/build-${{ matrix.target }}.log
             output/**/*.conda
             output/.build-status-*
+            output/.built-feedstocks-${{ matrix.target }}.json
           if-no-files-found: ignore
 
   # -------------------------------------------------------------------------
-  # 3. On full success, commit prepared recipes into recipes/
+  # 3. Land recipes that built on both arches into recipes/, keep the rest in todo/
   # -------------------------------------------------------------------------
   commit:
     name: Commit recipes
@@ -508,7 +525,7 @@ jobs:
       always()
       && needs.prepare.outputs.should_build == 'true'
       && needs.prepare.result == 'success'
-      && needs.build.result == 'success'
+      && needs.build.result != 'skipped'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -564,11 +581,44 @@ jobs:
             echo "skipped=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Archive prepared feedstocks into recipes/
+      - name: Compute landed (both-arch built) vs kept feedstocks
+        id: land-plan
         if: steps.build-gate.outputs.skipped != 'true'
         shell: bash
         env:
           FEEDSTOCKS: ${{ needs.prepare.outputs.feedstocks }}
+        run: |
+          set -Eeuo pipefail
+          python3 - "$FEEDSTOCKS" <<'PYEOF'
+          import glob, json, os, sys
+          feedstocks = [f.strip() for f in sys.argv[1].split(",") if f.strip()]
+          built_lists = []
+          for path in sorted(glob.glob(".build-logs/output/.built-feedstocks-*.json")):
+              try:
+                  data = json.load(open(path))
+              except (OSError, json.JSONDecodeError):
+                  continue
+              built_lists.append(set(data.get("feedstocks") or []))
+          # Landing requires both arches; fewer reports means we cannot confirm.
+          if len(built_lists) >= 2:
+              landed = [f for f in feedstocks if all(f in b for b in built_lists)]
+          else:
+              landed = []
+          landed_set = set(landed)
+          kept = [f for f in feedstocks if f not in landed_set]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write("landed=" + ",".join(landed) + "\n")
+              fh.write("kept=" + ",".join(kept) + "\n")
+          print("landed=" + ",".join(landed))
+          print("kept=" + ",".join(kept))
+          PYEOF
+
+      - name: Archive landed into recipes/ and keep the rest in todo/
+        if: steps.build-gate.outputs.skipped != 'true'
+        shell: bash
+        env:
+          LANDED: ${{ steps.land-plan.outputs.landed }}
+          KEPT: ${{ steps.land-plan.outputs.kept }}
           ROOT_PKG: ${{ needs.prepare.outputs.recipe }}
         run: |
           set -Eeuo pipefail
@@ -584,24 +634,28 @@ jobs:
           fi
 
           mkdir -p recipes
-          IFS=',' read -ra FS_LIST <<< "$FEEDSTOCKS"
           archived=()
-          for fs in "${FS_LIST[@]}"; do
-            fs="${fs#"${fs%%[![:space:]]*}"}"
-            fs="${fs%"${fs##*[![:space:]]}"}"
-            [[ -z "$fs" ]] && continue
-            if [[ -d "todo/$fs" ]]; then
-              rm -rf "recipes/$fs"
-              mv "todo/$fs" "recipes/$fs"
-              archived+=("$fs")
-            fi
-          done
+          if [[ -n "$LANDED" ]]; then
+            IFS=',' read -ra LAND_LIST <<< "$LANDED"
+            for fs in "${LAND_LIST[@]}"; do
+              fs="${fs#"${fs%%[![:space:]]*}"}"
+              fs="${fs%"${fs##*[![:space:]]}"}"
+              [[ -z "$fs" ]] && continue
+              if [[ -d "todo/$fs" ]]; then
+                rm -rf "recipes/$fs"
+                mv "todo/$fs" "recipes/$fs"
+                archived+=("$fs")
+              fi
+            done
+          fi
 
+          # Build-failed / single-arch feedstocks stay in todo/ so build.yml
+          # retries them on the next push.
           rm -f todo/import-manifest.json todo/.import-manifest.json todo/import-status.json
           rm -rf todo/.import-stage .import-artifact
 
-          if [[ ${#archived[@]} -eq 0 ]]; then
-            echo "No feedstocks to archive."
+          if [[ ${#archived[@]} -eq 0 && -z "$KEPT" ]]; then
+            echo "Nothing to land or keep."
             exit 0
           fi
 
@@ -611,5 +665,11 @@ jobs:
             exit 0
           fi
 
-          git commit -m "import $(IFS=,; echo "${archived[*]}") (root: ${ROOT_PKG})"
+          if [[ ${#archived[@]} -gt 0 ]]; then
+            msg="import $(IFS=,; echo "${archived[*]}") (root: ${ROOT_PKG})"
+            [[ -n "$KEPT" ]] && msg="${msg}; keep in todo: ${KEPT}"
+          else
+            msg="keep failed import feedstocks in todo (root: ${ROOT_PKG})"
+          fi
+          git commit -m "$msg"
           git push

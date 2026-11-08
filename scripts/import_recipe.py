@@ -32,7 +32,7 @@ import urllib.error
 import urllib.request
 from collections import deque
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 from urllib.parse import quote
 
@@ -673,6 +673,149 @@ def repo_root() -> Path:
 
 
 # ---------------------------------------------------------------------------
+# AI-assisted fixing (OpenAI-compatible chat/completions)
+# ---------------------------------------------------------------------------
+
+# Config env vars. The API key is read only from the environment, lives only in
+# the Authorization header, and is never printed or included in error messages.
+AI_ENV_VARS = ("AI_API_BASE_URL", "AI_API_KEY", "AI_MODEL_NAME")
+
+
+def ai_configured() -> bool:
+    return all(os.environ.get(v) for v in AI_ENV_VARS)
+
+
+def _ai_endpoint() -> str:
+    base = os.environ["AI_API_BASE_URL"].rstrip("/")
+    if base.endswith("/chat/completions"):
+        return base
+    return f"{base}/chat/completions"
+
+
+def ai_chat(system: str, user: str, *, json_mode: bool = False) -> str:
+    """POST an OpenAI-compatible chat completion and return the message content."""
+    if not ai_configured():
+        raise ImportError_(
+            "AI not configured (AI_API_BASE_URL / AI_API_KEY / AI_MODEL_NAME)"
+        )
+    payload: dict[str, Any] = {
+        "model": os.environ["AI_MODEL_NAME"],
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": 0.0,
+        "max_tokens": 8192,
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+    req = urllib.request.Request(
+        _ai_endpoint(),
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {os.environ['AI_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:500]
+        raise ImportError_(f"AI API HTTP {e.code}: {body}") from e
+    except urllib.error.URLError as e:
+        raise ImportError_(f"AI API network error: {e}") from e
+    try:
+        return data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as e:
+        raise ImportError_(f"AI API unexpected response: {e}") from e
+
+
+_AI_SYSTEM_META = (
+    "You convert conda-forge meta.yaml files into rattler-build recipe.yaml "
+    "(v1 schema). Output only valid YAML, no markdown fences, no commentary."
+)
+
+_AI_SYSTEM_BUILD = (
+    "You fix conda-forge recipes (rattler-build recipe.yaml / build.sh / patches). "
+    'Respond with a single JSON object shaped '
+    '{"files": {"<feedstock>/<relative-path>": "<full new file content>", ...}, '
+    '"note": "..."}. Only include files you actually change. Paths must be '
+    "relative, under the feedstock directory, with no '..' and no absolute paths."
+)
+
+
+def ai_fix_meta(meta_text: str, crm_error: str = "") -> str:
+    """Return a recipe.yaml (text) converted from a meta.yaml crm failed on."""
+    user = (
+        "Convert this meta.yaml to a rattler-build recipe.yaml (v1 schema). "
+        "Preserve package name, version, source urls and sha256, build script, "
+        "build/host/run requirements, and tests. Use `requirements:` with "
+        "build/host/run lists and a `tests:` block where possible.\n\n"
+        f"crm conversion error (if any):\n{crm_error or '(not captured)'}\n\n"
+        f"meta.yaml:\n{meta_text}"
+    )
+    return ai_chat(_AI_SYSTEM_META, user)
+
+
+def ai_fix_build(files_snapshot: str, log_tail: str) -> str:
+    """Return JSON text proposing file changes for a failed build."""
+    user = (
+        "A rattler-build build failed. Here are the recipe files:\n\n"
+        f"{files_snapshot}\n\n"
+        "Build log tail:\n\n"
+        f"{log_tail}\n\n"
+        "Return the JSON object with the files to change."
+    )
+    return ai_chat(_AI_SYSTEM_BUILD, user, json_mode=True)
+
+
+def validate_recipe_yaml(text: str) -> bool:
+    """Structural sanity check without PyYAML: has a package/name section."""
+    if not text or not text.strip():
+        return False
+    # `package:` followed by an indented `name:` line, or a bare top-level name.
+    m = re.search(r"(?m)^package:\s*\n(?:[ \t]+.*\n)*?[ \t]+name:\s*(\S+)", text)
+    if m is None:
+        m = re.search(r"(?m)^name:\s*(\S+)", text)
+    if m is None:
+        return False
+    raw = m.group(1).strip().strip("\"'")
+    if not raw or raw.startswith("${{"):
+        return False
+    return PACKAGE_NAME_RE.match(raw) is not None
+
+
+def ai_apply_files(
+    root: Path,
+    feedstocks: Iterable[str],
+    files: dict[str, str],
+) -> list[str]:
+    """Write AI-proposed files under todo/<feedstock>/…, refusing path traversal."""
+    allowed = {fs: (root / "todo" / fs).resolve() for fs in feedstocks}
+    applied: list[str] = []
+    for raw_path, content in files.items():
+        p = PurePosixPath(raw_path)
+        if p.is_absolute() or not p.parts or ".." in p.parts:
+            raise ImportError_(f"unsafe AI path {raw_path!r}")
+        fs = p.parts[0]
+        base = allowed.get(fs)
+        if base is None:
+            raise ImportError_(f"unknown feedstock {fs!r} in AI path {raw_path!r}")
+        rel = Path(*p.parts[1:])
+        if not rel.parts or ".." in rel.parts:
+            raise ImportError_(f"unsafe AI path {raw_path!r}")
+        dest = (base / rel).resolve()
+        if dest != base and base not in dest.parents:
+            raise ImportError_(f"AI path escapes recipe dir: {raw_path!r}")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(content, encoding="utf-8")
+        applied.append(raw_path)
+    return applied
+
+
+# ---------------------------------------------------------------------------
 # Core recursive prepare
 # ---------------------------------------------------------------------------
 
@@ -689,13 +832,10 @@ class PrepareState:
     force_packages: set[str] = field(default_factory=set)
     visiting: set[str] = field(default_factory=set)
     order: list[str] = field(default_factory=list)  # feedstock prep order
-    # Prep failures collected during recursion (clone / crm conversion). The
-    # download keeps going past these and reports them together at the end so a
-    # human can fix them, instead of aborting the whole import on the first one.
-    prep_errors: list[str] = field(default_factory=list)
-    # Package/feedstock names whose prep already failed; avoids re-prepping them
-    # when another branch depends on the same output.
-    failed: set[str] = field(default_factory=set)
+    # feedstock -> prep error message (clone / crm conversion). The download
+    # keeps going past these; they are reported together and AI-fixed when
+    # configured, instead of aborting the whole import on the first failure.
+    failed_feedstocks: dict[str, str] = field(default_factory=dict)
 
     def todo_dir(self, feedstock: str) -> Path:
         return self.root / "todo" / feedstock
@@ -724,9 +864,6 @@ def ensure_package(state: PrepareState, pkg: str, *, via: str) -> None:
     # Packages listed in force_packages must still be prepared/built even when
     # scns already has them (used for the root package under --force).
     if pkg in state.satisfied:
-        return
-    if pkg in state.failed:
-        # Already recorded as a prep failure via another dependency branch.
         return
     if pkg not in state.force_packages and state.scns.has(pkg):
         state.satisfied.add(pkg)
@@ -760,10 +897,9 @@ def ensure_package(state: PrepareState, pkg: str, *, via: str) -> None:
         # If this feedstock was already prepared, its outputs will be built.
         if feedstock not in state.prepared:
             todo = state.todo_dir(feedstock)
-            if feedstock in state.failed:
+            if feedstock in state.failed_feedstocks:
                 # This feedstock already failed prep via another output; do not
                 # re-run it or duplicate the recorded error.
-                state.failed.add(pkg)
                 return
             # Skip prep only if the *package* is already on scns (checked above)
             # or feedstock recipe already in todo from this/previous step.
@@ -773,13 +909,9 @@ def ensure_package(state: PrepareState, pkg: str, *, via: str) -> None:
                 except ImportError_ as e:
                     # Do not abort the whole download: record this recipe's
                     # failure and keep resolving the remaining dependencies.
-                    # prep.sh --strict leaves meta.yaml in place for a human to
-                    # fix the crm conversion afterwards.
-                    state.failed.add(pkg)
-                    state.failed.add(feedstock)
-                    state.prep_errors.append(
-                        f"{feedstock} (for package {pkg}, required by {via}): {e}"
-                    )
+                    # prep.sh --strict leaves meta.yaml in place for AI/human
+                    # to fix the crm conversion afterwards.
+                    state.failed_feedstocks[feedstock] = str(e)
                     return
             else:
                 print(
@@ -811,27 +943,67 @@ def ensure_package(state: PrepareState, pkg: str, *, via: str) -> None:
         state.visiting.discard(pkg)
 
 
+def recipe_package_names(recipe: Path) -> set[str]:
+    """Best-effort package name(s) produced by a recipe.yaml (single or multi-output)."""
+    names: set[str] = set()
+    pname = package_name_from_recipe(recipe)
+    if pname:
+        names.add(pname)
+    text = recipe.read_text(encoding="utf-8")
+    for m in re.finditer(r"(?m)^\s+-\s+package:\s*\n\s+name:\s*(\S+)", text):
+        raw = m.group(1).strip().strip("\"'")
+        if PACKAGE_NAME_RE.match(raw):
+            names.add(raw)
+    for m in re.finditer(r"(?m)^\s+-\s+name:\s*(\S+)", text):
+        raw = m.group(1).strip().strip("\"'")
+        if PACKAGE_NAME_RE.match(raw) and not raw.startswith("${{"):
+            names.add(raw)
+    return names
+
+
+def ai_fix_prep_failures(state: PrepareState, max_rounds: int = 2) -> None:
+    """Attempt to AI-convert failed meta.yaml files; recurse into their deps."""
+    if not ai_configured():
+        return
+    for _ in range(max_rounds):
+        changed = False
+        for feedstock in sorted(list(state.failed_feedstocks)):
+            todo = state.todo_dir(feedstock)
+            meta = todo / "meta.yaml"
+            if not meta.is_file() or (todo / "recipe.yaml").is_file():
+                continue
+            print(f"==> AI fix: converting {feedstock}/meta.yaml", flush=True)
+            try:
+                recipe_text = ai_fix_meta(meta.read_text(encoding="utf-8"))
+                if not validate_recipe_yaml(recipe_text):
+                    print("    AI output is not valid recipe.yaml; keeping failure", flush=True)
+                    continue
+                (todo / "recipe.yaml").write_text(recipe_text, encoding="utf-8")
+                state.prepared[feedstock] = "AI-fixed recipe.yaml"
+                if feedstock not in state.order:
+                    state.order.append(feedstock)
+                del state.failed_feedstocks[feedstock]
+                changed = True
+                deps = extract_deps_from_recipe(todo / "recipe.yaml")
+                print(
+                    f"    AI-fixed {feedstock}; deps: {', '.join(sorted(deps)) or '(none)'}",
+                    flush=True,
+                )
+                for dep in sorted(deps):
+                    ensure_package(state, dep, via=feedstock)
+            except Exception as e:  # network, API, JSON, traversal, ...
+                print(f"    AI fix failed for {feedstock}: {e}", flush=True)
+        if not changed:
+            break
+
+
 def verify_all_deps_resolvable(state: PrepareState) -> None:
     """Final pass: every dep is on scns or in the prepared local set."""
     local_names: set[str] = set(state.prepared)
     for fs in state.prepared:
         recipe = state.todo_dir(fs) / "recipe.yaml"
         if recipe.is_file():
-            pname = package_name_from_recipe(recipe)
-            if pname:
-                local_names.add(pname)
-            # multi-output: collect output package names roughly
-            text = recipe.read_text(encoding="utf-8")
-            for m in re.finditer(
-                r"(?m)^\s+-\s+package:\s*\n\s+name:\s*(\S+)", text
-            ):
-                raw = m.group(1).strip().strip("\"'")
-                if PACKAGE_NAME_RE.match(raw):
-                    local_names.add(raw)
-            for m in re.finditer(r"(?m)^\s+-\s+name:\s*(\S+)", text):
-                raw = m.group(1).strip().strip("\"'")
-                if PACKAGE_NAME_RE.match(raw) and not raw.startswith("${{"):
-                    local_names.add(raw)
+            local_names |= recipe_package_names(recipe)
 
     missing: list[str] = []
     for fs in state.prepared:
@@ -887,6 +1059,94 @@ def fail_if_test_failures(log_file: Path, target_platform: str) -> None:
                 f"Test failures detected in {log_file} for {target_platform} "
                 f"(matched {pattern.pattern!r}); aborting before upload."
             )
+
+
+AI_MAX_FIX_ROUNDS = int(os.environ.get("AI_MAX_FIX_ROUNDS", "2"))
+
+
+def ai_fix_build_failures(
+    root: Path, feedstocks: list[str], log_file: Path
+) -> bool:
+    """Ask the AI to edit recipe files after a failed build; returns True on changes."""
+    if not ai_configured():
+        return False
+    snapshot_parts: list[str] = []
+    total = 0
+    for fs in feedstocks:
+        d = root / "todo" / fs
+        for rel in ("recipe.yaml", "build.sh", "conda_build_config.yaml"):
+            f = d / rel
+            if not f.is_file():
+                continue
+            text = f.read_text(encoding="utf-8", errors="replace")
+            if total + len(text) > 200_000:
+                continue
+            snapshot_parts.append(f"# --- {fs}/{rel} ---\n{text}\n")
+            total += len(text)
+        for patch in sorted(d.glob("*.patch")):
+            text = patch.read_text(encoding="utf-8", errors="replace")
+            if total + len(text) > 200_000:
+                break
+            snapshot_parts.append(f"# --- {fs}/{patch.name} ---\n{text}\n")
+            total += len(text)
+    log_tail = (
+        log_file.read_text(encoding="utf-8", errors="replace")[-40000:]
+        if log_file.is_file()
+        else ""
+    )
+    raw = ai_fix_build("\n".join(snapshot_parts), log_tail).strip()
+    # Tolerate markdown code fences some OpenAI-compatible providers still emit.
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        raw = "\n".join(lines).strip()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ImportError_(
+            f"AI build-fix returned invalid JSON: {e}; raw={raw[:200]!r}"
+        ) from e
+    files = payload.get("files") if isinstance(payload, dict) else None
+    if not isinstance(files, dict) or not files:
+        return False
+    applied = ai_apply_files(root, feedstocks, files)
+    print(
+        f"AI build-fix applied {len(applied)} file(s): {', '.join(applied)}",
+        flush=True,
+    )
+    return bool(applied)
+
+
+def write_built_feedstocks(
+    root: Path, feedstocks: list[str], target_platform: str
+) -> None:
+    """Record which feedstocks produced a .conda artifact for this target."""
+    output_dir = root / "output"
+    stems = {f.name for f in output_dir.rglob("*.conda")}
+    built: list[str] = []
+    for fs in feedstocks:
+        recipe = root / "todo" / fs / "recipe.yaml"
+        names = recipe_package_names(recipe) if recipe.is_file() else {fs}
+        if not names:
+            names = {fs}
+        if any(any(stem.startswith(n + "-") for stem in stems) for n in names):
+            built.append(fs)
+    path = output_dir / f".built-feedstocks-{target_platform}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {"target_platform": target_platform, "feedstocks": built}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print(
+        f"Built feedstocks for {target_platform}: {', '.join(built) or '(none)'}",
+        flush=True,
+    )
 
 
 def container_build_and_upload(
@@ -989,15 +1249,30 @@ trap fix_workspace_owner EXIT
     ]
     build_cmd = "\n".join(build_script_parts)
 
-    run(
-        ["bash", str(start_img), "--run", build_cmd],
-        cwd=root,
-    )
+    def run_build() -> None:
+        run(["bash", str(start_img), "--run", build_cmd], cwd=root)
+        # The build can exit 0 even when a recipe's test script failed (because
+        # of --continue-on-failure). Check the log here so we never upload on
+        # test failure; the CI workflow's own scan runs only after upload.
+        fail_if_test_failures(log_file, target_platform)
 
-    # The build can exit 0 even when a recipe's test script failed (because of
-    # --continue-on-failure). Check the log here so we never upload on test
-    # failure; the CI workflow's own scan runs only after upload.
-    fail_if_test_failures(log_file, target_platform)
+    try:
+        for attempt in range(1, AI_MAX_FIX_ROUNDS + 1):
+            try:
+                run_build()
+                break
+            except ImportError_:
+                if attempt >= AI_MAX_FIX_ROUNDS or not ai_fix_build_failures(
+                    root, feedstocks, log_file
+                ):
+                    raise
+                print(
+                    f"AI applied build fixes; retrying build "
+                    f"(attempt {attempt + 1})",
+                    flush=True,
+                )
+    finally:
+        write_built_feedstocks(root, feedstocks, target_platform)
 
     conda_files = list(output_dir.rglob("*.conda"))
     if not conda_files:
@@ -1246,73 +1521,64 @@ def main(argv: list[str] | None = None) -> int:
         if args.force:
             state.force_packages.add(pkg)
         ensure_package(state, pkg, via="(root)")
-        if not state.prepared and pkg not in state.failed:
-            fs = resolve_feedstock(pkg)
-            print(
-                f"Root package was not recorded during ensure_package; "
-                f"forcing prep of feedstock {fs!r}",
-                flush=True,
-            )
-            prep_feedstock(state, fs)
-            state.prepared[fs] = "root package"
-            if fs not in state.order:
-                state.order.append(fs)
-            deps = extract_deps_from_recipe(state.todo_dir(fs) / "recipe.yaml")
-            for dep in sorted(deps):
-                ensure_package(state, dep, via=fs)
 
-        # Guarantees: the root feedstock is always first in the build list.
+        # Root feedstock always ends up in the build list unless its prep failed.
         root_fs = resolve_feedstock(pkg)
-        if root_fs not in state.order and pkg not in state.failed:
-            # ensure_package may have short-circuited if scns.has flipped; force.
-            if root_fs not in state.prepared:
-                if not (state.todo_dir(root_fs) / "recipe.yaml").is_file():
-                    prep_feedstock(state, root_fs)
-                state.prepared[root_fs] = "root package (forced into build list)"
-            state.order.insert(0, root_fs)
+        if root_fs not in state.failed_feedstocks:
+            if not state.prepared:
+                # ensure_package may have short-circuited (e.g. scns.has flipped);
+                # force prep of the root feedstock so we have something to build.
+                print(
+                    f"Root package was not recorded during ensure_package; "
+                    f"forcing prep of feedstock {root_fs!r}",
+                    flush=True,
+                )
+                prep_feedstock(state, root_fs)
+                state.prepared[root_fs] = "root package"
+                if root_fs not in state.order:
+                    state.order.append(root_fs)
+                deps = extract_deps_from_recipe(state.todo_dir(root_fs) / "recipe.yaml")
+                for dep in sorted(deps):
+                    ensure_package(state, dep, via=root_fs)
+            if root_fs not in state.order:
+                if root_fs not in state.prepared:
+                    if not (state.todo_dir(root_fs) / "recipe.yaml").is_file():
+                        prep_feedstock(state, root_fs)
+                    state.prepared[root_fs] = "root package (forced into build list)"
+                state.order.insert(0, root_fs)
+
+        # Try to AI-fix failed meta.yaml conversions, then recurse their deps.
+        ai_fix_prep_failures(state)
 
         print("==> Prepared feedstocks (build order):", flush=True)
         for fs in state.order:
             print(f"    - {fs}: {state.prepared.get(fs, '')}", flush=True)
 
-        if state.prep_errors:
+        if state.failed_feedstocks:
             print(
-                f"==> {len(state.prep_errors)} recipe(s) failed to prepare "
-                f"(crm conversion or feedstock clone). All other recipes were "
-                f"downloaded; fix these manually and re-run.",
+                f"==> {len(state.failed_feedstocks)} recipe(s) failed to prepare "
+                f"even after AI fix (crm conversion or feedstock clone). "
+                f"They are skipped; fix them manually or re-run.",
                 file=sys.stderr,
                 flush=True,
             )
-            for i, msg in enumerate(state.prep_errors, 1):
-                print(f"  [{i}] {msg}", file=sys.stderr, flush=True)
-            write_status(
-                root,
-                {
-                    "root_package": pkg,
-                    "already_on_scns": False,
-                    "should_build": False,
-                    "feedstocks": state.order,
-                    "reason": (
-                        f"{len(state.prep_errors)} recipe(s) failed to prepare; "
-                        f"fix them manually and re-run"
-                    ),
-                    "prep_errors": state.prep_errors,
-                },
-            )
-            return 1
+            for i, (fs, msg) in enumerate(sorted(state.failed_feedstocks.items()), 1):
+                print(f"  [{i}] {fs}: {msg}", file=sys.stderr, flush=True)
 
         if not state.order:
             raise ImportError_(
-                f"Nothing to build for {pkg!r}: prepared feedstock list is empty. "
-                f"This is a resolver bug — expected at least feedstock {root_fs!r}."
+                f"Nothing to build for {pkg!r}: no feedstock was prepared "
+                f"(root feedstock {root_fs!r} failed prep)."
             )
 
-        verify_all_deps_resolvable(state)
+        if not state.failed_feedstocks:
+            verify_all_deps_resolvable(state)
 
         manifest = {
             "root_package": pkg,
             "feedstocks": state.order,
             "reasons": state.prepared,
+            "failed_feedstocks": sorted(state.failed_feedstocks),
             "target_platform": args.target_platform,
             "should_build": True,
             "already_on_scns": False,
@@ -1332,9 +1598,15 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "root_package": pkg,
                 "already_on_scns": False,
-                "should_build": True,
+                "should_build": bool(state.order),
                 "feedstocks": state.order,
-                "reason": f"prepared {len(state.order)} feedstock(s) for build",
+                "failed_feedstocks": sorted(state.failed_feedstocks),
+                "reason": (
+                    f"prepared {len(state.order)} feedstock(s) for build; "
+                    f"{len(state.failed_feedstocks)} failed"
+                    if state.failed_feedstocks
+                    else f"prepared {len(state.order)} feedstock(s) for build"
+                ),
             },
         )
 
