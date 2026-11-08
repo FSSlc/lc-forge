@@ -144,7 +144,7 @@ jobs:
             done < only-meta.txt
 
             while IFS= read -r -d '' file; do
-              rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
+              rattler-build upload prefix -c scns -a "${{ secrets.PREFIX_DEV_TOKEN }}" --skip-existing "$file"
             done < <(find ./output -type f -name '*.conda' -print0 2>/dev/null)
 
       # ---- 2. build every recipe under todo/ with rattler-build ----
@@ -169,7 +169,7 @@ jobs:
             fi
 
             while IFS= read -r -d '' file; do
-              rattler-build upload prefix -c scns -a ${{ secrets.PREFIX_DEV_TOKEN }} --skip-existing "$file"
+              rattler-build upload prefix -c scns -a "${{ secrets.PREFIX_DEV_TOKEN }}" --skip-existing "$file"
             done < <(find ./output -type f -name '*.conda' -print0 2>/dev/null)
 
       # ---- 3. classify per-recipe results: BUILT / SKIPPED (already on channel) / FAILED ----
@@ -332,6 +332,72 @@ jobs:
             echo "=== reasons ==="
             cat ".build-meta/reasons-$TARGET.txt"
 
+      # ---- 4. AI diagnosis + single-recipe rebuild for the FAILED ones ----
+      # A recipe that fails here fails identically on every later push, so give
+      # it the same AI fix the import workflow uses. This step never fails the
+      # job: finalize reports whatever is still FAILED in .build-meta/<target>.txt.
+      - name: Repair FAILED recipes with AI
+        id: repair
+        shell: bash
+        env:
+          TARGET_PLATFORM: ${{ matrix.target }}
+          PREFIX_DEV_TOKEN: ${{ secrets.PREFIX_DEV_TOKEN }}
+          AI_API_BASE_URL: ${{ secrets.AI_API_BASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
+        run: |
+          set -Eeuo pipefail
+
+          status_file=".build-meta/${TARGET_PLATFORM}.txt"
+          if [[ ! -f "$status_file" ]]; then
+            echo "::warning::no $status_file; skipping AI repair"
+            exit 0
+          fi
+          if [[ -z "${AI_API_BASE_URL:-}" || -z "${AI_API_KEY:-}" || -z "${AI_MODEL_NAME:-}" ]]; then
+            echo "AI repair skipped: AI_* secrets are not configured"
+            exit 0
+          fi
+          if [[ -z "${PREFIX_DEV_TOKEN:-}" ]]; then
+            echo "AI repair skipped: PREFIX_DEV_TOKEN is not set, so a repaired package could not be uploaded"
+            exit 0
+          fi
+
+          mkdir -p logs output .build-meta
+          # The earlier steps ran inside the container (root), so the runner
+          # cannot rewrite .build-meta/<target>.txt or write logs without this.
+          if command -v sudo >/dev/null 2>&1; then
+            sudo chown -Rh "$(id -u):$(id -g)" logs output .build-meta 2>/dev/null || true
+          else
+            chown -Rh "$(id -u):$(id -g)" logs output .build-meta 2>/dev/null || true
+          fi
+
+          # Rewrites .build-meta/<target>.txt (repaired -> BUILT) so the artifact
+          # downloaded by finalize classifies them as built.
+          python3 scripts/import_recipe.py --repair-failed \
+            --target-platform="$TARGET_PLATFORM" \
+            --token="$PREFIX_DEV_TOKEN"
+
+          # The fix only exists in this runner's workspace; hand the repaired
+          # recipe dirs to finalize so it archives the content that actually built.
+          shopt -s nullglob
+          while IFS=' ' read -r status name; do
+            [[ "$status" == "BUILT" ]] || continue
+            [[ -d "todo/$name" ]] || continue
+            if [[ -z "$(git status --porcelain -uall -- "todo/$name")" ]]; then
+              continue
+            fi
+            mkdir -p ".fixed-recipes/todo/$name"
+            cp -a "todo/$name/." ".fixed-recipes/todo/$name/"
+            echo "collected AI-repaired recipe: $name"
+          done < "$status_file"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fixed-recipes-${{ matrix.target }}
+          path: .fixed-recipes/**
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v7
         with:
           name: build-meta-${{ matrix.target }}
@@ -359,6 +425,13 @@ jobs:
         with:
           pattern: build-meta-*
           path: .build-meta
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          pattern: fixed-recipes-*
+          path: .fixed-recipes
           merge-multiple: true
 
       - name: Archive successful builds and report failures
@@ -392,6 +465,21 @@ jobs:
           for name in "${!failed_any[@]}"; do
             unset "built_any[$name]"
           done
+
+          # ---- overlay the recipes the AI repaired in the build jobs ----
+          # Both arches upload their own copy; identical edits (the common case)
+          # collapse into the same content, otherwise the last one wins.
+          shopt -s nullglob
+          for d in .fixed-recipes/todo/*/; do
+            fs="$(basename "$d")"
+            mkdir -p "todo/$fs"
+            cp -a "$d/." "todo/$fs/"
+            # Stage the fix now so it also survives when the other arch failed
+            # and the recipe stays in todo/ (git mv covers the archived ones).
+            git add -A "todo/$fs"
+            echo "overlaid AI-repaired recipe: $fs"
+          done
+          shopt -u nullglob
 
           # ---- move successfully built recipes to recipes/ ----
           mkdir -p recipes

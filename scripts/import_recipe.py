@@ -647,8 +647,13 @@ def run(
     check: bool = True,
     env: dict[str, str] | None = None,
     shell: bool = False,
+    secret: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     printable = cmd if isinstance(cmd, str) else " ".join(shlex.quote(c) for c in cmd)
+    if secret:
+        # The command echo and any error message below would otherwise leak the
+        # token into the CI log / local terminal scrollback.
+        printable = printable.replace(secret, "***")
     print(f"+ {printable}", flush=True)
     merged = os.environ.copy()
     if env:
@@ -1214,45 +1219,15 @@ def write_built_feedstocks(
     )
 
 
-def container_build_and_upload(
-    root: Path,
-    feedstocks: list[str],
-    *,
-    target_platform: str,
-    upload: bool,
-    prefix_token: str | None,
-    scns_channel: str = SCNS_CHANNEL,
-) -> None:
-    if not feedstocks:
-        raise ImportError_("No recipes were prepared to build.")
+# Stage dir used to isolate one recipe per rattler-build invocation, so
+# --recipe-dir does not pick up unrelated packages already sitting in todo/.
+BUILD_STAGE_REL = "todo/.import-stage"
 
-    start_img = root / "scripts" / "start_img.sh"
-    logs_dir = root / "logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    # Aggregate log: one file per target for the CI summary / log scan.
-    log_file = logs_dir / f"build-{target_platform}.log"
-    log_file.write_text("", encoding="utf-8")
-    output_dir = root / "output"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Stage one recipe at a time so --recipe-dir does not pick up unrelated
-    # packages already sitting in todo/.
-    stage_dir = root / "todo" / ".import-stage"
-    stage_rel = str(stage_dir.relative_to(root))
-
-    for fs in feedstocks:
-        recipe = root / "todo" / fs / "recipe.yaml"
-        if not recipe.is_file():
-            raise ImportError_(
-                f"Cannot build {fs!r}: missing {recipe}. "
-                f"Did prepare step upload the todo/ artifact?"
-            )
-
-    # rattler-build runs as root inside the pixi container and writes
-    # root-owned files under the bind-mounted workspace. Always chown back to
-    # HOST_UID/HOST_GID (injected by start_img.sh) so the GHA runner can read
-    # logs/ and zip output/**/*.conda for upload-artifact.
-    fix_owner_snippet = r"""
+# rattler-build runs as root inside the pixi container and writes root-owned
+# files under the bind-mounted workspace. Always chown back to HOST_UID/HOST_GID
+# (injected by start_img.sh) so the GHA runner can read logs/ and zip
+# output/**/*.conda for upload-artifact.
+FIX_WORKSPACE_OWNER_SNIPPET = r"""
 fix_workspace_owner() {
   local uid="${HOST_UID:-}"
   local gid="${HOST_GID:-}"
@@ -1270,42 +1245,118 @@ fix_workspace_owner() {
 trap fix_workspace_owner EXIT
 """
 
-    def build_script(fs: str, log_rel: str) -> str:
-        """Build exactly one recipe; its own log keeps AI diagnosis targeted."""
-        parts = [
-            "set -Eeuo pipefail",
-            fix_owner_snippet,
-            "mkdir -p logs output",
-            f"rm -rf {shlex.quote(stage_rel)}",
-            f"mkdir -p {shlex.quote(stage_rel)}",
-            # Symlink todo/<fs> into the staging dir (relative from stage → todo).
-            f"ln -sfn ../{shlex.quote(fs)} {shlex.quote(stage_rel)}/{shlex.quote(fs)}",
-            f'echo "===== Building {fs} for {target_platform} ====="',
-            # Disable -e around the pipeline so we can inspect PIPESTATUS[0]
-            # (rattler-build) even when --continue-on-failure still exits non-zero.
-            "set +e",
-            (
-                "rattler-build build --continue-on-failure --experimental "
-                # local only: prepared recipes must actually build even if a stale
-                # scns entry exists or channel detection disagreed. Upload still
-                # uses --skip-existing against the remote channel.
-                f"-m ./conda_build_config.yaml --skip-existing=local "
-                f"--target-platform={shlex.quote(target_platform)} "
-                # -c ./output lets earlier recipes of this run satisfy later ones.
-                f"-c {shlex.quote(scns_channel)} "
-                f"-c ./output "
-                f"--recipe-dir {shlex.quote(stage_rel)} "
-                f"--output-dir ./output "
-                f"2>&1 | tee {shlex.quote(log_rel)}"
-            ),
-            "build_rc=${PIPESTATUS[0]}",
-            "set -e",
-            'if [[ "$build_rc" -ne 0 ]]; then '
-            'echo "rattler-build reported failure (exit $build_rc)" >&2; '
-            'exit "$build_rc"; fi',
-            f'echo "{fs} built successfully for {target_platform}"',
-        ]
-        return "\n".join(parts)
+
+def single_recipe_build_script(
+    fs: str,
+    log_rel: str,
+    *,
+    target_platform: str,
+    scns_channel: str = SCNS_CHANNEL,
+) -> str:
+    """Build exactly one recipe; its own log keeps AI diagnosis targeted."""
+    stage_rel = BUILD_STAGE_REL
+    parts = [
+        "set -Eeuo pipefail",
+        FIX_WORKSPACE_OWNER_SNIPPET,
+        "mkdir -p logs output",
+        f"rm -rf {shlex.quote(stage_rel)}",
+        f"mkdir -p {shlex.quote(stage_rel)}",
+        # Symlink todo/<fs> into the staging dir (relative from stage → todo).
+        f"ln -sfn ../{shlex.quote(fs)} {shlex.quote(stage_rel)}/{shlex.quote(fs)}",
+        f'echo "===== Building {fs} for {target_platform} ====="',
+        # Disable -e around the pipeline so we can inspect PIPESTATUS[0]
+        # (rattler-build) even when --continue-on-failure still exits non-zero.
+        "set +e",
+        (
+            "rattler-build build --continue-on-failure --experimental "
+            # local only: prepared recipes must actually build even if a stale
+            # scns entry exists or channel detection disagreed. Upload still
+            # uses --skip-existing against the remote channel.
+            f"-m ./conda_build_config.yaml --skip-existing=local "
+            f"--target-platform={shlex.quote(target_platform)} "
+            # -c ./output lets earlier recipes of this run satisfy later ones.
+            f"-c {shlex.quote(scns_channel)} "
+            f"-c ./output "
+            f"--recipe-dir {shlex.quote(stage_rel)} "
+            f"--output-dir ./output "
+            f"2>&1 | tee {shlex.quote(log_rel)}"
+        ),
+        "build_rc=${PIPESTATUS[0]}",
+        "set -e",
+        'if [[ "$build_rc" -ne 0 ]]; then '
+        'echo "rattler-build reported failure (exit $build_rc)" >&2; '
+        'exit "$build_rc"; fi',
+        f'echo "{fs} built successfully for {target_platform}"',
+    ]
+    return "\n".join(parts)
+
+
+def build_one_recipe(
+    root: Path,
+    fs: str,
+    *,
+    target_platform: str,
+    log_file: Path,
+    scns_channel: str = SCNS_CHANNEL,
+) -> None:
+    """Build todo/<fs> alone inside the pixi container, logging to log_file."""
+    script = single_recipe_build_script(
+        fs,
+        str(log_file.relative_to(root)),
+        target_platform=target_platform,
+        scns_channel=scns_channel,
+    )
+    run(["bash", str(root / "scripts" / "start_img.sh"), "--run", script], cwd=root)
+
+
+def upload_output_packages(root: Path, *, prefix_token: str) -> None:
+    """Upload every .conda under output/ to scns (channel dedupes)."""
+    upload_parts = [
+        "set -Eeuo pipefail",
+        FIX_WORKSPACE_OWNER_SNIPPET,
+        "shopt -s nullglob globstar",
+        "files=(output/**/*.conda)",
+        'if [[ ${#files[@]} -eq 0 ]]; then echo "No .conda files to upload"; exit 0; fi',
+        'for file in "${files[@]}"; do',
+        '  echo "Uploading $file"',
+        f"  rattler-build upload prefix -c scns -a {shlex.quote(prefix_token)} "
+        f'--skip-existing "$file"',
+        "done",
+    ]
+    run(
+        ["bash", str(root / "scripts" / "start_img.sh"), "--run", "\n".join(upload_parts)],
+        cwd=root,
+        secret=prefix_token,
+    )
+
+
+def container_build_and_upload(
+    root: Path,
+    feedstocks: list[str],
+    *,
+    target_platform: str,
+    upload: bool,
+    prefix_token: str | None,
+    scns_channel: str = SCNS_CHANNEL,
+) -> None:
+    if not feedstocks:
+        raise ImportError_("No recipes were prepared to build.")
+
+    logs_dir = root / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    # Aggregate log: one file per target for the CI summary / log scan.
+    log_file = logs_dir / f"build-{target_platform}.log"
+    log_file.write_text("", encoding="utf-8")
+    output_dir = root / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for fs in feedstocks:
+        recipe = root / "todo" / fs / "recipe.yaml"
+        if not recipe.is_file():
+            raise ImportError_(
+                f"Cannot build {fs!r}: missing {recipe}. "
+                f"Did prepare step upload the todo/ artifact?"
+            )
 
     if ai_configured():
         print(
@@ -1324,14 +1375,19 @@ trap fix_workspace_owner EXIT
     try:
         for fs in feedstocks:
             fs_log = logs_dir / f"build-{target_platform}-{fs}.log"
-            script = build_script(fs, str(fs_log.relative_to(root)))
             error = ""
             # Original content of the files the AI touched, so a fix that does
             # not make the build pass is reverted instead of being committed.
             pristine: dict[Path, str | None] = {}
             for attempt in range(1, AI_MAX_FIX_ROUNDS + 1):
                 try:
-                    run(["bash", str(start_img), "--run", script], cwd=root)
+                    build_one_recipe(
+                        root,
+                        fs,
+                        target_platform=target_platform,
+                        log_file=fs_log,
+                        scns_channel=scns_channel,
+                    )
                     # --continue-on-failure can leave the exit status at 0 while a
                     # test script failed; the workflow's own log scan only runs
                     # after upload, so check here.
@@ -1402,22 +1458,7 @@ trap fix_workspace_owner EXIT
                 "cannot upload to scns."
             )
         else:
-            upload_parts = [
-                "set -Eeuo pipefail",
-                fix_owner_snippet,
-                "shopt -s nullglob globstar",
-                "files=(output/**/*.conda)",
-                'if [[ ${#files[@]} -eq 0 ]]; then echo "No .conda files to upload"; exit 0; fi',
-                'for file in "${files[@]}"; do',
-                '  echo "Uploading $file"',
-                f"  rattler-build upload prefix -c scns -a {shlex.quote(prefix_token)} "
-                f'--skip-existing "$file"',
-                "done",
-            ]
-            run(
-                ["bash", str(start_img), "--run", "\n".join(upload_parts)],
-                cwd=root,
-            )
+            upload_output_packages(root, prefix_token=prefix_token)
     finally:
         write_built_feedstocks(root, feedstocks, target_platform)
 
@@ -1432,6 +1473,165 @@ trap fix_workspace_owner EXIT
             f"{len(failures)}/{len(feedstocks)} recipe(s) failed to build for "
             f"{target_platform} even after AI fix:\n{details}"
         )
+
+
+# rattler-build prints this before compiling each recipe of a bulk build.
+BULK_RECIPE_MARKER_RE = re.compile(r"Processing recipe at path: .*?/([^/]+)/[^/]*$")
+
+
+def extract_recipe_log_section(bulk_log: Path, feedstock: str) -> str:
+    """Slice the bulk build log down to todo/<feedstock>/'s own output.
+
+    build.yml builds all of todo/ in one rattler-build call, so a bulk log
+    interleaves every recipe; handing it to the AI whole would diagnose another
+    recipe's error. Sections start at the per-recipe marker.
+    """
+    if not bulk_log.is_file():
+        return ""
+    lines = bulk_log.read_text(encoding="utf-8", errors="replace").splitlines()
+    section: list[str] = []
+    current = ""
+    for line in lines:
+        match = BULK_RECIPE_MARKER_RE.search(line)
+        if match:
+            current = match.group(1)
+        if current == feedstock:
+            section.append(line)
+    if section:
+        return "\n".join(section) + "\n"
+    # No marker (truncated log / parse error before the marker): keep every line
+    # that names the feedstock directory instead of returning nothing.
+    return "".join(f"{line}\n" for line in lines if f"/{feedstock}/" in line)
+
+
+def repair_failed_builds(
+    root: Path,
+    *,
+    target_platform: str,
+    status_file: Path,
+    bulk_log: Path,
+    prefix_token: str | None,
+    upload: bool,
+    scns_channel: str = SCNS_CHANNEL,
+) -> list[str]:
+    """One bounded AI repair round for the recipes build.yml classified FAILED.
+
+    build.yml's push trigger rebuilds whatever the import left in todo/, so a
+    recipe that already exhausted its AI rounds there would fail identically on
+    every later push. This gives that path the same AI diagnosis + single-recipe
+    rebuild, limited to one fix round: a failed repair is reverted and reported.
+    """
+    if not status_file.is_file():
+        raise ImportError_(f"Missing {status_file}; nothing to repair.")
+
+    statuses: dict[str, str] = {}
+    for line in status_file.read_text(encoding="utf-8").splitlines():
+        parts = line.split(" ", 1)
+        if len(parts) == 2 and parts[1].strip():
+            statuses[parts[1].strip()] = parts[0].strip()
+
+    failed = [fs for fs, status in statuses.items() if status == "FAILED"]
+    if not failed:
+        print(f"No FAILED recipe in {status_file}; nothing to repair.", flush=True)
+        return []
+    if not ai_configured():
+        print(
+            "AI build-fix disabled: AI_API_BASE_URL / AI_API_KEY / AI_MODEL_NAME "
+            f"is not set, so the {len(failed)} failed recipe(s) are only reported.",
+            flush=True,
+        )
+        return []
+
+    print(
+        f"AI build-fix enabled ({os.environ['AI_MODEL_NAME']}), "
+        f"one repair round for {len(failed)} recipe(s): {', '.join(failed)}",
+        flush=True,
+    )
+
+    logs_dir = root / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    repaired: list[str] = []
+    for fs in failed:
+        if not (root / "todo" / fs / "recipe.yaml").is_file():
+            print(
+                f"Warning: todo/{fs}/recipe.yaml is missing; skipping repair.",
+                file=sys.stderr,
+                flush=True,
+            )
+            continue
+
+        fs_log = logs_dir / f"build-{target_platform}-{fs}.log"
+        fs_log.write_text(extract_recipe_log_section(bulk_log, fs), encoding="utf-8")
+        print(f"Asking AI to diagnose the {fs!r} build failure...", flush=True)
+        try:
+            changed, backup = ai_fix_build_failures(root, fs, fs_log)
+        except ImportError_ as exc:
+            print(
+                f"Warning: AI build-fix for {fs!r} failed: {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
+            continue
+        if not changed:
+            print(
+                f"AI proposed no usable change for {fs!r}; "
+                f"keeping the original build error.",
+                flush=True,
+            )
+            continue
+
+        print(f"AI changed {len(changed)} file(s) for {fs!r}; rebuilding", flush=True)
+        try:
+            build_one_recipe(
+                root,
+                fs,
+                target_platform=target_platform,
+                log_file=fs_log,
+                scns_channel=scns_channel,
+            )
+            fail_if_test_failures(fs_log, target_platform)
+        except ImportError_ as exc:
+            revert_recipe_files(backup)
+            print(
+                f"Rebuild of {fs!r} still failed: {exc}\n"
+                f"Reverted AI changes for {fs!r}: the recipe is left untouched.",
+                file=sys.stderr,
+                flush=True,
+            )
+            continue
+
+        statuses[fs] = "BUILT"
+        repaired.append(fs)
+        print(f"Repaired {fs!r}: it now builds for {target_platform}.", flush=True)
+
+    status_file.write_text(
+        "".join(f"{statuses[fs]} {fs}\n" for fs in statuses), encoding="utf-8"
+    )
+    if repaired:
+        # The repaired recipes produced new artifacts out of band, so the
+        # built-feedstocks record must include them (import-recipe.yml archives
+        # only feedstocks that appear in every target's record).
+        record = root / "output" / f".built-feedstocks-{target_platform}.json"
+        known: list[str] = []
+        if record.is_file():
+            try:
+                known = list(
+                    json.loads(record.read_text(encoding="utf-8")).get("feedstocks")
+                    or []
+                )
+            except (OSError, json.JSONDecodeError):
+                known = []
+        write_built_feedstocks(
+            root, sorted(set(known) | set(repaired)), target_platform
+        )
+    if repaired and upload and prefix_token:
+        upload_output_packages(root, prefix_token=prefix_token)
+    print(
+        f"Repaired {len(repaired)}/{len(failed)} failed recipe(s) for "
+        f"{target_platform}: {', '.join(repaired) or '(none)'}",
+        flush=True,
+    )
+    return repaired
 
 
 # Non-hidden names so actions/upload-artifact includes them by default
@@ -1496,7 +1696,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument(
         "package",
-        help="Package name (conda-forge output or feedstock name)",
+        nargs="?",
+        default="",
+        help="Package name (conda-forge output or feedstock name); omitted with --repair-failed",
     )
     p.add_argument(
         "--target-platform",
@@ -1527,6 +1729,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--repair-failed",
+        action="store_true",
+        help=(
+            "Skip resolve/prep/build: for the recipes build.yml classified FAILED "
+            "in .build-meta/<target>.txt, run one AI fix round and rebuild each "
+            "(used by the .github/workflows/build.yml push retry path)"
+        ),
+    )
+    p.add_argument(
         "--force",
         action="store_true",
         help=(
@@ -1545,7 +1756,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     pkg = args.package.strip()
-    if not pkg or not PACKAGE_NAME_RE.match(pkg):
+
+    if args.prepare_only and args.build_only:
+        print("Error: --prepare-only and --build-only are mutually exclusive.", file=sys.stderr)
+        return 1
+    if args.repair_failed and (args.prepare_only or args.build_only):
+        print(
+            "Error: --repair-failed cannot be combined with "
+            "--prepare-only / --build-only.",
+            file=sys.stderr,
+        )
+        return 1
+    if not args.repair_failed and (not pkg or not PACKAGE_NAME_RE.match(pkg)):
         print(
             f"Error: invalid package name {pkg!r}. "
             f"Allowed: letters, numbers, dots, underscores, hyphens.",
@@ -1553,14 +1775,24 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    if args.prepare_only and args.build_only:
-        print("Error: --prepare-only and --build-only are mutually exclusive.", file=sys.stderr)
-        return 1
-
     scns_channel = args.scns_channel.rstrip("/")
     root = repo_root()
 
     try:
+        # ----- repair-only path (build.yml push retry) -----
+        if args.repair_failed:
+            meta_dir = root / ".build-meta"
+            repair_failed_builds(
+                root,
+                target_platform=args.target_platform,
+                status_file=meta_dir / f"{args.target_platform}.txt",
+                bulk_log=meta_dir / f"rattler-{args.target_platform}.log",
+                prefix_token=args.token,
+                upload=not args.no_upload,
+                scns_channel=scns_channel,
+            )
+            return 0
+
         # ----- build-only path (CI matrix jobs) -----
         if args.build_only:
             feedstocks: list[str] = []
