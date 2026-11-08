@@ -508,9 +508,19 @@ jobs:
           name: build-log-${{ matrix.target }}
           path: |
             logs/build-${{ matrix.target }}.log
+            logs/build-${{ matrix.target }}-*.log
             output/**/*.conda
             output/.build-status-*
             output/.built-feedstocks-${{ matrix.target }}.json
+          if-no-files-found: ignore
+
+      # The build job may have rewritten recipes (AI build fix). Hand the
+      # possibly-fixed todo/ back so the commit job lands what actually built.
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fixed-recipes-${{ matrix.target }}
+          path: todo/**
           if-no-files-found: ignore
 
   # -------------------------------------------------------------------------
@@ -544,6 +554,37 @@ jobs:
           pattern: build-log-*
           path: ${{ github.workspace }}/.build-logs
           merge-multiple: true
+
+      - name: Download AI-fixed recipes from the build jobs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          pattern: fixed-recipes-*
+          path: ${{ github.workspace }}/.fixed-recipes
+          merge-multiple: true
+
+      - name: Overlay AI-fixed recipes over the prepared ones
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          shopt -s nullglob
+
+          if [[ ! -d .fixed-recipes/todo ]]; then
+            echo "No AI-fixed recipe artifacts; keeping the prepared recipes."
+            exit 0
+          fi
+
+          # Both arches upload their own copy; identical edits (the common case)
+          # collapse into the same content, otherwise the last one wins.
+          overlaid=0
+          for d in .fixed-recipes/todo/*/; do
+            fs="$(basename "$d")"
+            mkdir -p "todo/$fs"
+            cp -a "$d/." "todo/$fs/"
+            overlaid=$((overlaid + 1))
+          done
+          echo "Overlaid ${overlaid} feedstock dir(s) from the build jobs onto todo/."
+          git status --porcelain todo | head -n 40 || true
 
       - name: Check whether any target produced .conda artifacts
         id: build-gate
@@ -652,7 +693,7 @@ jobs:
           # Build-failed / single-arch feedstocks stay in todo/ so build.yml
           # retries them on the next push.
           rm -f todo/import-manifest.json todo/.import-manifest.json todo/import-status.json
-          rm -rf todo/.import-stage .import-artifact
+          rm -rf todo/.import-stage .import-artifact .fixed-recipes
 
           if [[ ${#archived[@]} -eq 0 && -z "$KEPT" ]]; then
             echo "Nothing to land or keep."

@@ -759,14 +759,15 @@ def ai_fix_meta(meta_text: str, crm_error: str = "") -> str:
     return ai_chat(_AI_SYSTEM_META, user)
 
 
-def ai_fix_build(files_snapshot: str, log_tail: str) -> str:
+def ai_fix_build(feedstock: str, files_snapshot: str, log_tail: str) -> str:
     """Return JSON text proposing file changes for a failed build."""
     user = (
-        "A rattler-build build failed. Here are the recipe files:\n\n"
-        f"{files_snapshot}\n\n"
-        "Build log tail:\n\n"
-        f"{log_tail}\n\n"
-        "Return the JSON object with the files to change."
+        f"The rattler-build build of recipe {feedstock!r} failed. "
+        f"Every path you return must start with {feedstock}/.\n\n"
+        f"Recipe files:\n\n{files_snapshot}\n\n"
+        f"Build log (tail):\n\n{log_tail}\n\n"
+        "Diagnose the compile/link/test error and return the JSON object with "
+        "the files to change."
     )
     return ai_chat(_AI_SYSTEM_BUILD, user, json_mode=True)
 
@@ -1063,38 +1064,52 @@ def fail_if_test_failures(log_file: Path, target_platform: str) -> None:
 
 AI_MAX_FIX_ROUNDS = int(os.environ.get("AI_MAX_FIX_ROUNDS", "2"))
 
+# Cap the recipe snapshot handed to the AI so one huge patch cannot blow up the
+# prompt; the request body must stay well below provider limits.
+AI_SNAPSHOT_MAX_CHARS = 200_000
+
+
+def recipe_file_snapshot(root: Path, feedstock: str) -> str:
+    """Return every text file of todo/<feedstock> labelled with its relative path."""
+    d = root / "todo" / feedstock
+    parts: list[str] = []
+    total = 0
+    for f in sorted(p for p in d.iterdir() if p.is_file()):
+        try:
+            text = f.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if total + len(text) > AI_SNAPSHOT_MAX_CHARS:
+            print(
+                f"Warning: recipe snapshot truncated, skipping {feedstock}/{f.name}",
+                flush=True,
+            )
+            break
+        parts.append(f"# --- {feedstock}/{f.name} ---\n{text}\n")
+        total += len(text)
+    return "\n".join(parts)
+
 
 def ai_fix_build_failures(
-    root: Path, feedstocks: list[str], log_file: Path
-) -> bool:
-    """Ask the AI to edit recipe files after a failed build; returns True on changes."""
+    root: Path, feedstock: str, log_file: Path
+) -> tuple[list[str], dict[Path, str | None]]:
+    """Ask the AI to diagnose one failed build and rewrite this recipe's files.
+
+    Returns the files it changed plus a backup of their previous content (None
+    for files that did not exist), so the caller can revert the edit if the
+    rebuild still fails. An empty file list means "no usable fix". Errors in the
+    AI round trip raise ImportError_ so the caller can report and give up on
+    this recipe without losing the original build error.
+    """
     if not ai_configured():
-        return False
-    snapshot_parts: list[str] = []
-    total = 0
-    for fs in feedstocks:
-        d = root / "todo" / fs
-        for rel in ("recipe.yaml", "build.sh", "conda_build_config.yaml"):
-            f = d / rel
-            if not f.is_file():
-                continue
-            text = f.read_text(encoding="utf-8", errors="replace")
-            if total + len(text) > 200_000:
-                continue
-            snapshot_parts.append(f"# --- {fs}/{rel} ---\n{text}\n")
-            total += len(text)
-        for patch in sorted(d.glob("*.patch")):
-            text = patch.read_text(encoding="utf-8", errors="replace")
-            if total + len(text) > 200_000:
-                break
-            snapshot_parts.append(f"# --- {fs}/{patch.name} ---\n{text}\n")
-            total += len(text)
+        return [], {}
+    snapshot = recipe_file_snapshot(root, feedstock)
     log_tail = (
         log_file.read_text(encoding="utf-8", errors="replace")[-40000:]
         if log_file.is_file()
         else ""
     )
-    raw = ai_fix_build("\n".join(snapshot_parts), log_tail).strip()
+    raw = ai_fix_build(feedstock, snapshot, log_tail).strip()
     # Tolerate markdown code fences some OpenAI-compatible providers still emit.
     if raw.startswith("```"):
         lines = raw.splitlines()
@@ -1111,13 +1126,63 @@ def ai_fix_build_failures(
         ) from e
     files = payload.get("files") if isinstance(payload, dict) else None
     if not isinstance(files, dict) or not files:
-        return False
-    applied = ai_apply_files(root, feedstocks, files)
+        return [], {}
+    note = payload.get("note") if isinstance(payload, dict) else None
+    if note:
+        print(f"AI diagnosis for {feedstock}: {note}", flush=True)
+    files = {p: c for p, c in files.items() if isinstance(c, str)}
+    # Never let the AI hand us a recipe.yaml that is structurally broken; the
+    # build would just fail again with a less informative error.
+    recipe_key = f"{feedstock}/recipe.yaml"
+    if recipe_key in files and not validate_recipe_yaml(files[recipe_key]):
+        print(
+            f"Warning: AI build-fix produced an invalid recipe.yaml for {feedstock}; "
+            f"ignoring that file.",
+            file=sys.stderr,
+            flush=True,
+        )
+        files.pop(recipe_key)
+    if not files:
+        return [], {}
+    # Snapshot the pre-AI content of every file we are about to touch so a fix
+    # that does not make the build pass can be reverted before it is committed.
+    backup: dict[Path, str | None] = {}
+    for raw_path in files:
+        dest = root / "todo" / Path(*PurePosixPath(raw_path).parts)
+        try:
+            backup[dest] = (
+                dest.read_text(encoding="utf-8") if dest.is_file() else None
+            )
+        except (OSError, UnicodeDecodeError):
+            print(
+                f"Warning: cannot back up {raw_path!r} for {feedstock}; "
+                f"its AI edit will not be reverted.",
+                file=sys.stderr,
+                flush=True,
+            )
+    applied = ai_apply_files(root, [feedstock], files)
     print(
-        f"AI build-fix applied {len(applied)} file(s): {', '.join(applied)}",
+        f"AI build-fix applied {len(applied)} file(s) for {feedstock}: "
+        f"{', '.join(applied)}",
         flush=True,
     )
-    return bool(applied)
+    return applied, backup
+
+
+def revert_recipe_files(backup: dict[Path, str | None]) -> None:
+    """Undo AI edits recorded by ai_fix_build_failures (None means created)."""
+    for path, text in backup.items():
+        try:
+            if text is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_text(text, encoding="utf-8")
+        except OSError as exc:
+            print(
+                f"Warning: cannot revert {path}: {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
 
 
 def write_built_feedstocks(
@@ -1164,14 +1229,15 @@ def container_build_and_upload(
     start_img = root / "scripts" / "start_img.sh"
     logs_dir = root / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
+    # Aggregate log: one file per target for the CI summary / log scan.
     log_file = logs_dir / f"build-{target_platform}.log"
+    log_file.write_text("", encoding="utf-8")
     output_dir = root / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Stage only the recipes prepared by this import so --recipe-dir does not
-    # pick up unrelated packages already sitting in todo/.
+    # Stage one recipe at a time so --recipe-dir does not pick up unrelated
+    # packages already sitting in todo/.
     stage_dir = root / "todo" / ".import-stage"
-    log_rel = str(log_file.relative_to(root))
     stage_rel = str(stage_dir.relative_to(root))
 
     for fs in feedstocks:
@@ -1204,110 +1270,168 @@ fix_workspace_owner() {
 trap fix_workspace_owner EXIT
 """
 
-    build_script_parts = [
-        "set -Eeuo pipefail",
-        fix_owner_snippet,
-        "mkdir -p logs output",
-        f"rm -rf {shlex.quote(stage_rel)}",
-        f"mkdir -p {shlex.quote(stage_rel)}",
-    ]
-    for fs in feedstocks:
-        # Symlink todo/<fs> into the staging dir (relative from stage → todo).
-        build_script_parts.append(
-            f"ln -sfn ../{shlex.quote(fs)} {shlex.quote(stage_rel)}/{shlex.quote(fs)}"
-        )
+    def build_script(fs: str, log_rel: str) -> str:
+        """Build exactly one recipe; its own log keeps AI diagnosis targeted."""
+        parts = [
+            "set -Eeuo pipefail",
+            fix_owner_snippet,
+            "mkdir -p logs output",
+            f"rm -rf {shlex.quote(stage_rel)}",
+            f"mkdir -p {shlex.quote(stage_rel)}",
+            # Symlink todo/<fs> into the staging dir (relative from stage → todo).
+            f"ln -sfn ../{shlex.quote(fs)} {shlex.quote(stage_rel)}/{shlex.quote(fs)}",
+            f'echo "===== Building {fs} for {target_platform} ====="',
+            # Disable -e around the pipeline so we can inspect PIPESTATUS[0]
+            # (rattler-build) even when --continue-on-failure still exits non-zero.
+            "set +e",
+            (
+                "rattler-build build --continue-on-failure --experimental "
+                # local only: prepared recipes must actually build even if a stale
+                # scns entry exists or channel detection disagreed. Upload still
+                # uses --skip-existing against the remote channel.
+                f"-m ./conda_build_config.yaml --skip-existing=local "
+                f"--target-platform={shlex.quote(target_platform)} "
+                # -c ./output lets earlier recipes of this run satisfy later ones.
+                f"-c {shlex.quote(scns_channel)} "
+                f"-c ./output "
+                f"--recipe-dir {shlex.quote(stage_rel)} "
+                f"--output-dir ./output "
+                f"2>&1 | tee {shlex.quote(log_rel)}"
+            ),
+            "build_rc=${PIPESTATUS[0]}",
+            "set -e",
+            'if [[ "$build_rc" -ne 0 ]]; then '
+            'echo "rattler-build reported failure (exit $build_rc)" >&2; '
+            'exit "$build_rc"; fi',
+            f'echo "{fs} built successfully for {target_platform}"',
+        ]
+        return "\n".join(parts)
 
-    # Match the user-requested rattler-build invocation; add -c ./output so
-    # packages produced earlier in the same run satisfy later recipes.
-    # --continue-on-failure keeps going across recipes, but we still fail the
-    # job when rattler-build's overall exit status is non-zero.
-    build_script_parts += [
-        f'echo "===== Building staged recipes under {stage_rel} '
-        f'for {target_platform} ====="',
-        # Disable -e around the pipeline so we can inspect PIPESTATUS[0]
-        # (rattler-build) even when --continue-on-failure still exits non-zero.
-        "set +e",
-        (
-            "rattler-build build --continue-on-failure --experimental "
-            # local only: prepared recipes must actually build even if a stale
-            # scns entry exists or channel detection disagreed. Upload still
-            # uses --skip-existing against the remote channel.
-            f"-m ./conda_build_config.yaml --skip-existing=local "
-            f"--target-platform={shlex.quote(target_platform)} "
-            f"-c {shlex.quote(scns_channel)} "
-            f"-c ./output "
-            f"--recipe-dir {shlex.quote(stage_rel)} "
-            f"--output-dir ./output "
-            f"2>&1 | tee {shlex.quote(log_rel)}"
-        ),
-        "build_rc=${PIPESTATUS[0]}",
-        "set -e",
-        'if [[ "$build_rc" -ne 0 ]]; then '
-        'echo "rattler-build reported failure (exit $build_rc)" >&2; '
-        'exit "$build_rc"; fi',
-        f'echo "All prepared recipes built successfully for {target_platform}"',
-    ]
-    build_cmd = "\n".join(build_script_parts)
-
-    def run_build() -> None:
-        run(["bash", str(start_img), "--run", build_cmd], cwd=root)
-        # The build can exit 0 even when a recipe's test script failed (because
-        # of --continue-on-failure). Check the log here so we never upload on
-        # test failure; the CI workflow's own scan runs only after upload.
-        fail_if_test_failures(log_file, target_platform)
-
-    try:
-        for attempt in range(1, AI_MAX_FIX_ROUNDS + 1):
-            try:
-                run_build()
-                break
-            except ImportError_:
-                if attempt >= AI_MAX_FIX_ROUNDS or not ai_fix_build_failures(
-                    root, feedstocks, log_file
-                ):
-                    raise
-                print(
-                    f"AI applied build fixes; retrying build "
-                    f"(attempt {attempt + 1})",
-                    flush=True,
-                )
-    finally:
-        write_built_feedstocks(root, feedstocks, target_platform)
-
-    conda_files = list(output_dir.rglob("*.conda"))
-    if not conda_files:
+    if ai_configured():
         print(
-            "Warning: no .conda artifacts under output/. "
-            "All packages may have been skipped as existing.",
+            f"AI build-fix enabled ({os.environ['AI_MODEL_NAME']}), "
+            f"up to {AI_MAX_FIX_ROUNDS} build attempt(s) per recipe",
+            flush=True,
+        )
+    else:
+        print(
+            "AI build-fix disabled: AI_API_BASE_URL / AI_API_KEY / AI_MODEL_NAME "
+            "is not set, so build failures are only reported.",
             flush=True,
         )
 
-    if not upload:
-        print("Upload skipped (--no-upload).", flush=True)
-        return
+    failures: dict[str, str] = {}
+    try:
+        for fs in feedstocks:
+            fs_log = logs_dir / f"build-{target_platform}-{fs}.log"
+            script = build_script(fs, str(fs_log.relative_to(root)))
+            error = ""
+            # Original content of the files the AI touched, so a fix that does
+            # not make the build pass is reverted instead of being committed.
+            pristine: dict[Path, str | None] = {}
+            for attempt in range(1, AI_MAX_FIX_ROUNDS + 1):
+                try:
+                    run(["bash", str(start_img), "--run", script], cwd=root)
+                    # --continue-on-failure can leave the exit status at 0 while a
+                    # test script failed; the workflow's own log scan only runs
+                    # after upload, so check here.
+                    fail_if_test_failures(fs_log, target_platform)
+                    error = ""
+                    break
+                except ImportError_ as exc:
+                    error = str(exc)
+                    print(
+                        f"Build of {fs!r} failed "
+                        f"(attempt {attempt}/{AI_MAX_FIX_ROUNDS}): {error}",
+                        flush=True,
+                    )
+                    if attempt >= AI_MAX_FIX_ROUNDS or not ai_configured():
+                        break
+                    print(f"Asking AI to diagnose the {fs!r} build failure...", flush=True)
+                    try:
+                        changed, backup = ai_fix_build_failures(root, fs, fs_log)
+                    except ImportError_ as ai_exc:
+                        print(
+                            f"Warning: AI build-fix for {fs!r} failed: {ai_exc}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        break
+                    if not changed:
+                        print(
+                            f"AI proposed no usable change for {fs!r}; "
+                            f"keeping the original build error.",
+                            flush=True,
+                        )
+                        break
+                    for path, text in backup.items():
+                        pristine.setdefault(path, text)
+                    print(
+                        f"AI changed {len(changed)} file(s) for {fs!r}; rebuilding "
+                        f"(attempt {attempt + 1}/{AI_MAX_FIX_ROUNDS})",
+                        flush=True,
+                    )
+            if error and pristine:
+                revert_recipe_files(pristine)
+                print(
+                    f"Reverted AI changes for {fs!r}: it still fails to build, so "
+                    f"the prepared recipe is left untouched.",
+                    flush=True,
+                )
+            with log_file.open("a", encoding="utf-8") as fh:
+                fh.write(f"===== {fs} =====\n")
+                if fs_log.is_file():
+                    fh.write(fs_log.read_text(encoding="utf-8", errors="replace"))
+                fh.write("\n")
+            if error:
+                failures[fs] = error
 
-    if not prefix_token:
-        raise ImportError_(
-            "Build succeeded but PREFIX_DEV_TOKEN / --token is not set; "
-            "cannot upload to scns."
+        conda_files = list(output_dir.rglob("*.conda"))
+        if not conda_files:
+            print(
+                "Warning: no .conda artifacts under output/. "
+                "All packages may have been skipped as existing.",
+                flush=True,
+            )
+
+        if not upload:
+            print("Upload skipped (--no-upload).", flush=True)
+        elif not prefix_token:
+            raise ImportError_(
+                "Build finished but PREFIX_DEV_TOKEN / --token is not set; "
+                "cannot upload to scns."
+            )
+        else:
+            upload_parts = [
+                "set -Eeuo pipefail",
+                fix_owner_snippet,
+                "shopt -s nullglob globstar",
+                "files=(output/**/*.conda)",
+                'if [[ ${#files[@]} -eq 0 ]]; then echo "No .conda files to upload"; exit 0; fi',
+                'for file in "${files[@]}"; do',
+                '  echo "Uploading $file"',
+                f"  rattler-build upload prefix -c scns -a {shlex.quote(prefix_token)} "
+                f'--skip-existing "$file"',
+                "done",
+            ]
+            run(
+                ["bash", str(start_img), "--run", "\n".join(upload_parts)],
+                cwd=root,
+            )
+    finally:
+        write_built_feedstocks(root, feedstocks, target_platform)
+
+    # Report every recipe that still failed after the AI rounds; the artifacts
+    # that did build were already uploaded so a later run can reuse them.
+    if failures:
+        details = "\n".join(
+            f"  [{i}] {fs}: {msg}"
+            for i, (fs, msg) in enumerate(sorted(failures.items()), 1)
         )
-
-    upload_parts = [
-        "set -Eeuo pipefail",
-        fix_owner_snippet,
-        "shopt -s nullglob globstar",
-        "files=(output/**/*.conda)",
-        'if [[ ${#files[@]} -eq 0 ]]; then echo "No .conda files to upload"; exit 0; fi',
-        'for file in "${files[@]}"; do',
-        '  echo "Uploading $file"',
-        f"  rattler-build upload prefix -c scns -a {shlex.quote(prefix_token)} "
-        f'--skip-existing "$file"',
-        "done",
-    ]
-    run(
-        ["bash", str(start_img), "--run", "\n".join(upload_parts)],
-        cwd=root,
-    )
+        raise ImportError_(
+            f"{len(failures)}/{len(feedstocks)} recipe(s) failed to build for "
+            f"{target_platform} even after AI fix:\n{details}"
+        )
 
 
 # Non-hidden names so actions/upload-artifact includes them by default
