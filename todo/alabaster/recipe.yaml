@@ -37,7 +37,7 @@ tests:
       run:
         - pip
         - pygments
-        - python ${{ python_min }}
+        - python ${{ python_min }}.*
     script:
       - python -c "import alabaster; print(alabaster.get_path())"
 

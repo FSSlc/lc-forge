@@ -24,7 +24,7 @@ requirements:
   host:
     - flit-core >=2,<4
     - pip
-    - python ${{ python_min }}
+    - python ${{ python_min }}.*
     - sphinx-theme-builder
     - nodeenv
     - nodejs ==18.20.5

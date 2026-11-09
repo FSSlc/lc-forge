@@ -24,7 +24,7 @@ build:
 requirements:
   host:
     - pip
-    - python ${{ python_min }}
+    - python ${{ python_min }}.*
     - setuptools
   run:
     - python >=${{ python_min }}
@@ -39,7 +39,7 @@ tests:
         - pytest
         - mock
         - coverage
-        - python ${{ python_min }}
+        - python ${{ python_min }}.*
     script:
       - nodeenv --help
       - pytest tests -ra -k "not test_smoke"
