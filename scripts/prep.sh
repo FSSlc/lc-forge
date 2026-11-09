@@ -114,3 +114,25 @@ if [[ "$strict" -eq 1 && ! -f "$todo_recipe_dir/recipe.yaml" ]]; then
   echo "Strict mode: recipe.yaml missing after prep for ${pkgname}" >&2
   exit 1
 fi
+
+normalize_python_min_pin() {
+  local recipe="$1"
+  local backup="${recipe}.bak"
+  # rattler-build rejects a bare exact-version match spec (`python 3.10`: missing
+  # range specifier). conda-forge recipes pin the interpreter as
+  # `- python ${{ python_min }}` and conda_build_config.yaml supplies `3.10`, so
+  # widen it to a wildcard match spec before the recipe reaches the build.
+  sed -E -i.bak \
+    's/^([[:space:]]*-[[:space:]]*python)[[:space:]]+\$\{\{[[:space:]]*python_min[[:space:]]*\}\}[[:space:]]*$/\1 ${{ python_min }}.*/' \
+    "$recipe"
+  if cmp -s "$recipe" "$backup"; then
+    rm -f -- "$backup"
+  else
+    echo "Normalized python_min pin in ${recipe#"${REPO_ROOT:-}"/}"
+    rm -f -- "$backup"
+  fi
+}
+
+if [[ -f "$todo_recipe_dir/recipe.yaml" ]]; then
+  normalize_python_min_pin "$todo_recipe_dir/recipe.yaml"
+fi
