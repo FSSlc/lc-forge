@@ -48,6 +48,8 @@ FEEDSTOCK_OUTPUTS_RAW = (
 ANACONDA_PKG_API = "https://api.anaconda.org/package/conda-forge/{name}"
 GITHUB_FEEDSTOCK = "https://github.com/conda-forge/{name}-feedstock"
 PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+# Package names are often a jinja expression, e.g. `name: ${{ name|lower }}`.
+JINJA_NAME_VAR_RE = re.compile(r"^\$\{\{\s*([A-Za-z_][A-Za-z0-9_]*)")
 
 # MatchSpec-ish tokens that are not real packages to import.
 SKIP_DEP_EXACT = {
@@ -777,19 +779,42 @@ def ai_fix_build(feedstock: str, files_snapshot: str, log_tail: str) -> str:
     return ai_chat(_AI_SYSTEM_BUILD, user, json_mode=True)
 
 
+def _jinja_var_defined(text: str, var: str) -> bool:
+    """True when the recipe defines `var` in its `context:` block or via `{% set %}`."""
+    if re.search(r"{%\s*set\s+" + re.escape(var) + r"\s*=", text):
+        return True
+    in_context = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not line[0].isspace():
+            in_context = stripped == "context:"
+            continue
+        if in_context and re.match(r"\s+" + re.escape(var) + r"\s*:", line):
+            return True
+    return False
+
+
 def validate_recipe_yaml(text: str) -> bool:
     """Structural sanity check without PyYAML: has a package/name section."""
     if not text or not text.strip():
         return False
     # `package:` followed by an indented `name:` line, or a bare top-level name.
-    m = re.search(r"(?m)^package:\s*\n(?:[ \t]+.*\n)*?[ \t]+name:\s*(\S+)", text)
+    # The value can contain spaces (`${{ name|lower }}`), so take the whole line.
+    m = re.search(r"(?m)^package:\s*\n(?:[ \t]+.*\n)*?[ \t]+name:[ \t]*(.+)$", text)
     if m is None:
-        m = re.search(r"(?m)^name:\s*(\S+)", text)
+        m = re.search(r"(?m)^name:[ \t]*(.+)$", text)
     if m is None:
         return False
-    raw = m.group(1).strip().strip("\"'")
-    if not raw or raw.startswith("${{"):
+    raw = re.sub(r"\s+#.*$", "", m.group(1)).strip().strip("\"'")
+    if not raw:
         return False
+    jinja = JINJA_NAME_VAR_RE.match(raw)
+    if jinja is not None:
+        # A templated name is fine as long as the variable is defined by the
+        # recipe itself; an undefined one means the AI left a placeholder behind.
+        return _jinja_var_defined(text, jinja.group(1))
     return PACKAGE_NAME_RE.match(raw) is not None
 
 
@@ -1067,7 +1092,7 @@ def fail_if_test_failures(log_file: Path, target_platform: str) -> None:
             )
 
 
-AI_MAX_FIX_ROUNDS = int(os.environ.get("AI_MAX_FIX_ROUNDS", "2"))
+AI_MAX_FIX_ROUNDS = int(os.environ.get("AI_MAX_FIX_ROUNDS", "3"))
 
 # Cap the recipe snapshot handed to the AI so one huge patch cannot blow up the
 # prompt; the request body must stay well below provider limits.
