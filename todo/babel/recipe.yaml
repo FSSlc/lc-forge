@@ -1,0 +1,63 @@
+schema_version: 1
+
+context:
+  name: babel
+  version: 2.18.0
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: b80b99a14bd085fcacfa15c9165f651fbb3406e66cc603abf11c5750937c992d
+
+build:
+  number: 1
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . --no-deps -vv
+  python:
+    entry_points:
+      - pybabel = babel.messages.frontend:main
+
+requirements:
+  host:
+    - pip
+    - python ${{ python_min }}.*
+    - setuptools
+  run:
+    - python >=${{ python_min }}
+  run_constraints:
+    - pytz >=2015.7
+
+tests:
+  - python:
+      imports:
+        - babel
+        - babel.localtime
+        - babel.messages
+      pip_check: true
+      python_version: ${{ python_min }}.*
+  - requirements:
+      run:
+        - python ${{ python_min }}.*
+    script:
+      - pybabel --help
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Utilities to internationalize and localize Python applications
+  description: |
+    Babel is an integrated collection of utilities that assist in
+    internationalizing and localizing Python applications, with an emphasis
+    on web-base applications.
+  homepage: http://babel.pocoo.org/
+  repository: https://github.com/python-babel/babel
+  documentation: http://babel.pocoo.org/en/latest/#user-documentation
+
+extra:
+  recipe-maintainers:
+    - frol
+    - nehaljwani
+    - thewchan

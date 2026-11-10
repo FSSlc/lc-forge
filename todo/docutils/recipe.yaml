@@ -1,0 +1,76 @@
+schema_version: 1
+
+context:
+  version: "0.21.2"
+
+package:
+  name: docutils
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/d/docutils/docutils-${{ version }}.tar.gz
+  sha256: 3a6b18732edf182daa3cd12775bbb338cf5691468f91eeeb109deff6ebfa986f
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  python:
+    entry_points:
+      - docutils = docutils.__main__:main
+      - rst2html = docutils.core:rst2html
+      - rst2html4 = docutils.core:rst2html4
+      - rst2html5 = docutils.core:rst2html5
+      - rst2latex = docutils.core:rst2latex
+      - rst2man = docutils.core:rst2man
+      - rst2odt = docutils.core:rst2odt
+      - rst2pseudoxml = docutils.core:rst2pseudoxml
+      - rst2s5 = docutils.core:rst2s5
+      - rst2xetex = docutils.core:rst2xetex
+      - rst2xml = docutils.core:rst2xml
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - flit-core >=3.11,<4
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - docutils
+      pip_check: true
+      python_version:
+        - ${{ python_min }}.*
+        - "*"
+  - requirements:
+      run:
+        - pip
+        - python ${{ python_min }}.*
+    script:
+      - docutils --help
+      - rst2html --help
+      - rst2html4 --help
+      - rst2html5 --help
+      - rst2latex --help
+      - rst2man --help
+      - rst2odt --help
+      - rst2pseudoxml --help
+      - rst2s5 --help
+      - rst2xetex --help
+      - rst2xml --help
+
+about:
+  summary: Docutils -- Python Documentation Utilities
+  license: LGPL-3.0-only
+  license_file: COPYING.txt
+  homepage: https://docutils.sourceforge.io
+  documentation: https://docutils.sourceforge.io/docs/
+
+extra:
+  recipe-maintainers:
+    - AA-Turner
+    - nehaljwani
+    - ocefpaf
