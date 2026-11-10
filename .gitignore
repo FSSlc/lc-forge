@@ -2,6 +2,7 @@
 pkgs
 output
 tmp
+logs
 
 # ci scratch dirs
 .build-meta
@@ -14,6 +15,9 @@ tmp
 # local or tmp files
 tmp
 handle
+
+# local secrets
+.env
 
 .c-agent
 .codex

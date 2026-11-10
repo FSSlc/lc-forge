@@ -181,3 +181,157 @@ crm_convert() {
   fi
   return 1
 }
+
+# ---------------------------------------------------------------------------
+# 构建 + AI 失败修复（rbuild.sh / cbuild.sh 共用）
+# ---------------------------------------------------------------------------
+
+# AI 配置来源：真实环境变量优先，其次仓库根 .env（示例见 .env.example）。
+# 只认下列四个键，避免 .env 意外影响其它环境变量；无 .env 时静默返回。
+load_ai_env_file() {
+  local file="$REPO_ROOT/.env"
+  local line key value
+
+  [[ -f "$file" ]] || return 0
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    # 去掉行首空白，跳过空行与整行注释
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in
+      '' | '#'*) continue ;;
+    esac
+    line="${line#export }"
+    key="${line%%=*}"
+    # 没有 = 的行不是赋值，忽略
+    [[ "$key" == "$line" ]] && continue
+    value="${line#*=}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    case "$value" in
+      \"*\") value="${value#\"}"; value="${value%\"}" ;;
+      \'*\') value="${value#\'}"; value="${value%\'}" ;;
+    esac
+    # 已有值（来自真实环境变量）不覆盖
+    case "$key" in
+      AI_API_BASE_URL) [[ -n "${AI_API_BASE_URL:-}" ]] || AI_API_BASE_URL="$value" ;;
+      AI_API_KEY) [[ -n "${AI_API_KEY:-}" ]] || AI_API_KEY="$value" ;;
+      AI_MODEL_NAME) [[ -n "${AI_MODEL_NAME:-}" ]] || AI_MODEL_NAME="$value" ;;
+      AI_MAX_FIX_ROUNDS) [[ -n "${AI_MAX_FIX_ROUNDS:-}" ]] || AI_MAX_FIX_ROUNDS="$value" ;;
+    esac
+  done <"$file"
+  return 0
+}
+
+load_ai_env_file
+
+# 构建失败后最多调用 AI 修复的次数上限（含首次构建），默认 3。
+# 与 import_recipe.py 的 AI_MAX_FIX_ROUNDS 同名同义。
+AI_FIX_ROUNDS="${AI_MAX_FIX_ROUNDS:-3}"
+
+# 调用方把完整构建命令放进该数组后调用 run_build_with_ai_fix。
+BUILD_CMD=()
+
+# AI 三件套是否齐备；不齐备时只报告构建失败，不调用 AI。
+ai_configured() {
+  [[ -n "${AI_API_BASE_URL:-}" && -n "${AI_API_KEY:-}" && -n "${AI_MODEL_NAME:-}" ]]
+}
+
+# 为一次构建分配日志路径：logs/build-<name>-<时间戳>.log（同秒重名时追加序号）。
+make_build_log_path() {
+  local name="$1"
+  local dir="$REPO_ROOT/logs"
+  local stamp candidate n=1
+  stamp="$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$dir"
+  candidate="$dir/build-$name-$stamp.log"
+  while [[ -e "$candidate" ]]; do
+    n=$((n + 1))
+    candidate="$dir/build-$name-$stamp-$n.log"
+  done
+  printf '%s\n' "$candidate"
+}
+
+# 跑一次构建，输出同时写入日志文件（AI 需要日志尾部）。
+_run_build_attempt() {
+  local log_file="$1"
+  local build_status
+  "${BUILD_CMD[@]}" 2>&1 | tee "$log_file"
+  # 紧跟管道读取，赋值命令本身不会覆盖它。
+  build_status="${PIPESTATUS[0]}"
+  return "$build_status"
+}
+
+# 请 AI 修一轮。退出码：0=已改文件，2=没有可用改动，其它=出错。
+_ai_fix_round() {
+  local recipe_dir="$1"
+  local log_file="$2"
+  python3 "$REPO_ROOT/scripts/import_recipe.py" \
+    --fix-build "$recipe_dir" --fix-build-log "$log_file"
+}
+
+# run_build_with_ai_fix <recipe_dir> <log_file> <interactive:true|false> [rounds]
+# 构建失败时调用 AI 修改 recipe 后重建，最多 rounds 次构建。
+# interactive=true 时每轮修复前用 read 确认；否则直接调用 AI。
+# 返回最后一次构建的退出码；AI 改动最终没能让构建通过时回滚。
+run_build_with_ai_fix() {
+  local recipe_dir="$1"
+  local log_file="$2"
+  local interactive="$3"
+  local rounds="${4:-$AI_FIX_ROUNDS}"
+  local backup_file="${log_file}.ai-fix-backup.json"
+  local attempt=1 build_status=0 fix_status=0 answer="" ai_touched=false
+
+  while :; do
+    build_status=0
+    _run_build_attempt "$log_file" || build_status=$?
+    if [[ "$build_status" -eq 0 ]]; then
+      rm -f "$backup_file"
+      return 0
+    fi
+    if ((attempt >= rounds)); then
+      echo "构建失败已达 $rounds 次上限，停止。" >&2
+      break
+    fi
+    if [[ ! -f "$recipe_dir/recipe.yaml" ]]; then
+      echo "AI 修复只支持单个 recipe 目录（$recipe_dir 无 recipe.yaml），跳过。" >&2
+      break
+    fi
+    if ! ai_configured; then
+      echo "AI 修复已跳过：未设置 AI_API_BASE_URL / AI_API_KEY / AI_MODEL_NAME。" >&2
+      break
+    fi
+    if $interactive; then
+      printf '第 %d/%d 次构建失败。调用 AI 修复 %s？[y/N] ' \
+        "$attempt" "$rounds" "$recipe_dir" >&2
+      read -r answer || answer=""
+      case "$answer" in
+        [yY] | [yY][eE][sS]) ;;
+        *)
+          echo "已取消 AI 修复，保留原始构建错误。" >&2
+          break
+          ;;
+      esac
+    fi
+
+    echo "第 $attempt/$rounds 次构建失败，请求 AI 修复 $recipe_dir ..." >&2
+    fix_status=0
+    _ai_fix_round "$recipe_dir" "$log_file" || fix_status=$?
+    if [[ "$fix_status" -eq 2 ]]; then
+      echo "AI 未提出可用改动，保留原始构建错误。" >&2
+      break
+    fi
+    if [[ "$fix_status" -ne 0 ]]; then
+      echo "AI 修复失败（退出码 $fix_status），保留原始构建错误。" >&2
+      break
+    fi
+    ai_touched=true
+    attempt=$((attempt + 1))
+  done
+
+  if $ai_touched && [[ -f "$backup_file" ]]; then
+    echo "AI 改动未能让 $recipe_dir 构建通过，回滚到修复前内容。" >&2
+    python3 "$REPO_ROOT/scripts/import_recipe.py" --revert-fix "$backup_file" >&2 || true
+  fi
+  return "$build_status"
+}

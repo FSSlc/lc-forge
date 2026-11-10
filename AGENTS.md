@@ -123,9 +123,13 @@ docker exec -w /Users/lc/Dev/own/lc-forge pixi-amd64 bash -lc './scripts/rbuild.
 | 设置工具 | `./scripts/setup_pixi.sh` |
 | Docker 环境 | `./scripts/start_img.sh` |
 
-标志：`-f` 强制重建，`-c <channel>` 额外频道，`--` 传递参数。
+标志：`-f` 强制重建，`-c <channel>` 额外频道，`-n <rounds>` AI 修复轮数上限（默认 3），`-i` 每轮 AI 修复前确认，`--` 传递参数。
 
 `EXTRA_CHANNELS` 环境变量（空格/逗号分隔）添加频道而不使用标志。
+
+`cbuild.sh` / `rbuild.sh` 构建失败后会把构建日志交给 OpenAI 兼容接口（`AI_API_BASE_URL`、`AI_API_KEY`、`AI_MODEL_NAME`，任一缺失则不启用）让 AI 改 recipe 再重建；改动最终没让构建通过就回滚到修复前内容。构建日志同时写到 `logs/build-<pkg>-<timestamp>.log`（gitignored）。该能力只支持 `todo/` 下直接含 `recipe.yaml` 的单个 recipe，`-r todo` 这类目录构建只报失败。
+
+AI 配置优先取环境变量，其次取仓库根 `.env`（示例见 `.env.example`，复制为 `.env` 后填写；文件里只认 `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL_NAME` / `AI_MAX_FIX_ROUNDS` 四个键；`.env` 已 gitignored）。bash 侧在 `scripts/lib/common.sh` 的 `load_ai_env_file` 加载，Python 侧在 `scripts/import_recipe.py` 同名函数加载，两边语义一致：已存在的环境变量不覆盖。
 
 Docker 容器自动注入 `HOST_UID`/`HOST_GID`；构建脚本调用 `fix_output_owner` 以使 `output/` 文件属于主机用户。
 

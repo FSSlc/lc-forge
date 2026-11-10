@@ -686,6 +686,45 @@ def repo_root() -> Path:
 # Config env vars. The API key is read only from the environment, lives only in
 # the Authorization header, and is never printed or included in error messages.
 AI_ENV_VARS = ("AI_API_BASE_URL", "AI_API_KEY", "AI_MODEL_NAME")
+# Keys accepted from <repo>/.env; mirrors load_ai_env_file in scripts/lib/common.sh.
+AI_ENV_FILE_KEYS = (*AI_ENV_VARS, "AI_MAX_FIX_ROUNDS")
+
+
+def _parse_env_file(path: Path) -> dict[str, str]:
+    """Minimal .env parser: KEY=VALUE lines, # comments, optional export/quotes."""
+    pairs: dict[str, str] = {}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return pairs
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        key, sep, value = line.partition("=")
+        if not sep:
+            continue
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        pairs[key] = value
+    return pairs
+
+
+def load_ai_env_file() -> None:
+    """Fill AI config from <repo>/.env; real environment variables win."""
+    env_path = repo_root() / ".env"
+    if not env_path.is_file():
+        return
+    for key, value in _parse_env_file(env_path).items():
+        if key in AI_ENV_FILE_KEYS and not os.environ.get(key):
+            os.environ[key] = value
+
+
+load_ai_env_file()
 
 
 def ai_configured() -> bool:
@@ -1213,6 +1252,75 @@ def revert_recipe_files(backup: dict[Path, str | None]) -> None:
                 file=sys.stderr,
                 flush=True,
             )
+
+
+AI_FIX_BACKUP_SUFFIX = ".ai-fix-backup.json"
+
+
+def feedstock_for_recipe_dir(root: Path, recipe_dir: Path) -> str:
+    """Return todo/<feedstock> for recipe_dir, or "" when it is not one."""
+    todo = (root / "todo").resolve()
+    d = recipe_dir.resolve()
+    if d.parent != todo or not (d / "recipe.yaml").is_file():
+        return ""
+    return d.name
+
+
+def fix_build_cli(root: Path, recipe_dir: Path, log_file: Path) -> int:
+    """One AI fix round for one recipe, driven by rbuild.sh / cbuild.sh.
+
+    Exit codes: 0 = files changed, 2 = AI proposed no usable change,
+    1 = error. The pre-fix content of every touched file is recorded in
+    <log>.ai-fix-backup.json so the shell script can roll back with
+    --revert-fix when the fix does not make the build pass.
+    """
+    feedstock = feedstock_for_recipe_dir(root, recipe_dir)
+    if not feedstock:
+        print(
+            f"Error: AI fixing needs a single recipe directory directly under "
+            f"todo/ (got {recipe_dir}); bulk directory builds are not supported.",
+            file=sys.stderr,
+        )
+        return 1
+    changed, backup = ai_fix_build_failures(root, feedstock, log_file)
+    if not changed:
+        return 2
+    backup_path = log_file.with_name(log_file.name + AI_FIX_BACKUP_SUFFIX)
+    # Keep the earliest snapshot of each file across rounds so the rollback
+    # restores the pre-AI state, not the state left by the previous round.
+    previous: dict[str, str | None] = {}
+    if backup_path.is_file():
+        try:
+            stored = json.loads(backup_path.read_text(encoding="utf-8"))
+            if isinstance(stored, dict):
+                previous = {str(k): v for k, v in stored.items()}
+        except (OSError, json.JSONDecodeError):
+            previous = {}
+    for path, text in backup.items():
+        previous.setdefault(str(path), text)
+    backup_path.write_text(json.dumps(previous), encoding="utf-8")
+    print(f"AI fix backup: {backup_path}", flush=True)
+    return 0
+
+
+def revert_fix_cli(backup_path: Path) -> int:
+    """Restore the files recorded by fix_build_cli; used when AI fails to help."""
+    if not backup_path.is_file():
+        print(f"Warning: no AI fix backup at {backup_path}; nothing to revert.")
+        return 0
+    try:
+        stored = json.loads(backup_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Error: cannot read AI fix backup {backup_path}: {exc}", file=sys.stderr)
+        return 1
+    if not isinstance(stored, dict):
+        print(f"Error: malformed AI fix backup {backup_path}", file=sys.stderr)
+        return 1
+    backup = {Path(p): t for p, t in stored.items()}
+    revert_recipe_files(backup)
+    backup_path.unlink(missing_ok=True)
+    print(f"Reverted {len(backup)} AI-edited file(s) for {backup_path}.", flush=True)
+    return 0
 
 
 def write_built_feedstocks(
@@ -1771,6 +1879,27 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--fix-build",
+        metavar="RECIPE_DIR",
+        default="",
+        help=(
+            "Run one AI fix round for the failed build of RECIPE_DIR and exit "
+            "(0=files changed, 2=no usable fix). Used by rbuild.sh / cbuild.sh"
+        ),
+    )
+    p.add_argument(
+        "--fix-build-log",
+        metavar="LOG",
+        default="",
+        help="Build log handed to the AI together with --fix-build",
+    )
+    p.add_argument(
+        "--revert-fix",
+        metavar="BACKUP",
+        default="",
+        help="Restore the files recorded in a --fix-build backup file",
+    )
+    p.add_argument(
         "--scns-channel",
         default=SCNS_CHANNEL,
         help=f"Own channel URL (default: {SCNS_CHANNEL})",
@@ -1792,7 +1921,9 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
-    if not args.repair_failed and (not pkg or not PACKAGE_NAME_RE.match(pkg)):
+    if not (args.repair_failed or args.fix_build or args.revert_fix) and (
+        not pkg or not PACKAGE_NAME_RE.match(pkg)
+    ):
         print(
             f"Error: invalid package name {pkg!r}. "
             f"Allowed: letters, numbers, dots, underscores, hyphens.",
@@ -1802,6 +1933,21 @@ def main(argv: list[str] | None = None) -> int:
 
     scns_channel = args.scns_channel.rstrip("/")
     root = repo_root()
+
+    # ----- single-recipe AI fix helpers (rbuild.sh / cbuild.sh) -----
+    if args.revert_fix:
+        return revert_fix_cli(Path(args.revert_fix))
+    if args.fix_build:
+        if not args.fix_build_log:
+            print("Error: --fix-build requires --fix-build-log.", file=sys.stderr)
+            return 1
+        try:
+            return fix_build_cli(
+                root, Path(args.fix_build), Path(args.fix_build_log)
+            )
+        except ImportError_ as exc:
+            print(f"Error: {exc}", file=sys.stderr, flush=True)
+            return 1
 
     try:
         # ----- repair-only path (build.yml push retry) -----

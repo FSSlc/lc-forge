@@ -74,6 +74,10 @@ git mv todo/<package_name> recipes/<package_name>
 EXTRA_CHANNELS="conda-forge,bioconda" ./scripts/rrender.sh -r todo/<package>
 ```
 
+构建失败时，`rbuild.sh` / `cbuild.sh` 会把构建日志交给 OpenAI 兼容接口（`AI_API_BASE_URL`、`AI_API_KEY`、`AI_MODEL_NAME`，任一缺失即不启用 AI 修复），由 AI 修改 recipe 后重建，默认总共构建 3 次。`-n <rounds>` 可改该上限（也可用环境变量 `AI_MAX_FIX_ROUNDS`），`-i` 则在每轮 AI 修复前先确认。每次尝试都会写入 `logs/build-<recipe>-<timestamp>.log`，也是交给 AI 的日志。AI 改动最终仍无法让构建通过时，recipe 回滚到修复前内容。该功能只支持单个 recipe 目录，`-r todo` 这类目录构建只报告失败、不调用 AI。
+
+AI 配置优先取环境变量，其次取仓库根的 `.env`：把 `.env.example` 复制为 `.env`，填好 `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL_NAME`（可选 `AI_MAX_FIX_ROUNDS`）即可，无需再 export。已经在 shell 里导出的同名变量始终优先于 `.env`；文件里只认这四个键；`.env` 已被 git 忽略，不要提交真实密钥。
+
 ## 脚本速查
 
 | 脚本 | 用途 |

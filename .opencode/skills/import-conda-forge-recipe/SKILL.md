@@ -53,7 +53,23 @@ Once inside the container shell, determine which tool to use:
 # With extra channels
 ./scripts/rbuild.sh -r todo/<pkg> -c conda-forge
 EXTRA_CHANNELS="conda-forge,bioconda" ./scripts/rbuild.sh -r todo/<pkg>
+
+# Let the AI fix the recipe after a failed build (3 attempts by default)
+./scripts/rbuild.sh -r todo/<pkg> -n 3
+./scripts/rbuild.sh -r todo/<pkg> -i      # ask before each AI round
 ```
+
+A failed build is handed to an OpenAI-compatible endpoint (`AI_API_BASE_URL`,
+`AI_API_KEY`, `AI_MODEL_NAME`; unset disables it) which patches the recipe and
+rebuilds. `-n <rounds>` (or `AI_MAX_FIX_ROUNDS`) caps the build attempts, `-i`
+asks before each round. Logs go to `logs/build-<pkg>-<timestamp>.log`; if the AI
+changes never make the build pass, the recipe is rolled back. Only single recipe
+directories are supported — `-r todo` builds report failure without the AI.
+
+Those settings can also live in a `.env` file at the repository root instead of
+the shell: copy `.env.example` to `.env` and fill it in. Exported environment
+variables take precedence over `.env`, only the four AI keys are read from it,
+and `.env` is git-ignored.
 
 ### 4. Fix errors
 

@@ -74,6 +74,23 @@ All recipe scripts use `-r <recipe_dir>` to specify the recipe directory. Append
 EXTRA_CHANNELS="conda-forge,bioconda" ./scripts/rrender.sh -r todo/<package>
 ```
 
+When a build fails, `rbuild.sh` / `cbuild.sh` hand the build log to an
+OpenAI-compatible endpoint (`AI_API_BASE_URL`, `AI_API_KEY`, `AI_MODEL_NAME`;
+any of them missing disables the feature), let it patch the recipe, and rebuild —
+3 build attempts in total by default. `-n <rounds>` sets that limit (also via
+`AI_MAX_FIX_ROUNDS`), `-i` asks before each AI round. Every attempt is teed to
+`logs/build-<recipe>-<timestamp>.log`, which is also the log handed to the AI. If
+the recipe still does not build, the pre-AI content is restored. Only a single
+recipe directory works: directory builds such as `-r todo` report the failure
+without calling the AI.
+
+AI settings come from the environment first and fall back to a `.env` file at the
+repository root: copy `.env.example` to `.env`, fill in `AI_API_BASE_URL` /
+`AI_API_KEY` / `AI_MODEL_NAME` (optionally `AI_MAX_FIX_ROUNDS`) and nothing else
+is needed. A variable already exported in the shell always wins over `.env`;
+only those four keys are read from the file, and `.env` is git-ignored, so never
+commit real keys.
+
 ## Script Reference
 
 | Script | Purpose |
