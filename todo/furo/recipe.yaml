@@ -18,6 +18,7 @@ build:
   script:
     env:
       STB_USE_SYSTEM_NODE: 1
+      STB_RELAX_NODE_VERSION_CHECK: 1
     content: ${{ PYTHON }} -m pip install . -vv
 
 requirements:
@@ -27,7 +28,7 @@ requirements:
     - python ${{ python_min }}.*
     - sphinx-theme-builder
     - nodeenv
-    - nodejs ==18.20.5
+    - nodejs
   run:
     - accessible-pygments >=0.0.5
     - beautifulsoup4

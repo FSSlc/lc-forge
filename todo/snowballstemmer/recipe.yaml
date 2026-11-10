@@ -17,7 +17,9 @@ source:
 build:
   number: 0
   noarch: python
-  script: ${{ PYTHON }} -m pip install . --no-deps -vv
+  script: 
+    - for f in *.tar.gz; do [ -e "$f" ] && tar -xzf "$f" --strip-components=1; done
+    - ${{ PYTHON }} -m pip install . --no-deps -vv
 
 requirements:
   host:
@@ -32,9 +34,6 @@ tests:
         - snowballstemmer
       pip_check: false
       python_version: ${{ python_min }}
-  - requirements:
-      run:
-        - python ${{ python_min }}.*
 
 about:
   license: BSD-3-Clause
