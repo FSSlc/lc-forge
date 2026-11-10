@@ -11,12 +11,13 @@ package:
 source:
   url: https://github.com/ekalinin/nodeenv/archive/${{ version }}.tar.gz
   sha256: f3440cca5e907a733727b799d065ec56a9cd4be99ef5608eee0b7689d137893d
-  file_name: ${{ name }}-${{ version }}.tar.gz
 
 build:
   number: 0
   noarch: python
-  script: ${{ PYTHON }} -m pip install . --no-deps -vv
+  script: 
+    - for f in *.tar.gz; do [ -e "$f" ] && tar -xzf "$f" --strip-components=1; done
+    - ${{ PYTHON }} -m pip install . --no-deps -vv
   python:
     entry_points:
       - nodeenv = nodeenv:main
