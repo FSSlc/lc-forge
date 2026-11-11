@@ -9,17 +9,11 @@ package:
   version: ${{ version }}
 
 source:
-  # Release asset, not the git tag archive: it carries the generated
-  # interface/preload sources under build/src, which is the only supported way
-  # to build without running the code generator (that needs python + docopt +
-  # colorlog on the build machine).
   url: https://github.com/wi4mpi/wi4mpi/releases/download/v${{ version }}/wi4mpi-${{ version }}.tar.gz
   sha256: a37374fa9d6f330350d3e42a279038ea9e164ce2e3afd69817126253bd732c05
 
 build:
   number: 0
-  # Upstream targets GNU/Linux: the static libraries are renamed with
-  # nm/objcopy and the conversion libraries link against libdl.
   skip: [win, osx]
   script: build.sh
 
@@ -32,34 +26,56 @@ requirements:
     - cmake
     - make
   run:
-    # bin/wi4mpi, bin/mpicc and bin/mpirun are bash scripts using realpath and
-    # readlink from coreutils.
     - bash
     - coreutils
 
 tests:
-  # Installed layout: interface libraries (universal libmpi + one conversion
-  # library per target MPI), preload libraries, the stub libraries that satisfy
-  # binaries linked against a concrete MPI soname, and the universal headers.
+  # Everything is installed under opt/wi4mpi, so it can live next to a real MPI
+  # implementation in the same prefix; the activation script is what puts it on
+  # PATH and points the target MPI roots at the prefix.
   - script:
-      - test -x ${PREFIX}/bin/wi4mpi
-      - test -x ${PREFIX}/bin/mpicc
-      - test -e ${PREFIX}/bin/mpifort
-      - test -f ${PREFIX}/lib/libmpi.so
-      - test -f ${PREFIX}/lib/libmpi.a
-      - test -f ${PREFIX}/lib_OMPI/libwi4mpi_OMPI.so
-      - test -f ${PREFIX}/lib_MPICH/libwi4mpi_MPICH.so
-      - test -f ${PREFIX}/libexec/wi4mpi/libwi4mpi_OMPI_OMPI.so
-      - test -f ${PREFIX}/libexec/wi4mpi/libwi4mpi_MPICH_OMPI.so
-      - test -f ${PREFIX}/libexec/wi4mpi/fakelibOMPI/libmpi.so.40
-      - test -f ${PREFIX}/libexec/wi4mpi/fakelibMPICH/libmpi.so.12
-      - test -f ${PREFIX}/include/mpi.h
-      - test -f ${PREFIX}/include/mpi.mod
-      - test -f ${PREFIX}/include/mpif.h
-      - test -f ${PREFIX}/include/gnu/mpif-sizeof.h
-      - test -f ${PREFIX}/etc/wi4mpi.cfg
-      - grep -q '^WI4MPI_VERSION=' ${PREFIX}/etc/wi4mpi.cfg
-      - test -f ${PREFIX}/share/wi4mpi/setup-env.sh
+      - test "${WI4MPI_ROOT}" = "${PREFIX}/opt/wi4mpi"
+      - echo "${PATH}" | tr ':' '\n' | grep -qx "${WI4MPI_ROOT}/bin"
+      - test "$(dirname "${WI4MPI_CC}")" = "${CONDA_PREFIX}/bin"
+      - test "${OPENMPI_ROOT}" = "${CONDA_PREFIX}"
+      - test "${MPICH_ROOT}" = "${CONDA_PREFIX}"
+      - test -f ${PREFIX}/etc/conda/activate.d/wi4mpi_activate.sh
+      - test -f ${PREFIX}/etc/conda/deactivate.d/wi4mpi_deactivate.sh
+      - test -x ${WI4MPI_ROOT}/bin/wi4mpi
+      - test -x ${WI4MPI_ROOT}/bin/mpicc
+      - test -e ${WI4MPI_ROOT}/bin/mpifort
+      - test -f ${WI4MPI_ROOT}/lib/libmpi.so
+      - test -f ${WI4MPI_ROOT}/lib/libmpi.a
+      - test -f ${WI4MPI_ROOT}/lib_OMPI/libwi4mpi_OMPI.so
+      - test -f ${WI4MPI_ROOT}/lib_MPICH/libwi4mpi_MPICH.so
+      - test -f ${WI4MPI_ROOT}/libexec/wi4mpi/libwi4mpi_OMPI_OMPI.so
+      - test -f ${WI4MPI_ROOT}/libexec/wi4mpi/libwi4mpi_MPICH_OMPI.so
+      - test -f ${WI4MPI_ROOT}/libexec/wi4mpi/fakelibOMPI/libmpi.so.40
+      - test -f ${WI4MPI_ROOT}/libexec/wi4mpi/fakelibMPICH/libmpi.so.12
+      - test -f ${WI4MPI_ROOT}/include/mpi.h
+      - test -f ${WI4MPI_ROOT}/include/mpi.mod
+      - test -f ${WI4MPI_ROOT}/include/mpif.h
+      - test -f ${WI4MPI_ROOT}/include/gnu/mpif-sizeof.h
+      - test -f ${WI4MPI_ROOT}/etc/wi4mpi.cfg
+      - grep -q '^WI4MPI_VERSION=' ${WI4MPI_ROOT}/etc/wi4mpi.cfg
+      - test -f ${WI4MPI_ROOT}/share/wi4mpi/setup-env.sh
+      # Nothing of wi4mpi itself may sit at the top of the prefix, otherwise it
+      # clashes with a real MPI installed in the same environment.
+      - test ! -e ${PREFIX}/bin/mpicc
+      - test ! -e ${PREFIX}/include/mpi.h
+      - test ! -e ${PREFIX}/lib/libmpi.so
+
+  # Target MPI resolution: with OPENMPI_ROOT pointing at the prefix, the
+  # launcher must pick openmpi's libraries up from <prefix>/lib without any
+  # extra environment.
+  - requirements:
+      run:
+        - openmpi
+    script:
+      # timeout: the launcher parses its arguments with getopt(1); bounding it
+      # keeps a broken/no util-linux environment from hanging the test.
+      - timeout 30 wi4mpi -t openmpi --env | grep -qx "export WI4MPI_RUN_MPI_C_LIB=${CONDA_PREFIX}/lib/libmpi.so"
+      - timeout 30 wi4mpi -t openmpi --env | grep -qx "export WI4MPI_WRAPPER_LIB=${WI4MPI_ROOT}/lib_OMPI/libwi4mpi_OMPI.so"
 
   # C wrapper compiler: flags come from the installed etc/wi4mpi.cfg and the
   # program links against wi4mpi's own libmpi.so. No target MPI implementation
@@ -74,14 +90,12 @@ tests:
         # uses .relr.dyn relocations that the scns binutils 2.36 cannot read.
         - ${{ stdlib('c') }}
     script:
-      - export WI4MPI_ROOT=${PREFIX}
-      - export WI4MPI_CC=${CC}
-      # libmpi.so is installed without an rpath, like upstream's own
-      # run_settings.sh the loader needs $WI4MPI_ROOT/lib on LD_LIBRARY_PATH.
-      - export LD_LIBRARY_PATH=${PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
       - mpicc -showme:version | grep -q '^Wi4MPI-'
       - mpicc -showme:compile | grep -q -- "-I${WI4MPI_ROOT}/include"
       - mpicc -o wrapper_cc test/wrapper_cc.c
+      # libmpi.so is installed without an rpath, like upstream's own
+      # run_settings.sh the loader needs $WI4MPI_ROOT/lib on LD_LIBRARY_PATH.
+      - export LD_LIBRARY_PATH=${WI4MPI_ROOT}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
       - ./wrapper_cc | grep -q 'wi4mpi wrapper ok'
 
   # Fortran wrapper compiler: also proves the installed mpi.mod is usable.
@@ -93,10 +107,8 @@ tests:
         - ${{ compiler('fortran') }}
         - ${{ stdlib('c') }}
     script:
-      - export WI4MPI_ROOT=${PREFIX}
-      - export WI4MPI_FC=${FC}
-      - export LD_LIBRARY_PATH=${PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
       - mpifort -o wrapper_fortran test/wrapper_fortran.f90
+      - export LD_LIBRARY_PATH=${WI4MPI_ROOT}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
       - ./wrapper_fortran | grep -q 'wi4mpi fortran wrapper ok'
 
 about:
@@ -113,15 +125,19 @@ about:
     MVAPICH or MPC and then executed with a different MPI implementation
     without recompiling.
 
-    This package installs the universal interface (include/mpi.h, mpi.mod,
-    lib/libmpi.so, lib/libmpi.a), the conversion libraries for the openmpi,
-    intelmpi, mpich and mpc families (lib_*, libexec/wi4mpi) and the wrapper
-    compilers and launcher (bin/mpicc, bin/mpifort, bin/mpirun, bin/wi4mpi).
+    Everything is installed under $CONDA_PREFIX/opt/wi4mpi -- the universal
+    interface (include/mpi.h, mpi.mod, lib/libmpi.so, lib/libmpi.a), the
+    conversion libraries for the openmpi, intelmpi, mpich and mpc families
+    (lib_*, libexec/wi4mpi) and the wrapper compilers and launcher (bin/mpicc,
+    bin/mpifort, bin/mpirun, bin/wi4mpi) -- so a real MPI implementation can be
+    installed in the same environment without file clashes.
 
-    The target MPI implementation is not a dependency: point the wrapper at it
-    with OPENMPI_ROOT / INTELMPI_ROOT / MPICH_ROOT (WI4MPI_RUN_MPI_C_LIB and
-    WI4MPI_RUN_MPI_F_LIB override the library paths), and source
-    $CONDA_PREFIX/share/wi4mpi/setup-env.sh to export WI4MPI_ROOT.
+    The activation script puts $CONDA_PREFIX/opt/wi4mpi/bin on PATH and exports
+    WI4MPI_ROOT, WI4MPI_CC/WI4MPI_CXX/WI4MPI_FC (the compilers of this prefix)
+    and OPENMPI_ROOT/MPICH_ROOT (= $CONDA_PREFIX), so MPICH and Open MPI coming
+    from the same environment are picked up automatically. Intel MPI and MPC are
+    not part of the environment; set INTELMPI_ROOT / MPC_ROOT (or
+    WI4MPI_RUN_MPI_C_LIB and WI4MPI_RUN_MPI_F_LIB) to use them from elsewhere.
   homepage: https://github.com/wi4mpi/wi4mpi
   repository: https://github.com/wi4mpi/wi4mpi
   documentation: https://wi4mpi.readthedocs.io/en/latest/
