@@ -1,0 +1,131 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "4.0.1"
+
+package:
+  name: wi4mpi
+  version: ${{ version }}
+
+source:
+  # Release asset, not the git tag archive: it carries the generated
+  # interface/preload sources under build/src, which is the only supported way
+  # to build without running the code generator (that needs python + docopt +
+  # colorlog on the build machine).
+  url: https://github.com/wi4mpi/wi4mpi/releases/download/v${{ version }}/wi4mpi-${{ version }}.tar.gz
+  sha256: a37374fa9d6f330350d3e42a279038ea9e164ce2e3afd69817126253bd732c05
+
+build:
+  number: 0
+  # Upstream targets GNU/Linux: the static libraries are renamed with
+  # nm/objcopy and the conversion libraries link against libdl.
+  skip: [win, osx]
+  script: build.sh
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ${{ compiler('fortran') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - make
+  run:
+    # bin/wi4mpi, bin/mpicc and bin/mpirun are bash scripts using realpath and
+    # readlink from coreutils.
+    - bash
+    - coreutils
+
+tests:
+  # Installed layout: interface libraries (universal libmpi + one conversion
+  # library per target MPI), preload libraries, the stub libraries that satisfy
+  # binaries linked against a concrete MPI soname, and the universal headers.
+  - script:
+      - test -x ${PREFIX}/bin/wi4mpi
+      - test -x ${PREFIX}/bin/mpicc
+      - test -e ${PREFIX}/bin/mpifort
+      - test -f ${PREFIX}/lib/libmpi.so
+      - test -f ${PREFIX}/lib/libmpi.a
+      - test -f ${PREFIX}/lib_OMPI/libwi4mpi_OMPI.so
+      - test -f ${PREFIX}/lib_MPICH/libwi4mpi_MPICH.so
+      - test -f ${PREFIX}/libexec/wi4mpi/libwi4mpi_OMPI_OMPI.so
+      - test -f ${PREFIX}/libexec/wi4mpi/libwi4mpi_MPICH_OMPI.so
+      - test -f ${PREFIX}/libexec/wi4mpi/fakelibOMPI/libmpi.so.40
+      - test -f ${PREFIX}/libexec/wi4mpi/fakelibMPICH/libmpi.so.12
+      - test -f ${PREFIX}/include/mpi.h
+      - test -f ${PREFIX}/include/mpi.mod
+      - test -f ${PREFIX}/include/mpif.h
+      - test -f ${PREFIX}/include/gnu/mpif-sizeof.h
+      - test -f ${PREFIX}/etc/wi4mpi.cfg
+      - grep -q '^WI4MPI_VERSION=' ${PREFIX}/etc/wi4mpi.cfg
+      - test -f ${PREFIX}/share/wi4mpi/setup-env.sh
+
+  # C wrapper compiler: flags come from the installed etc/wi4mpi.cfg and the
+  # program links against wi4mpi's own libmpi.so. No target MPI implementation
+  # is required because MPI_Init is never called.
+  - files:
+      recipe:
+        - test/wrapper_cc.c
+    requirements:
+      run:
+        - ${{ compiler('c') }}
+        # Pin the C stdlib to the build-time value; the newest sysroot on scns
+        # uses .relr.dyn relocations that the scns binutils 2.36 cannot read.
+        - ${{ stdlib('c') }}
+    script:
+      - export WI4MPI_ROOT=${PREFIX}
+      - export WI4MPI_CC=${CC}
+      # libmpi.so is installed without an rpath, like upstream's own
+      # run_settings.sh the loader needs $WI4MPI_ROOT/lib on LD_LIBRARY_PATH.
+      - export LD_LIBRARY_PATH=${PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+      - mpicc -showme:version | grep -q '^Wi4MPI-'
+      - mpicc -showme:compile | grep -q -- "-I${WI4MPI_ROOT}/include"
+      - mpicc -o wrapper_cc test/wrapper_cc.c
+      - ./wrapper_cc | grep -q 'wi4mpi wrapper ok'
+
+  # Fortran wrapper compiler: also proves the installed mpi.mod is usable.
+  - files:
+      recipe:
+        - test/wrapper_fortran.f90
+    requirements:
+      run:
+        - ${{ compiler('fortran') }}
+        - ${{ stdlib('c') }}
+    script:
+      - export WI4MPI_ROOT=${PREFIX}
+      - export WI4MPI_FC=${FC}
+      - export LD_LIBRARY_PATH=${PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+      - mpifort -o wrapper_fortran test/wrapper_fortran.f90
+      - ./wrapper_fortran | grep -q 'wi4mpi fortran wrapper ok'
+
+about:
+  license: BSD-3-Clause OR CECILL-B
+  license_file:
+    - LICENSE-BSD
+    - LICENSE-CeCILL-B
+  summary: MPI wrapper and interoperability library
+  description: |
+    Wi4MPI is an MPI wrapper that converts calls from a source MPI
+    implementation to a target one, either by preloading a conversion library
+    or by compiling the application once against Wi4MPI's universal MPI
+    interface. Applications can be built against Open MPI, Intel MPI, MPICH,
+    MVAPICH or MPC and then executed with a different MPI implementation
+    without recompiling.
+
+    This package installs the universal interface (include/mpi.h, mpi.mod,
+    lib/libmpi.so, lib/libmpi.a), the conversion libraries for the openmpi,
+    intelmpi, mpich and mpc families (lib_*, libexec/wi4mpi) and the wrapper
+    compilers and launcher (bin/mpicc, bin/mpifort, bin/mpirun, bin/wi4mpi).
+
+    The target MPI implementation is not a dependency: point the wrapper at it
+    with OPENMPI_ROOT / INTELMPI_ROOT / MPICH_ROOT (WI4MPI_RUN_MPI_C_LIB and
+    WI4MPI_RUN_MPI_F_LIB override the library paths), and source
+    $CONDA_PREFIX/share/wi4mpi/setup-env.sh to export WI4MPI_ROOT.
+  homepage: https://github.com/wi4mpi/wi4mpi
+  repository: https://github.com/wi4mpi/wi4mpi
+  documentation: https://wi4mpi.readthedocs.io/en/latest/
+
+extra:
+  recipe-maintainers:
+    - fsslc
