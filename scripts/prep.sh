@@ -18,6 +18,9 @@ usage() {
   echo "                  and reported at the end without aborting the download."
   echo "  -f, --force     With --recursive: download/prepare even if the package"
   echo "                  already exists on scns."
+  echo ""
+  echo "  After preparing a single recipe, its direct dependency tree and a"
+  echo "  build order hint are printed (requires python3; skipped otherwise)."
   echo "  -h              Show this help"
   exit "${1:-1}"
 }
@@ -135,4 +138,17 @@ normalize_python_min_pin() {
 
 if [[ -f "$todo_recipe_dir/recipe.yaml" ]]; then
   normalize_python_min_pin "$todo_recipe_dir/recipe.yaml"
+fi
+
+# Print the direct dependency tree of the prepared recipe plus a build-order
+# hint.  Best effort: needs python3 (the --recursive path already requires
+# it); without python3 the recipe is still fully prepared.
+if [[ -f "$todo_recipe_dir/recipe.yaml" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "$REPO_ROOT/scripts/import_recipe.py" --deps-of \
+      "$todo_recipe_dir/recipe.yaml" ||
+      echo "Note: dependency tree output failed; recipe is prepared." >&2
+  else
+    echo "Note: python3 not found; skipping dependency tree output." >&2
+  fi
 fi

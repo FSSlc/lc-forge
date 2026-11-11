@@ -13,6 +13,8 @@ Workflow for a package name P:
 6. Once every prepared recipe's deps are on scns *or* present as local
    todo/ recipes, start the pixi container and rattler-build the whole
    prepared set; any failure aborts; on success upload to scns.
+7. Print the direct dependency tree of the imported set plus the
+   dependency-first build order the container build actually follows.
 
 Exit codes:
   0  success (already on scns, or built & uploaded)
@@ -1101,6 +1103,182 @@ def verify_all_deps_resolvable(state: PrepareState) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Dependency tree & build order reporting
+# ---------------------------------------------------------------------------
+
+
+def _outputs_index(root: Path, feedstocks: Iterable[str]) -> dict[str, str]:
+    """Map each package name produced by the given feedstocks to its feedstock.
+
+    A feedstock maps to itself (single-output recipes) plus every output name
+    found in its recipe.yaml (multi-output recipes).
+    """
+    out: dict[str, str] = {}
+    for fs in feedstocks:
+        out.setdefault(fs, fs)
+        recipe = root / "todo" / fs / "recipe.yaml"
+        if recipe.is_file():
+            for name in sorted(recipe_package_names(recipe)):
+                out.setdefault(name, fs)
+    return out
+
+
+def _dependency_edges(
+    root: Path, feedstocks: list[str], outputs: dict[str, str]
+) -> dict[str, set[str]]:
+    """feedstock -> feedstocks it directly depends on (restricted to the set)."""
+    edges: dict[str, set[str]] = {fs: set() for fs in feedstocks}
+    for fs in feedstocks:
+        recipe = root / "todo" / fs / "recipe.yaml"
+        if not recipe.is_file():
+            continue
+        for dep in sorted(extract_deps_from_recipe(recipe)):
+            dep_fs = outputs.get(dep)
+            if dep_fs is not None and dep_fs != fs:
+                edges[fs].add(dep_fs)
+    return edges
+
+
+def topological_build_order(
+    root: Path, feedstocks: list[str], outputs: dict[str, str]
+) -> tuple[list[str], list[str]]:
+    """Order feedstocks dependencies-first (Kahn's algorithm, stable).
+
+    Ties keep the input order.  Returns (ordered, cyclic): members of
+    dependency cycles that cannot be ordered are appended in input order and
+    reported separately so the caller can warn.
+    """
+    index = {fs: i for i, fs in enumerate(feedstocks)}
+    edges = _dependency_edges(root, feedstocks, outputs)
+    indegree = {fs: 0 for fs in feedstocks}
+    dependents: dict[str, list[str]] = {fs: [] for fs in feedstocks}
+    for fs, deps in edges.items():
+        for dep in sorted(deps, key=index.__getitem__):
+            indegree[fs] += 1
+            dependents[dep].append(fs)
+
+    remaining = set(feedstocks)
+    ordered: list[str] = []
+    while remaining:
+        ready = [fs for fs in feedstocks if fs in remaining and indegree[fs] == 0]
+        if not ready:
+            break
+        current = min(ready, key=index.__getitem__)
+        remaining.discard(current)
+        ordered.append(current)
+        for dependent in dependents[current]:
+            indegree[dependent] -= 1
+    cyclic = [fs for fs in feedstocks if fs in remaining]
+    return ordered + cyclic, cyclic
+
+
+def resolved_build_order(state: PrepareState) -> tuple[list[str], list[str]]:
+    """Dependency-first build order over the successfully prepared feedstocks."""
+    feedstocks = [fs for fs in state.order if fs in state.prepared]
+    outputs = _outputs_index(state.root, feedstocks)
+    return topological_build_order(state.root, feedstocks, outputs)
+
+
+def print_dependency_tree(state: PrepareState, root_pkg: str, root_fs: str) -> None:
+    """Print the direct dependency tree of an import run.
+
+    Edges are the direct build/host/run/test dependencies parsed from each
+    prepared recipe.yaml.  Only locally prepared recipes are expanded; every
+    leaf is annotated with where it resolves from.
+    """
+    outputs = _outputs_index(state.root, state.prepared)
+    tag_cache: dict[str, str] = {}
+
+    def tag_for(dep: str) -> str:
+        if dep not in tag_cache:
+            fs = outputs.get(dep)
+            if fs is not None:
+                tag_cache[dep] = f"[todo/{fs}]"
+            elif state.scns.has(dep):
+                tag_cache[dep] = "[scns]"
+            else:
+                exists, _ = on_conda_forge(dep)
+                tag_cache[dep] = "[conda-forge]" if exists else "[MISSING]"
+        return tag_cache[dep]
+
+    shown: set[str] = set()
+
+    def walk(feedstock: str, prefix: str) -> None:
+        recipe = state.todo_dir(feedstock) / "recipe.yaml"
+        deps = sorted(extract_deps_from_recipe(recipe)) if recipe.is_file() else []
+        for i, dep in enumerate(deps):
+            last = i == len(deps) - 1
+            branch = "`-- " if last else "|-- "
+            dep_fs = outputs.get(dep)
+            note = (
+                "  (already listed above)"
+                if dep_fs is not None and dep_fs in shown
+                else ""
+            )
+            print(f"{prefix}{branch}{dep} {tag_for(dep)}{note}", flush=True)
+            if dep_fs is not None and dep_fs not in shown:
+                shown.add(dep_fs)
+                walk(dep_fs, prefix + ("    " if last else "|   "))
+
+    print(
+        "==> Direct dependency tree (direct build/host/run/test deps from "
+        "recipe.yaml; only locally prepared recipes are expanded):",
+        flush=True,
+    )
+    if root_fs in state.prepared:
+        print(f"{root_pkg} [todo/{root_fs}]", flush=True)
+    else:
+        print(f"{root_pkg} (prep failed; not in the build set)", flush=True)
+    shown.add(root_fs)
+    walk(root_fs, "")
+
+    unreachable = sorted(fs for fs in state.prepared if fs not in shown)
+    for fs in unreachable:
+        print(f"{fs} [todo/{fs}]  (not reachable from the root package)", flush=True)
+        shown.add(fs)
+        walk(fs, "")
+
+
+def deps_of_cli(recipe_arg: Path) -> int:
+    """--deps-of: print the direct dependency tree of one prepared recipe."""
+    if recipe_arg.is_dir():
+        recipe = recipe_arg / "recipe.yaml"
+        if not recipe.is_file():
+            if (recipe_arg / "meta.yaml").is_file():
+                print(
+                    f"Error: {recipe_arg} only has meta.yaml (crm conversion "
+                    f"failed); its dependencies cannot be parsed reliably.",
+                    file=sys.stderr,
+                )
+            else:
+                print(f"Error: no recipe.yaml under {recipe_arg}", file=sys.stderr)
+            return 1
+    else:
+        recipe = recipe_arg
+    if not recipe.is_file():
+        print(f"Error: recipe not found: {recipe}", file=sys.stderr)
+        return 1
+
+    name = package_name_from_recipe(recipe) or recipe.parent.name
+    deps = sorted(extract_deps_from_recipe(recipe))
+    local_base = recipe.parent.parent
+
+    print(f"==> Direct dependencies of {recipe}:")
+    print(name)
+    if not deps:
+        print("  (none)")
+    for i, dep in enumerate(deps):
+        branch = "`-- " if i == len(deps) - 1 else "|-- "
+        if (local_base / dep / "recipe.yaml").is_file():
+            tag = f"[{local_base.name}/{dep}]"
+        else:
+            tag = "[external]"
+        print(f"{branch}{dep} {tag}")
+    print(f"==> Build order: {' -> '.join([*deps, name])}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Build & upload inside pixi container
 # ---------------------------------------------------------------------------
 
@@ -1504,6 +1682,27 @@ def container_build_and_upload(
             flush=True,
         )
 
+    # The input list is prep/manifest order (root first).  Rebuild it
+    # dependencies-first so `-c ./output` has every host dep available before
+    # the recipes that need it.  import-manifest.json / import-status.json are
+    # not touched: only the in-memory build sequence changes.
+    requested = list(dict.fromkeys(feedstocks))
+    ordered, cyclic = topological_build_order(
+        root, requested, _outputs_index(root, requested)
+    )
+    if len(ordered) > 1:
+        print("==> Build order (dependencies first):", flush=True)
+        for i, fs in enumerate(ordered, 1):
+            print(f"    {i}. {fs}", flush=True)
+    if cyclic:
+        print(
+            "Warning: dependency cycle among "
+            f"{', '.join(cyclic)}; they keep their input order at the end.",
+            file=sys.stderr,
+            flush=True,
+        )
+    feedstocks = ordered
+
     failures: dict[str, str] = {}
     try:
         for fs in feedstocks:
@@ -1593,7 +1792,7 @@ def container_build_and_upload(
         else:
             upload_output_packages(root, prefix_token=prefix_token)
     finally:
-        write_built_feedstocks(root, feedstocks, target_platform)
+        write_built_feedstocks(root, requested, target_platform)
 
     # Report every recipe that still failed after the AI rounds; the artifacts
     # that did build were already uploaded so a later run can reuse them.
@@ -1879,6 +2078,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--deps-of",
+        metavar="RECIPE",
+        default="",
+        help=(
+            "Print the direct dependency tree of RECIPE (a recipe.yaml path or "
+            "the directory containing it) and exit; nothing is prepped or built"
+        ),
+    )
+    p.add_argument(
         "--fix-build",
         metavar="RECIPE_DIR",
         default="",
@@ -1921,7 +2129,9 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
-    if not (args.repair_failed or args.fix_build or args.revert_fix) and (
+    if not (
+        args.repair_failed or args.fix_build or args.revert_fix or args.deps_of
+    ) and (
         not pkg or not PACKAGE_NAME_RE.match(pkg)
     ):
         print(
@@ -1948,6 +2158,9 @@ def main(argv: list[str] | None = None) -> int:
         except ImportError_ as exc:
             print(f"Error: {exc}", file=sys.stderr, flush=True)
             return 1
+
+    if args.deps_of:
+        return deps_of_cli(Path(args.deps_of))
 
     try:
         # ----- repair-only path (build.yml push retry) -----
@@ -2077,7 +2290,7 @@ def main(argv: list[str] | None = None) -> int:
         # Try to AI-fix failed meta.yaml conversions, then recurse their deps.
         ai_fix_prep_failures(state)
 
-        print("==> Prepared feedstocks (build order):", flush=True)
+        print("==> Prepared feedstocks (prep order):", flush=True)
         for fs in state.order:
             print(f"    - {fs}: {state.prepared.get(fs, '')}", flush=True)
 
@@ -2100,6 +2313,22 @@ def main(argv: list[str] | None = None) -> int:
 
         if not state.failed_feedstocks:
             verify_all_deps_resolvable(state)
+
+        # Human-readable direct dependency tree plus the dependency-first
+        # order the container build will actually follow.  The manifest and
+        # status JSON files below keep their existing content untouched.
+        print_dependency_tree(state, pkg, root_fs)
+        build_order, cyclic = resolved_build_order(state)
+        print("==> Build order (dependencies first):", flush=True)
+        for i, fs in enumerate(build_order, 1):
+            print(f"    {i}. {fs}", flush=True)
+        if cyclic:
+            print(
+                "Warning: dependency cycle among "
+                f"{', '.join(cyclic)}; they keep their prep order at the end.",
+                file=sys.stderr,
+                flush=True,
+            )
 
         manifest = {
             "root_package": pkg,
@@ -2139,8 +2368,8 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.prepare_only:
             print(
-                "Prepare-only mode: skipping build/upload. "
-                f"CI build job should build: {', '.join(state.order)}",
+                "Prepare-only mode: skipping build/upload. CI build job will "
+                f"build in dependency order: {', '.join(build_order)}",
                 flush=True,
             )
             return 0
@@ -2151,7 +2380,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         container_build_and_upload(
             root,
-            state.order,
+            build_order,
             target_platform=args.target_platform,
             upload=not args.no_upload,
             prefix_token=args.token,
