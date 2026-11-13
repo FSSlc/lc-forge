@@ -6,7 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 cd "$REPO_ROOT" || exit 1
 
 IMAGE_REPO="${IMAGE_REPO:-ghcr.io/fsslc/pixi}"
-CONTAINER_NAME="${CONTAINER_NAME:-pixi}"
+CONTAINER_NAME="${CONTAINER_NAME:-}" # empty = derived from ARCH below
 ARCH="${ARCH:-linux-64}"
 
 usage() {
@@ -14,15 +14,16 @@ usage() {
   echo "  -f, --force        Remove an existing container before starting"
   echo "  --arch <platform>  Target platform: linux-64 (default) or linux-aarch64."
   echo "                     linux-aarch64 registers qemu-user-static binfmt"
-  echo "                     handlers if needed and runs the container with"
-  echo "                     --platform linux/arm64"
+  echo "                     handlers if needed, uses the pixi-aarch64 container"
+  echo "                     and runs it with --platform linux/arm64"
   echo "  --run <command>    Non-interactive: ensure container is up, then"
   echo "                     docker exec the given shell command inside it"
   echo "  -h, --help         Show this help"
   echo
   echo "Environment:"
   echo "  IMAGE_REPO      Container image repo (default: ghcr.io/fsslc/pixi)"
-  echo "  CONTAINER_NAME  Container name (default: pixi)"
+  echo "  CONTAINER_NAME  Container name (default: pixi, or pixi-aarch64 for"
+  echo "                  --arch linux-aarch64)"
   echo "  ARCH            Target platform, same values as --arch (default: linux-64)"
   echo "  HOST_UID        Host UID for chown in build scripts (auto-set at run)"
   echo "  HOST_GID        Host GID for chown in build scripts (auto-set at run)"
@@ -158,12 +159,15 @@ fi
 
 # PLATFORM 为空表示不传 --platform（沿用 docker 引擎原生平台，保持旧行为）；
 # 仅 linux-aarch64 固定为 linux/arm64，由 ${PLATFORM:+...} 在 docker run 处插入。
+# 每个架构用独立容器名，避免复用上一次另一种架构的容器。
 case "$ARCH" in
   linux-64)
     PLATFORM=""
+    CONTAINER_NAME="${CONTAINER_NAME:-pixi}"
     ;;
   linux-aarch64)
     PLATFORM="linux/arm64"
+    CONTAINER_NAME="${CONTAINER_NAME:-pixi-aarch64}"
     ;;
   *)
     echo "Unsupported --arch value: $ARCH (expected linux-64 or linux-aarch64)" >&2
