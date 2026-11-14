@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  version: "7.13.5"
+  version: 7.16.0
 
 package:
   name: coverage
@@ -9,53 +9,58 @@ package:
 
 source:
   url: https://pypi.org/packages/source/c/coverage/coverage-${{ version }}.tar.gz
-  sha256: c81f6515c4c40141f83f502b07bbfa5c240ba25bbe73da7b33f1e5b6120ff179
+  sha256: 077f0964087883176ff6ab9b074694cae29f8c708273b13ca62c183c6ed716cd
 
 build:
   number: 0
-  noarch: ${{ 'python' if use_noarch else '' }}
+  noarch: ${{ "python" if use_noarch }}
+  variant:
+    down_prioritize_variant: ${{ 1 if use_noarch else 0 }}
   python:
     entry_points:
       - coverage = coverage.cmdline:main
-  # track_features:
-  #   - if: use_noarch
-  #     then: coverage_no_compile
 
 requirements:
   build:
-    - if: build_platform != target_platform and not use_noarch
-      then: python
     - if: build_platform != target_platform
       then: cross-python_${{ target_platform }}
-    - ${{ compiler('c') }}
-    - ${{ stdlib("c") }}
-  host:
     - if: not use_noarch
-      then: python
+      then:
+        - if: build_platform != target_platform
+          then: python
+        - ${{ compiler('c') }}
+        - ${{ stdlib("c") }}
+  host:
     - if: use_noarch
       then: python ${{ python_min }}.*
+      else: python
     - pip
     - setuptools
   run:
-    - if: not use_noarch
-      then: python
     - if: use_noarch
       then: python >=${{ python_min }}
+      else: python
     # extra dependency
-    - tomli
-
 tests:
-  - python:
-      imports:
-        - coverage
-  - requirements:
-      run:
-        - pip
-        - if: use_noarch
-          then: python ${{ python_min }}.*
-    script:
-      - pip check
-      - coverage --help
+  - if: use_noarch
+    then:
+      - python:
+          imports:
+            - coverage
+          python_version: ${{ python_min }}.*
+          pip_check: true
+      - script:
+          - coverage --help
+        requirements:
+          run:
+            - python ${{ python_min }}.*
+    else:
+      - python:
+          imports:
+            - coverage
+          pip_check: true
+      - script:
+          - coverage --help
 
 about:
   license: Apache-2.0
@@ -69,4 +74,3 @@ extra:
     - ericmjl
     - jakirkham
     - ocefpaf
-

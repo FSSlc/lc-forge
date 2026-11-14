@@ -12,7 +12,7 @@ source:
     sha256: e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec
 
 build:
-  number: 1
+  number: 3
 
 outputs:
   - package:
@@ -97,7 +97,6 @@ outputs:
       run:
         - ${{ pin_subpackage('eigen', upper_bound='x.x.x') }}
         - ${{ pin_subpackage('eigen-abi', upper_bound='x.x.x.x') }}
-        - ${{ stdlib('c') }}
         - if: x86_64 and eigen_max_align_bytes == "32"
           then: x86_64-microarch-level 3.*
         - if: x86_64 and eigen_max_align_bytes == "64"
@@ -116,7 +115,6 @@ outputs:
             - ninja
             - ${{ compiler('cxx') }}
             - ${{ stdlib('c') }}
-
 
   - package:
       name: eigen-abi
