@@ -1,0 +1,79 @@
+schema_version: 1
+
+context:
+  name: versioningit
+  version: "3.3.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: b91ad7d73e73d21220e69540f20213f2b729a1f9b35c04e9e137eaf28d2214da
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+  python:
+    entry_points:
+      - versioningit = versioningit.__main__:main
+
+requirements:
+  host:
+    - hatchling
+    - python ${{ python_min }}.*
+    - pip
+  run:
+    - python >=${{ python_min }}
+    - importlib-metadata >=3.6
+    - packaging >=17.1
+    - tomli >=1.2,<3.0
+
+tests:
+  - python:
+      imports:
+        - versioningit
+      pip_check: true
+      python_version: ${{ python_min }}
+  - files:
+      source:
+        - test
+        - tox.ini
+    requirements:
+      run:
+        - python-build >=0.7.0
+        - editables
+        - git >=2.32
+        - hatchling
+        - mercurial >=5.2
+        - setuptools >=42
+        - pip
+        - pydantic >=2.0,<3.0
+        - pytest >=7.0
+        - pytest-cov >=3.0
+        - pytest-mock >=3.0
+        - wheel
+        - python ${{ python_min }}.*
+    script:
+      - versioningit --help
+      - python -m pytest -vv test
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: Versioning It with your Version In Git
+  description: |
+    `versioningit` is yet another Python packaging plugin for automatically
+    determining your package's version based on your version control
+    repository's tags.  Unlike others, it allows easy customization of the
+    version format and even lets you easily override the separate functions
+    used for version extraction & calculation.
+  homepage: https://github.com/jwodder/versioningit
+  repository: https://github.com/jwodder/versioningit
+
+extra:
+  recipe-maintainers:
+    - jwodder
+

@@ -1,0 +1,47 @@
+schema_version: 1
+
+context:
+  name: annotated-types
+  version: "0.8.0"
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/annotated_types-${{ version }}.tar.gz
+  sha256: 13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - pip
+    - hatchling
+  run:
+    - python >=${{ python_min }}
+    - typing-extensions >=4.0.0
+
+tests:
+  - python:
+      imports:
+        - annotated_types
+      pip_check: true
+      python_version: ${{ python_min }}
+
+about:
+  summary: Reusable constraint types to use with typing.Annotated
+  license: MIT
+  license_file: LICENSE
+  homepage: https://pypi.org/project/annotated-types/
+
+extra:
+  recipe-maintainers:
+    - mattwthompson
+    - samuelcolvin
+    - Zac-HD
+

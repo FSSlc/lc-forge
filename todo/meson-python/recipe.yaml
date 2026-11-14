@@ -1,0 +1,75 @@
+context:
+  version: "0.22.1"
+
+package:
+  name: meson-python
+  version: ${{ version }}
+
+source:
+  url: https://files.pythonhosted.org/packages/b4/40/343ae23722d5d66a7b94b752d1b194202640995296379333b274b1860871/meson_python-${{ version }}.tar.gz
+  sha256: 52c88628b0e5671592dc2306613fb5f6f3615fd24def059b9894f143b7f9a139
+
+build:
+  number: 0
+  noarch: python
+  # Avoid packaging a test package with a non-ascii filename, since that
+  # might not install depending on the target machine (see gh-29)
+  script: rm -rf tests/packages/encoding && ${{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - meson >=0.64.0
+    - ninja
+    - packaging >=23.2
+    - pyproject-metadata >=0.9.0
+    - pip
+    - python ${{ python_min }}.*
+    - tomli >=1.0.0
+  run:
+    - meson >=0.64.0
+    - ninja
+    - packaging >=23.2
+    - pyproject-metadata >=0.9.0
+    - python >=${{ python_min }}
+    - tomli >=1.0.0
+
+tests:
+  - python:
+      imports:
+        - mesonpy
+  - files:
+      source:
+        - tests/
+        - docs/
+        - pyproject.toml
+    requirements:
+      run:
+        - ${{ compiler('c') }}
+        - ${{ compiler('cxx') }}
+        - cmake
+        - cython
+        - git
+        - gitpython
+        - if: linux
+          then: patchelf
+        - pip
+        - python ${{ python_min }}.*
+        - pytest
+        - pytest-mock
+        - wheel
+    script:
+      - pip check
+      - export CPPFLAGS=${CPPFLAGS//-DNDEBUG/}
+      - pytest tests -vv -k "not test_encoding"
+
+about:
+  summary: Meson Python build backend (PEP 517)
+  license: MIT
+  license_file: LICENSE
+  homepage: https://github.com/mesonbuild/meson-python
+  documentation: https://meson-python.readthedocs.io/en/latest/
+
+extra:
+  recipe-maintainers:
+    - awvwgk
+    - rgommers

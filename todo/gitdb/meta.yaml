@@ -1,0 +1,45 @@
+{% set version = "4.0.12" %}
+
+package:
+  name: gitdb
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/g/gitdb/gitdb-{{ version }}.tar.gz
+  sha256: 5ef71f855d191a3326fcfbc0d5da835f26b13fbcba60c32c21091c349ffdb571
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - setuptools
+    - pip
+  run:
+    - python >={{ python_min }}
+    - smmap >=3.0.1,<6
+
+test:
+  requires:
+    - pip
+    - python {{ python_min }}
+  commands:
+    - pip check
+  imports:
+    - gitdb
+    - gitdb.db
+
+about:
+  home: https://github.com/gitpython-developers/gitdb
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Git Object Database
+
+extra:
+  recipe-maintainers:
+    - pelson
+    - ocefpaf
+    - xhochy

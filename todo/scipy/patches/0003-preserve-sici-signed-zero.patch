@@ -1,0 +1,23 @@
+From: Clay Warren
+Subject: [PATCH] Preserve signed zero when rotating complex integral arguments
+
+Upstream: https://github.com/scipy/xsf/pull/272
+
+Form multiplication by i directly from the components. On Windows ARM64,
+contracted complex multiplication can lose the sign of a zero when the
+rotated argument is negated, selecting the wrong exponential-integral branch.
+This keeps normal compiler settings for the rest of SciPy.
+
+diff --git a/subprojects/xsf/include/xsf/sici.h b/subprojects/xsf/include/xsf/sici.h
+--- a/subprojects/xsf/include/xsf/sici.h
++++ b/subprojects/xsf/include/xsf/sici.h
+@@ -82,7 +82,8 @@ XSF_HOST_DEVICE inline int sici(std::complex<double> z, std::complex<double> &si, std
+     }
+ 
+     // DLMF 6.5.5/6.5.6 plus DLMF 6.4.4/6.4.6/6.4.7
+-    std::complex<double> jz = std::complex<double>(0.0, 1.0) * z;
++    // Multiply by i componentwise to preserve signed zero for the branch cut.
++    std::complex<double> jz(-z.imag(), z.real());
+     std::complex<double> term1 = expi(jz);
+     std::complex<double> term2 = expi(-jz);
+     si = std::complex<double>(0.0, -0.5) * (term1 - term2);
