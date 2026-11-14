@@ -54,6 +54,7 @@ outputs:
           # wrong architecture.
           run:
             - ${{ compiler('cxx') }}
+            - ${{ stdlib('c') }}
         script:
           - if: unix
             then:
@@ -79,6 +80,7 @@ outputs:
             - cmake-package-check
             - ${{ compiler('c') }}
             - ${{ compiler('cxx') }}
+            - ${{ stdlib('c') }}
 
   # The eigen-abi and eigen-abi-devel logic is discussed in detail recipe/README.md
   - package:
@@ -112,6 +114,7 @@ outputs:
             - cmake
             - ninja
             - ${{ compiler('cxx') }}
+            - ${{ stdlib('c') }}
 
   - package:
       name: eigen-abi
