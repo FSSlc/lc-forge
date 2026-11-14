@@ -52,13 +52,15 @@ tests:
         - pip
         - pydantic >=2.0,<3.0
         - pytest >=7.0
-        - pytest-cov >=3.0
         - pytest-mock >=3.0
         - wheel
         - python ${{ python_min }}.*
     script:
       - versioningit --help
-      - python -m pytest -vv test
+      # Override tox.ini's [pytest] section: its --cov addopts need pytest-cov
+      # and its filterwarnings import coverage, but scns only ships a noarch
+      # coverage build without the C tracer, so coverage must stay unused.
+      - python -m pytest -vv test -o addopts="" -o filterwarnings=""
 
 about:
   license: MIT

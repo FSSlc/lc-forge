@@ -46,6 +46,7 @@ tests:
       run:
         - ${{ compiler('c') }}
         - ${{ compiler('cxx') }}
+        - ${{ stdlib('c') }}
         - cmake
         - cython
         - git

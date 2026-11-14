@@ -36,7 +36,8 @@ requirements:
     - versioningit
   run:
     - python
-    - numpy >=1.23.5
+    # compiled against numpy 1.23, so the binaries use the numpy 1.x C ABI
+    - numpy >=1.23.5,<2.0a0
     - scipy >=1.15.0
 
 tests:

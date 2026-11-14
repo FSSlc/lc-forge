@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  version: "2.13.6"
+
+package:
+  name: pybind11
+  version: ${{ version }}
+
+source:
+  url: https://files.pythonhosted.org/packages/source/p/pybind11/pybind11-${{ version }}.tar.gz
+  sha256: ba6af10348c12b24e92fa086b39cfba0eff619b61ac77c406167d813b096d39a
+
+build:
+  number: 0
+  noarch: python
+  script:
+    - ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+    # meson's dependency('pybind11') looks for the CMake package under <prefix>/share/cmake
+    - mkdir -p "$PREFIX/share/cmake"
+    - cp -r "$SP_DIR/pybind11/share/cmake/pybind11" "$PREFIX/share/cmake/"
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools
+    - wheel
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - pybind11
+      pip_check: false
+  - script:
+      - test -f "$PREFIX/share/cmake/pybind11/pybind11Config.cmake"
+      - pybind11-config --version
+      - pybind11-config --cmakedir
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Seamless operability between C++11 and Python
+  homepage: https://github.com/pybind/pybind11
+  repository: https://github.com/pybind/pybind11
+
+extra:
+  recipe-maintainers:
+    - lc
