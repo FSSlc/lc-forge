@@ -1621,12 +1621,25 @@ def build_one_recipe(
 
 
 def upload_output_packages(root: Path, *, prefix_token: str) -> None:
-    """Upload every .conda under output/ to scns (channel dedupes)."""
+    """Upload every .conda under output/ to scns (channel dedupes).
+
+    Packages under output/broken/ (build succeeded but tests failed; moved
+    there by rattler-build --continue-on-failure) are never uploaded.
+    """
     upload_parts = [
         "set -Eeuo pipefail",
         FIX_WORKSPACE_OWNER_SNIPPET,
         "shopt -s nullglob globstar",
-        "files=(output/**/*.conda)",
+        "broken=(output/broken/**/*.conda)",
+        'if [[ ${#broken[@]} -gt 0 ]]; then',
+        '  echo "Skipping ${#broken[@]} test-failed package(s) under output/broken/:"',
+        '  printf "  %s\\n" "${broken[@]}"',
+        "fi",
+        "files=()",
+        "for file in output/**/*.conda; do",
+        '  [[ "$file" == output/broken/* ]] && continue',
+        '  files+=("$file")',
+        "done",
         'if [[ ${#files[@]} -eq 0 ]]; then echo "No .conda files to upload"; exit 0; fi',
         'for file in "${files[@]}"; do',
         '  echo "Uploading $file"',

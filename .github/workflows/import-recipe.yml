@@ -391,11 +391,16 @@ jobs:
             fi
           fi
 
-          # Count .conda artifacts produced by the build.
+          # Count .conda artifacts produced by the build. Packages under
+          # output/broken/ (tests failed) are excluded: they were not uploaded
+          # and must not count as a successful build.
           conda_files=()
           if [[ -d output ]]; then
             shopt -s nullglob globstar
-            conda_files=(output/**/*.conda)
+            for f in output/**/*.conda; do
+              [[ "$f" == output/broken/* ]] && continue
+              conda_files+=("$f")
+            done
             shopt -u nullglob globstar
           fi
 
@@ -481,6 +486,36 @@ jobs:
             ls -la output || true
           fi
 
+      - name: Record test-failed (broken) packages
+        if: always()
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -Eeuo pipefail
+
+          # rattler-build --continue-on-failure moves packages whose tests
+          # failed into output/broken/. They are excluded from the scns upload;
+          # record them per target so the final workflow summary can report
+          # them separately.
+          list="output/.broken-packages-${TARGET}.txt"
+          mkdir -p output
+          : > "$list"
+          if [[ -d output/broken ]]; then
+            shopt -s nullglob globstar
+            for f in output/broken/**/*.conda; do
+              basename "$f" >> "$list"
+            done
+            shopt -u nullglob globstar
+          fi
+
+          if [[ -s "$list" ]]; then
+            echo "Test-failed package(s) for ${TARGET} (excluded from upload):"
+            cat "$list"
+          else
+            echo "No test-failed packages under output/broken/ for ${TARGET}."
+          fi
+
       - name: Summarize failure
         if: failure()
         shell: bash
@@ -511,6 +546,7 @@ jobs:
             logs/build-${{ matrix.target }}-*.log
             output/**/*.conda
             output/.build-status-*
+            output/.broken-packages-*
             output/.built-feedstocks-${{ matrix.target }}.json
           if-no-files-found: ignore
 
@@ -714,3 +750,45 @@ jobs:
           fi
           git commit -m "$msg"
           git push
+
+      - name: Summarize test-failed (broken) packages
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          # Aggregate the per-target output/.broken-packages-*.txt markers from
+          # the build-log artifacts. These packages built fine but failed their
+          # tests (rattler-build moved them to output/broken/), so they were
+          # excluded from the scns upload and only kept as CI artifacts.
+          shopt -s nullglob
+          markers=(.build-logs/output/.broken-packages-*.txt)
+          shopt -u nullglob
+
+          any=false
+          for m in "${markers[@]}"; do
+            [[ -s "$m" ]] && any=true
+          done
+          if [[ "$any" != true ]]; then
+            echo "No test-failed (broken) packages to summarize."
+            exit 0
+          fi
+
+          {
+            echo "## 测试失败未上传的包"
+            echo
+            echo "以下包构建成功但测试失败（位于 \`output/broken/\`），已排除、未上传到 scns；包文件仅保留在 CI artifact（build-log-\<target\>）中："
+            echo
+            for m in "${markers[@]}"; do
+              [[ -s "$m" ]] || continue
+              target="$(basename "$m" .txt)"
+              target="${target#.broken-packages-}"
+              count="$(wc -l < "$m" | tr -d ' ')"
+              echo "### ${target}（${count} 个）"
+              echo
+              while IFS= read -r pkg; do
+                echo "- \`${pkg}\`"
+              done < "$m"
+              echo
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
