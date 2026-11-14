@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  version: "3.2.1"
+
+package:
+  name: cxxopts
+  version: ${{ version }}
+
+source:
+  url: https://github.com/jarro2783/cxxopts/archive/v${{ version }}.tar.gz
+  sha256: 841f49f2e045b9c6365997c2a8fbf76e6f215042dda4511a5bb04bc5ebc7f88a
+
+build:
+  # The cxxopts library is header only, so we do not need
+  # to export the compiler run-time libraries.
+  # They are just needed during the build to perform some checks.
+  number: 1
+
+requirements:
+  build:
+    - cmake
+    - ${{ stdlib('c') }}
+    - ${{ compiler('cxx') }}
+    - if: unix
+      then: make
+  ignore_run_exports:
+    from_package:
+      - ${{ stdlib('c') }}
+      - ${{ compiler('cxx') }}
+
+tests:
+  - script:
+      - if: unix
+        then: test -f ${PREFIX}/include/cxxopts.hpp
+      - if: unix
+        then: test -f ${PREFIX}/lib/cmake/cxxopts/cxxopts-config.cmake
+      - if: unix
+        then: test -f ${PREFIX}/lib/cmake/cxxopts/cxxopts-config-version.cmake
+      - if: win
+        then: if exist %LIBRARY_PREFIX%\include\cxxopts.hpp (exit 0) else (exit 1)
+      - if: win
+        then: if exist %LIBRARY_PREFIX%\lib\cmake\cxxopts-config.cmake (exit 0) else (exit 1)
+      - if: win
+        then: if exist %LIBRARY_PREFIX%\lib\cmake\cxxopts-config-version.cmake (exit 0) else (exit 1)
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: A lightweight C++ option parser library
+  description: This is a lightweight C++ option parser library, supporting the standard GNU style syntax for options.
+  homepage: https://github.com/jarro2783/cxxopts
+  repository: https://github.com/jarro2783/cxxopts
+  documentation: https://github.com/jarro2783/cxxopts
+
+extra:
+  recipe-maintainers:
+    - SylvainCorlay
+    - JohanMabille
+    - gouarin
+

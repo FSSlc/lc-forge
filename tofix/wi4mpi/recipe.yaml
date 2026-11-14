@@ -23,7 +23,7 @@ requirements:
     - ${{ compiler('cxx') }}
     - ${{ compiler('fortran') }}
     - ${{ stdlib('c') }}
-    - cmake
+    - cmake <4
     - make
   run:
     - bash

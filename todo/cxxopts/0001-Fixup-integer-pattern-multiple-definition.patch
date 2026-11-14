@@ -1,0 +1,37 @@
+From e4063ac389861ce1e245fd13d1ef7f88d0a6b6e2 Mon Sep 17 00:00:00 2001
+From: Sylvain Corlay <sylvain.corlay@gmail.com>
+Date: Wed, 30 Aug 2017 19:58:20 +0200
+Subject: [PATCH] Fixup integer pattern multiple definition
+
+---
+ include/cxxopts.hpp | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/include/cxxopts.hpp b/include/cxxopts.hpp
+index 0d54815..adf1013 100644
+--- a/include/cxxopts.hpp
++++ b/include/cxxopts.hpp
+@@ -412,11 +412,6 @@ namespace cxxopts
+ 
+   namespace values
+   {
+-    namespace
+-    {
+-      std::basic_regex<char> integer_pattern
+-        ("(-)?(0x)?([1-9a-zA-Z][0-9a-zA-Z]*)|(0)");
+-    }
+ 
+     namespace detail
+     {
+@@ -468,6 +463,8 @@ namespace cxxopts
+     integer_parser(const std::string& text, T& value)
+     {
+       std::smatch match;
++      std::basic_regex<char> integer_pattern
++        ("(-)?(0x)?([1-9a-zA-Z][0-9a-zA-Z]*)|(0)");
+       std::regex_match(text, match, integer_pattern);
+ 
+       if (match.length() == 0)
+-- 
+2.7.4
+
