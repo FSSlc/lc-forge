@@ -1,12 +1,12 @@
-{% set version = "1.1.5" %}
+{% set version = "1.1.8" %}
 
 package:
   name: libaec
   version: {{ version }}
 
 source:
-  url: https://gitlab.dkrz.de/dkrz-sw/libaec/-/archive/v{{ version }}/libaec-v{{ version }}.tar.gz
-  sha256: 2e2a9a276783b8d7014cdb9127ffdb63e4c35dcd7b866d3383efda297f8cc040
+  url: https://github.com/Deutsches-Klimarechenzentrum/libaec/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: 7f99d00fdc3217de5204f40a1eb35ba24b7efac4321df5ed1967f0c34f486c09
 
 build:
   number: 0
@@ -33,7 +33,7 @@ test:
     - if not exist %LIBRARY_INC%\\libaec.h exit 1     # [win]
 
 about:
-  home: https://gitlab.dkrz.de/dkrz-sw/libaec
+  home: https://github.com/Deutsches-Klimarechenzentrum/libaec
   license: BSD-2-Clause
   license_family: BSD
   license_file: LICENSE.txt
@@ -45,7 +45,7 @@ about:
     are not directly supported, they can also be efficiently coded by grouping exponents and mantissa.
     Libaec implements Golomb-Rice coding as defined in the Space Data System Standard documents 121.0-B-2
     and 120.0-G-2.
-  dev_url: https://gitlab.dkrz.de/dkrz-sw/libaec
+  dev_url: https://github.com/Deutsches-Klimarechenzentrum/libaec
 
 extra:
   recipe-maintainers:
